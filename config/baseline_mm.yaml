@@ -1,0 +1,20 @@
+# 2026-11-03 M1：手续费与固定延迟均为机制实验假设，不是认证历史账户费率。
+name: A_width20
+date: 2025-02-01
+source: data/normalized/BTCUSDT_2025-02-01/manifest.json
+output: results/m1/A_width20
+tick_size: 0.1
+lot_size: 0.001
+order_quantity: 0.001
+max_position: 0.01
+initial_capital: 10000
+maker_fee: 0.0002
+taker_fee: 0.0005
+half_width_ticks: 20
+decision_interval_ns: 100000000
+update_mode: time
+price_threshold_ticks: 20
+entry_latency_ns: 1000000
+response_latency_ns: 500000
+# UTC 23:59:59 起停止报价，预留最后一秒撤单；不强行平仓。
+quote_stop_timestamp_ns: 1738454399000000000
