@@ -1,25 +1,28 @@
-# 2026-11-03 — hft_mm_research / M0
+# 2026-11-03 — hft_mm_research / M0 + M1
 
-Binance Futures BTCUSDT 永续合约的 C++20 高频交易研究骨架。当前完成行情观察与回放验证，尚未开发交易策略。第三方引擎是 `shenron0101/hftbacktest-cpp`，通过 Git Submodule 固定于 v0.1.0 / `e0d2f7887c68755b220d9e69425d61d27e5b6432`。
+Binance Futures BTCUSDT 永续合约的 C++20 高频交易研究骨架。已完成 M0 行情回放验证和 M1 固定报价做市基线，支持原生部分成交、在途库存约束及逐笔 PnL 核对。第三方引擎是 `shenron0101/hftbacktest-cpp`，通过 Git Submodule 固定于 v0.1.0 / `e0d2f7887c68755b220d9e69425d61d27e5b6432`。
 
 ## 项目结构与入口
 
 ```text
 hft_mm_research/
 ├── CMakeLists.txt
-├── config/                 # replay.yaml 合成行情；replay_btcusdt.yaml 单日真实行情
+├── config/                 # M0 replay*.yaml；M1 baseline_mm.yaml
 ├── third_party/hftbacktest-cpp/  # 固定版本，源码不修改
 ├── data/{raw,normalized,samples}/ # 数据忽略提交
-├── include/mm/             # market_observer.hpp、replay.hpp
+├── include/mm/             # market_observer、replay、market_maker、trade_recorder
 ├── src/
 │   ├── market_observer.cpp # 读取原生订单簿、Mid/Spread、逐事件统计、Top-N 采样
 │   ├── replay.cpp          # 原生处理器接入、回放编排、配置与 JSON 报告
 │   ├── replay_probe.cpp    # 最小观察入口，无订单
-│   └── strategy/           # 空目录，后续阶段使用
+│   ├── market_maker.cpp    # M1 固定报价、在途敞口预算与原生回测编排
+│   ├── trade_recorder.cpp  # M1 逐笔记录、平均成本 PnL 与原生状态核对
+│   ├── trading_engine.hpp  # 原生处理器转发及旧拒绝回报兼容
+│   └── strategy/baseline_mm.cpp # M1 可执行入口
 ├── tools/                  # 单日下载脚本、离线 Tardis 转换器
 ├── tests/                  # 盘口/双时钟/分片用例及 gzip→NPZ→C++ 集成验证
 ├── benchmarks/benchmark_replay.cpp
-├── research/               # 空目录，后续离线分析使用
+├── research/analyze_baseline.py # M1 A/B/C 实验、CSV 独立对账和 markout
 └── docs/                   # 引擎笔记、元数据状态及单日测试结果
 ```
 
@@ -110,3 +113,33 @@ Tardis instruments 接口返回 HTTP 401，Binance 官方 exchangeInfo 在当前
 ```sh
 python tools/validate_replay.py data/normalized/BTCUSDT_2025-02-01/manifest.json results/benchmark_BTCUSDT_2025-02-01.json
 ```
+
+## M1：固定报价做市基线
+
+阅读入口：[M1 引擎与账本笔记](docs/m1_notes.md) · [真实日七组实验报告](docs/m1_2025-02-01/report.md)。
+
+```sh
+# 在项目根目录、已激活 .venv 的情况下
+cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DPython3_EXECUTABLE="$PWD/.venv/bin/python"
+cmake --build build/release --parallel 4
+ctest --test-dir build/release -R mm.market_maker --output-on-failure
+
+# 单次 20-tick 半宽基线；输出目录已存在时主动拒绝覆盖
+./build/release/baseline_mm config/baseline_mm.yaml
+
+# A/B/C 共七组机制实验，串行回放同一天数据并逐组独立核对
+python research/analyze_baseline.py --run-experiments
+```
+
+已完成的逐笔记录在 `results/m1/<实验>/`，包含 `orders.csv`、`fills.csv`、`equity.csv` 和 `summary.json`，不纳入 Git。默认 `baseline_mm.yaml` 指向已完成的 `A_width20`，直接重复运行会拒绝覆盖；单次重新实验请修改 baseline_mm.yaml 的 output；重跑整组可使用 `--output-root results/m1_repeat --report-dir results/m1_repeat_report`，无需修改源码。仅重新分析已有逐笔输出可执行：
+
+```sh
+python research/analyze_baseline.py --analyze-existing results/m1
+```
+
+交易始终调用 `Backtest::submit_buy_order/submit_sell_order/cancel`。实际订单状态、成交和库存由原框架管理；策略只维护目标报价与递增订单 ID。任何新单或撤单在途都继续预留未成交数量，取消请求本身不会释放风险预算。成交从真实回报逐条保存，即使同一周期的买卖成交互相抵消也不会丢失。
+
+默认使用原生 `PartialFillExchange`，每单 0.001 BTC、最大净仓位 0.01 BTC、GTX 仅挂单；每单一个 lot 的真实日没有部分成交，多 lot 部分成交由回归用例验证。Maker/Taker 费率 2/5 bps 与固定请求/响应延迟 1 ms/0.5 ms 是研究假设。历史认证规则仍受限。净 PnL 包含全部已记录交易现金流、尾仓盯市与手续费；不包含资金费、保证金与强平，不制造期末平仓。
+
+M1 只读取 BBO 做决策，不进行 M0 的定期完整 Top-N 提取。因此两阶段运行耗时的观测工作负载不同，M1 的耗时不作为 M0 引擎优化结果。后续阶段固定为：M2 研究特征与 Alpha，M3 研究逆向选择保护、质量归因、延迟/队列敏感性和 C++ 优化；本次未扩展这些模块。
