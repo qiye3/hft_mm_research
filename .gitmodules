@@ -1,0 +1,3 @@
+[submodule "third_party/hftbacktest-cpp"]
+	path = third_party/hftbacktest-cpp
+	url = https://github.com/shenron0101/hftbacktest-cpp.git
