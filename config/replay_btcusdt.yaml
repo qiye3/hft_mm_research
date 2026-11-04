@@ -1,5 +1,5 @@
 # 当前步长为研究参数，将由转换器逐行验证；历史官方合约规则尚未取得。
-source: data/normalized/BTCUSDT_2025-02-01/manifest.json
+source: workspace/data/normalized/BTCUSDT_2025-02-01/manifest.json
 date: 2025-02-01
 symbol: BTCUSDT
 tick_size: 0.1
@@ -7,4 +7,4 @@ lot_size: 0.001
 depth_levels: 10
 snapshot_interval_ns: 100000000
 latency_sample_every: 1024
-output: results/benchmark_BTCUSDT_2025-02-01.json
+output: workspace/results/m0/BTCUSDT_2025-02-01/benchmark.json

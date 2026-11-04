@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("convert_tardis", ROOT / "tools/convert_tardis.py")
+SPEC = importlib.util.spec_from_file_location("convert_tardis", ROOT / "scripts/convert_tardis.py")
 CONVERTER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CONVERTER)
 PROBE = Path(sys.argv[1]).resolve()

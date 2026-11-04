@@ -4,7 +4,7 @@
  * 输入为 TradingConfig 和行情分片，输出为交易汇总及逐笔 CSV。
  */
 #include "mm/market_maker.hpp"
-#include "trading_engine.hpp"
+#include "mm/detail/trading_engine.hpp"
 
 #include <algorithm>
 #include <chrono>

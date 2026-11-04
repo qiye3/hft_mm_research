@@ -2,8 +2,8 @@
 
 run_experiments 将同一日行情交给 C++ baseline_mm 逐组运行，audit_orders、audit_fills
 和 audit_equity 从导出 CSV 重建生命周期计数、平均成本账本与权益。
-analyze_run 在核对后计算本地成交回报时刻起的一秒 markout，write_report 输出聚合 JSON
-和中文报告。输入为策略配置、数据清单及实验 CSV，输出为核对后的七组机制实验结果。
+analyze_run 在核对后计算本地成交回报时刻起的一秒 markout，聚合 JSON 保存在实验输出目录，
+write_report 生成中文报告。输入为策略配置、数据清单及实验 CSV，输出为核对后的七组机制实验结果。
 """
 from __future__ import annotations
 
@@ -274,14 +274,14 @@ def run_experiments(output_root: Path) -> list[dict]:
         默认参数来自项目 config/baseline_mm.yaml，可执行文件来自 Release 构建目录。
     输出
         返回按 CASES 顺序排列的分析结果，并持续写入 output_root/analysis.json。
-        每组生成的绝对位置配置保存在旁边的 <输出目录名>_configs 目录。
+        每组生成的绝对位置配置保存在 output_root/configs 目录。
     用途
         统一数据、费率和延迟，仅按各案例覆盖指定因素。C++ 失败或 CSV 核对失败时停止，
         已完成组的配置、逐笔文件及进度结果可用于定位异常和复核。
     """
     base = yaml.safe_load((ROOT / "config/baseline_mm.yaml").read_text())
     manifest = json.loads((ROOT / base["source"]).read_text())
-    configuration_directory = output_root.parent / (output_root.name + "_configs")
+    configuration_directory = output_root / "configs"
     configuration_directory.mkdir(parents=True, exist_ok=True)
     results = []
     for name, overrides in CASES.items():
@@ -293,7 +293,7 @@ def run_experiments(output_root: Path) -> list[dict]:
         filename = configuration_directory / f"{name}.yaml"
         filename.write_text(yaml.safe_dump(config, sort_keys=False))
         print(f"运行 {name}", flush=True)
-        subprocess.run([str(ROOT / "build/release/baseline_mm"), str(filename)], check=True, cwd=ROOT)
+        subprocess.run([str(ROOT / "workspace/build/release/baseline_mm"), str(filename)], check=True, cwd=ROOT)
         result = analyze_run(Path(config["output"]), manifest)
         results.append(result)
         (output_root / "analysis.json").write_text(json.dumps(results, ensure_ascii=False, indent=2) + "\n")
@@ -303,19 +303,18 @@ def run_experiments(output_root: Path) -> list[dict]:
 
 # 将固定七组的核对结果排成对照表，并用实测数值解释三个机制实验。
 def write_report(results: list[dict], destination: Path) -> None:
-    """保存可独立阅读的 M1 聚合结果与中文报告。
+    """保存可独立阅读的 M1 中文实验报告。
 
     输入
         results 应包含 CASES 的全部七个名称，当前报告叙述要求对照组具有有效 markout。
         destination 指定报告目录，目录可自动创建。
     输出
-        写出 results.json 与 report.md，前者保留完整指标，后者展示主要对照与测量口径。
+        仅写出 report.md，展示主要对照与测量口径。完整指标由调用方保存至实验输出目录。
     用途
         把报价宽度、库存上限和更新频率的变化与费用、回撤及成交后价格走势联系起来。
         本步骤使用已核对的结果，重新生成报告时可直接传入缓存分析字典。
     """
     destination.mkdir(parents=True, exist_ok=True)
-    (destination / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=2) + "\n")
     lines = [
         "# 2026-11-03 — M1 固定报价做市机制实验",
         "",
@@ -378,9 +377,9 @@ def write_report(results: list[dict], destination: Path) -> None:
         "",
         "## 复现",
         "",
-        "在项目根目录执行 `.venv/bin/python research/analyze_baseline.py --run-experiments`。输出目录必须不存在，以避免覆盖一次实验；可用 --output-root 指定新目录。已有输出可用 `--analyze-existing results/m1` 重新核对，完整参数见 config/baseline_mm.yaml 与脚本 CASES。C++ 入口为 src/strategy/baseline_mm.cpp。",
+        "在项目根目录执行 `.venv/bin/python scripts/analyze_baseline.py --run-experiments`。每个实验子目录必须不存在，以避免覆盖一次实验；可用 --output-root 指定新目录。已有输出可用 `--analyze-existing workspace/results/m1/BTCUSDT_2025-02-01` 重新核对，完整参数见 config/baseline_mm.yaml 与脚本 CASES。C++ 入口为 src/apps/baseline_mm.cpp。",
         "",
-        "原始逐笔文件保存在 results/m1/<实验>/{orders.csv,fills.csv,equity.csv,summary.json}，不纳入 Git。此目录提交聚合结果和方法说明，不提交历史行情。",
+        "原始逐笔文件保存在 workspace/results/m1/BTCUSDT_2025-02-01/<实验>/{orders.csv,fills.csv,equity.csv,summary.json}，不纳入 Git。完整聚合指标保存在实验输出根目录的 analysis.json，报告目录保存方法说明与结果解读。",
         "",
         "上游旧拒绝回报的兼容处理、假设范围与单元测试见 [M1 实现笔记](../m1_notes.md)。没有修改第三方源码，未开发 Alpha 或机器学习。",
     ])
@@ -392,7 +391,7 @@ def main() -> None:
     """提供实验编排与离线复核的命令行入口。
 
     输入为互斥的 --run-experiments 或 --analyze-existing，以及输出和报告目录选项。
-    输出为逐组结果和 write_report 生成的聚合文件，失败异常向调用命令传播。
+    输出为实验目录下的 analysis.json 和报告目录下的 report.md，失败异常向调用命令传播。
     仅分析已有实验时读取各组 CSV，新的回测由 run_experiments 分支启动。
     """
     parser = argparse.ArgumentParser(description=__doc__)
@@ -400,7 +399,7 @@ def main() -> None:
     group.add_argument("--run-experiments", action="store_true")
     group.add_argument("--analyze-existing", type=Path)
     parser.add_argument("--report-dir", type=Path, default=ROOT / "docs/m1_2025-02-01")
-    parser.add_argument("--output-root", type=Path, default=ROOT / "results/m1")
+    parser.add_argument("--output-root", type=Path, default=ROOT / "workspace/results/m1/BTCUSDT_2025-02-01")
     arguments = parser.parse_args()
     if arguments.run_experiments:
         results = run_experiments(arguments.output_root.resolve())
@@ -408,6 +407,9 @@ def main() -> None:
         base = yaml.safe_load((ROOT / "config/baseline_mm.yaml").read_text())
         manifest = json.loads((ROOT / base["source"]).read_text())
         results = [analyze_run(arguments.analyze_existing / name, manifest) for name in CASES]
+        (arguments.analyze_existing / "analysis.json").write_text(
+            json.dumps(results, ensure_ascii=False, indent=2) + "\n"
+        )
     write_report(results, arguments.report_dir)
 
 

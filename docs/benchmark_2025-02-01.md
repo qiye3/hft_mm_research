@@ -1,5 +1,7 @@
 # 2026-11-03 — BTCUSDT 2025-02-01 单日回放基准
 
+运行路径于 2026-11-04 适配当前目录布局。
+
 M0 已通过。使用 Tardis 的 **2025-02-01 UTC 完整日** Binance Futures BTCUSDT 永续行情，经原生 C++ 引擎回放到 EndOfData；本项目没有策略、下单、库存优化或机器学习模块。
 
 ## 数据量
@@ -22,11 +24,11 @@ M0 已通过。使用 Tardis 的 **2025-02-01 UTC 完整日** Binance Futures BT
 
 CSV 保留全部深度，未截掉第十档以外的增量。事件分为单侧 EXCH/LOCAL 路由行，以各自可见时间稳定排序。每个源事件在每侧恰好处理一次；快照开始时新增全簿清空事件。标准化行数不等同于新的逻辑行情数。
 
-原始文件及分片均留在本地 `data/`，不纳入 Git。逐文件大小、事件分类、时间覆盖及来源文件见 [数据清单](data_manifest_2025-02-01.json)。
+原始文件及分片均留在本地 `workspace/data/`，不纳入 Git。逐文件大小、事件分类、时间覆盖及来源文件见 [数据清单](../workspace/results/archive/m0_2025-02-01/data_manifest_2025-02-01.json)。
 
 ## 机器与构建
 
-Apple M5，10 个逻辑核心，16 GiB 内存，macOS 26.4 arm64；AppleClang 21.0.0。Release 编译参数包含 `-O3 -DNDEBUG -std=c++20`，未启用 `-march=native`、并行回放、自定义分配器。原始编译命令和依赖版本见 [环境记录](benchmark_environment.json)。
+Apple M5，10 个逻辑核心，16 GiB 内存，macOS 26.4 arm64；AppleClang 21.0.0。Release 编译参数包含 `-O3 -DNDEBUG -std=c++20`，未启用 `-march=native`、并行回放、自定义分配器。原始编译命令和依赖版本见 [环境记录](../workspace/results/archive/m0_2025-02-01/benchmark_environment.json)。
 
 固定引擎提交：`e0d2f7887c68755b220d9e69425d61d27e5b6432`（v0.1.0）；第三方源码未修改。
 
@@ -59,19 +61,24 @@ Peak RSS 使用进程内 `getrusage(RUSAGE_SELF)` 的高水位，测量截至回
 从 README 完成构建与数据准备后，在项目根目录执行：
 
 ```sh
-./build/release/benchmark_replay config/replay_btcusdt.yaml
-.venv/bin/python tools/validate_replay.py \
-  data/normalized/BTCUSDT_2025-02-01/manifest.json \
-  results/benchmark_BTCUSDT_2025-02-01.json
+mkdir -p workspace/results/m0/BTCUSDT_2025-02-01
+/usr/bin/time -p ./workspace/build/release/benchmark_replay config/replay_btcusdt.yaml \
+  > workspace/results/m0/BTCUSDT_2025-02-01/benchmark.stdout.log \
+  2> workspace/results/m0/BTCUSDT_2025-02-01/benchmark.time.log
+.venv/bin/python scripts/validate_replay.py \
+  workspace/data/normalized/BTCUSDT_2025-02-01/manifest.json \
+  workspace/results/m0/BTCUSDT_2025-02-01/benchmark.json
 ```
+
+上述命令将程序输出与系统计时分别保存在同一结果目录，使用 `time -p` 记录 real/user/sys。历史基准的 `time -l` 日志保留原始内容。
 
 样本原始下载地址：
 
 - <https://datasets.tardis.dev/v1/binance-futures/incremental_book_L2/2025/02/01/BTCUSDT.csv.gz>
 - <https://datasets.tardis.dev/v1/binance-futures/trades/2025/02/01/BTCUSDT.csv.gz>
 
-原始结构化结果见 [benchmark_2025-02-01.json](benchmark_2025-02-01.json)。
+原始结构化结果见 [benchmark_2025-02-01.json](../workspace/results/archive/m0_2025-02-01/benchmark_2025-02-01.json)。
 
 ## 未取得的合约元数据
 
-Tardis instruments 返回 HTTP 401；Binance 官方 exchangeInfo 返回 HTTP 451，未取得认证的历史合约规则。价格步长 0.1、数量步长 0.001 仅作为已通过当天所有源行网格检查的研究参数；最小下单量及最小名义金额等未验证。详见 [规则状态](contract_metadata_status.json)。M0 不下单，该缺口不改变本次行情读取与回放性能的测量范围。
+Tardis instruments 返回 HTTP 401；Binance 官方 exchangeInfo 返回 HTTP 451，未取得认证的历史合约规则。价格步长 0.1、数量步长 0.001 仅作为已通过当天所有源行网格检查的研究参数；最小下单量及最小名义金额等未验证。详见 [规则状态](../workspace/results/archive/m0_2025-02-01/contract_metadata_status.json)。M0 不下单，该缺口不改变本次行情读取与回放性能的测量范围。
