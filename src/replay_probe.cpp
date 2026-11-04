@@ -1,9 +1,14 @@
+/** M0 最小观察入口，用同一套公开回放接口检查合成或真实行情。 */
 #include "mm/replay.hpp"
 
 #include <exception>
 #include <iostream>
 
+// 从可选配置启动观察回放，并将结果写入配置指定的 JSON 文件。
 int main(int argc, char** argv) {
+    /** argv 可提供一个配置文件，省略时使用 config/replay.yaml。
+     * 成功输出观察报告并返回 0，参数或回放错误写到标准错误并返回 1。
+     */
     try {
         if (argc > 2) {
             throw std::invalid_argument("usage: replay_probe [config/replay.yaml]");

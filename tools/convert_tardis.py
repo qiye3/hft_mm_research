@@ -1,4 +1,10 @@
-"""将 Tardis 单日全深度 L2/成交转换为框架支持的 ZIP32 NPZ 分片。"""
+"""准备 M0/M1 共用的 Tardis 单日标准事件分片。
+
+convert 编排 CSV 校验、双时钟路由和 NPZ 输出，append_source 读取单个压缩源文件，
+write_routed_shards 负责分侧排序与分片。输入为 BTCUSDT 全深度 L2 和逐笔成交 CSV.gz，
+输出为与 C++ hbt.Event 二进制布局兼容的 NPZ，以及含原始计数和最终盘口的 manifest。
+最终盘口字典用于离线对照，回测中的盘口更新由 C++ 引擎执行。
+"""
 from __future__ import annotations
 
 import argparse
@@ -22,6 +28,7 @@ DEPTH = 1
 TRADE = 2
 CLEAR = 3
 SNAPSHOT = 4
+# 字段顺序和 64 字节记录长度必须与 hbt::Event 一致，填充字段随记录显式置零。
 EVENT_DTYPE = np.dtype([
     ("ev", "<u8"),
     ("exch_ts", "<i8"),
@@ -34,7 +41,20 @@ EVENT_DTYPE = np.dtype([
 ], align=True)
 
 
+# ==================== 原始源流与时间边界校验 ====================
+# 检查单行价格与数量满足研究配置的有限值和整数网格约束。
 def validate_grid(price: float, quantity: float, tick_size: float, lot_size: float) -> None:
+    """验证原始行情的一组价格与数量。
+
+    输入
+        price 为正价格，quantity 为非负数量，零数量表示撤去价位。
+        tick_size 和 lot_size 是调用方已验证为正的价格与数量步长。
+    输出
+        合法时返回 None，非法值或偏离整数网格时抛出 ValueError。
+    用途
+        在生成二进制事件前逐行检查，确保原生订单簿按配置取整时有一致的单位。
+        网格检查验证的是数据与研究参数的相容性。
+    """
     if not math.isfinite(price) or price <= 0 or not math.isfinite(quantity) or quantity < 0:
         raise ValueError(f"无效价格/数量：{price}, {quantity}")
     if abs(price / tick_size - round(price / tick_size)) > 1e-6:
@@ -43,9 +63,22 @@ def validate_grid(price: float, quantity: float, tick_size: float, lot_size: flo
         raise ValueError(f"数量不符合 lot_size：{quantity}")
 
 
+# 将一个压缩源文件校验并追加为标准记录，同时保存原始数据的对照统计。
 def append_source(filename: Path, kind: str, output, tick_size: float, lot_size: float,
                   chunk_rows: int) -> dict:
-    """原始数据只做格式校验及最终盘口核对，不在研究程序中另建订单簿。"""
+    """读取完整 Tardis 源流，为后续双侧路由准备无路由标志的事件。
+
+    输入
+        filename 为带表头的 CSV.gz，kind 取 book 或 trades。
+        output 是已打开的二进制输出流，记录追加到其当前位置。
+        tick_size 和 lot_size 指定研究网格，chunk_rows 指定内存写出缓冲区容量。
+    输出
+        返回源文件大小、原始行分类、首尾本地纳秒时间、最小行情延迟和最终 Top-10。
+        同时将 EVENT_DTYPE 记录写入 output，盘口快照前额外加入清空事件。
+    用途
+        验证品种、方向、源流时序和初始快照，并提供独立于 C++ 回放的最终盘口基准。
+        列缺失、非法数值、空流或最终盘口交叉时抛出异常。
+    """
     buffer = np.zeros(chunk_rows, dtype=EVENT_DTYPE)
     used = 0
     counts = Counter()
@@ -66,6 +99,7 @@ def append_source(filename: Path, kind: str, output, tick_size: float, lot_size:
         for row in rows:
             if row[columns["exchange"]] != "binance-futures" or row[columns["symbol"]] != "BTCUSDT":
                 raise ValueError("仅接收 binance-futures BTCUSDT 行情")
+            # Tardis CSV 时间戳以微秒表示，标准事件在此统一放大为纳秒。
             exchange_ts = int(row[columns["timestamp"]]) * 1000
             local_ts = int(row[columns["local_timestamp"]]) * 1000
             if last_local is not None and local_ts < last_local:
@@ -92,6 +126,8 @@ def append_source(filename: Path, kind: str, output, tick_size: float, lot_size:
                     raise ValueError("盘口文件必须从初始快照开始")
                 new_snapshot = is_snapshot and (not previous_snapshot or local_ts != last_local)
                 if new_snapshot:
+                    # 同一快照的各价位共享本地接收时刻，只在该批快照起点清空一次。
+                    # 日初和重连都按完整替换处理，旧价位不能继续残留在离线对照中。
                     buffer[used] = (CLEAR, exchange_ts, local_ts, 0, 0, 0, 0, 0)
                     used += 1
                     counts["clear_events"] += 1
@@ -101,6 +137,7 @@ def append_source(filename: Path, kind: str, output, tick_size: float, lot_size:
                         buffer.tofile(output)
                         used = 0
                 event_kind = SNAPSHOT if is_snapshot else DEPTH
+                # 全量保留深层更新，使它们在前方价位删除后仍可进入观察范围。
                 side_book = bids if flag == BUY else asks
                 if quantity == 0:
                     side_book.pop(price, None)
@@ -135,7 +172,18 @@ def append_source(filename: Path, kind: str, output, tick_size: float, lot_size:
     }
 
 
+# 用两个源文件的首尾接收时刻检查它们是否覆盖指定 UTC 日的两端。
 def validate_day(sources: list[dict], date: str) -> None:
+    """验证单日样本的时间边界。
+
+    输入
+        sources 是 append_source 返回的统计字典列表，时间戳单位为纳秒。
+        date 为 YYYY-MM-DD 格式的 UTC 自然日。
+    输出
+        每个源流均进入首尾一分钟窗口时返回 None，否则抛出 ValueError。
+    用途
+        防止截短文件被当成完整日样本。此处检查时间边界，流的数值与时序由源读取阶段检查。
+    """
     start = int(dt.datetime.fromisoformat(date).replace(tzinfo=dt.timezone.utc).timestamp()) * 1_000_000_000
     end = start + 86_400_000_000_000
     for source in sources:
@@ -145,14 +193,27 @@ def validate_day(sources: list[dict], date: str) -> None:
             raise ValueError(f"数据未覆盖给定 UTC 日的首尾一分钟：{source['file']}")
 
 
+# ==================== 双时钟路由与分片落盘 ====================
+# 为交易所与本地分别生成可见事件，并按可见时间稳定排序写出 NPZ。
 def write_routed_shards(events: np.ndarray, destination: Path, shard_rows: int) -> list[dict]:
-    """分别路由并按可见时间归并，保证两侧各自的时间顺序，保留同侧稳定顺序。"""
+    """生成两个处理器各自有序的标准事件分片。
+
+    输入
+        events 为 EVENT_DTYPE 原始标准记录，每条含 exchange/local 两个时间戳。
+        destination 为可写目录，shard_rows 为每个输出分片的最大物理记录数。
+    输出
+        返回包含 file、rows 和 bytes 的有序分片列表，文件成员名统一为 data.npy。
+        每条输入分别输出一条 EXCH-only 和一条 LOCAL-only 记录，物理行数为输入的两倍。
+    用途
+        允许同一行情在两地以不同顺序出现，并检查各侧跨分片的时间非递减约束。
+    """
     event_count = len(events)
-    # 不要求 exch_ts 与 local_ts 的排序一致；同一源事件各产生一条路由记录。
+    # 前半索引对应交易所副本，后半索引对应本地副本，取模可回到同一原始事件。
     visible_timestamps = np.empty(event_count * 2, dtype=np.int64)
     visible_timestamps[:event_count] = events["exch_ts"]
     visible_timestamps[event_count:] = events["local_ts"]
     order = np.argsort(visible_timestamps, kind="stable")
+    # 相同可见时刻保留输入顺序，因此 convert 先追加的成交仍先于深度处理。
     del visible_timestamps
     previous_exchange = None
     previous_local = None
@@ -182,8 +243,23 @@ def write_routed_shards(events: np.ndarray, destination: Path, shard_rows: int) 
     return shards
 
 
+# ==================== 单日转换编排与命令行入口 ====================
+# 编排单日全深度行情转换，生成可被原生 C++ reader 直接消费的清单。
 def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: float = 0.1,
             lot_size: float = 0.001, shard_rows: int = 250_000, full_day: bool = True) -> dict:
+    """完成从两个原始压缩文件到标准事件和转换清单的离线准备。
+
+    输入
+        book 和 trades 分别为完整深度流及成交流，date 为样本 UTC 日期。
+        destination 必须为空，tick_size、lot_size 指定正步长，shard_rows 控制单片大小。
+        full_day 默认为真，测试夹具可设为假以复用转换逻辑处理短序列。
+    输出
+        返回并写出 manifest.json，其中包括源行计数、路由记录数、时间偏移与分片位置。
+        NPZ 保存全部原始深度，策略观察档数在后续 C++ 读取阶段配置。
+    用途
+        为 M0 验证和 M1 机制实验建立共同数据口径。成功后清理 .work 暂存事件，
+        中途异常会保留已经写出的文件供排查，重试需要选择空输出目录。
+    """
     if not math.isfinite(tick_size) or tick_size <= 0 or not math.isfinite(lot_size) or lot_size <= 0:
         raise ValueError("tick_size 和 lot_size 必须为正有限数")
     if not 1 <= shard_rows <= 5_000_000:
@@ -204,6 +280,7 @@ def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: f
     if full_day:
         validate_day([book_info, trades_info], date)
     events = np.memmap(raw_file, dtype=EVENT_DTYPE, mode="r+")
+    # 若存在非正行情延迟，统一平移全部 local_ts，使最小值变成 1 ns，并记录该偏移。
     minimum_latency = min(book_info["minimum_feed_latency_ns"], trades_info["minimum_feed_latency_ns"])
     latency_offset = max(0, 1 - minimum_latency)
     if latency_offset:
@@ -241,7 +318,14 @@ def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: f
     return manifest
 
 
+# 将命令行文件和样本日参数交给单日转换流程，并输出简要完成统计。
 def main() -> None:
+    """执行离线数据准备 CLI。
+
+    输入来自 --book、--trades、--date、--output-dir 和可选步长、分片容量。
+    成功时输出 manifest 及标准化文件，并在终端打印事件数和转换耗时。
+    参数或源数据错误向调用进程传播，由批处理命令据退出状态判断是否继续回测。
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--book", type=Path, required=True)
     parser.add_argument("--trades", type=Path, required=True)

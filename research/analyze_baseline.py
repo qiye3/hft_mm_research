@@ -1,4 +1,10 @@
-"""串行运行 M1 机制实验，独立核对 CSV 账本并计算成交后 1 秒 markout。"""
+"""执行 M1 的 A/B/C 固定报价实验，并从逐笔文件独立检查交易结果。
+
+run_experiments 将同一日行情交给 C++ baseline_mm 逐组运行，audit_orders、audit_fills
+和 audit_equity 从导出 CSV 重建生命周期计数、平均成本账本与权益。
+analyze_run 在核对后计算本地成交回报时刻起的一秒 markout，write_report 输出聚合 JSON
+和中文报告。输入为策略配置、数据清单及实验 CSV，输出为核对后的七组机制实验结果。
+"""
 from __future__ import annotations
 
 import argparse
@@ -13,6 +19,7 @@ import numpy as np
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+# 每组只覆盖对照因素，共用配置中的其余费率、延迟和数据日期。
 CASES = {
     "A_width10": {"half_width_ticks": 10},
     "A_width20": {},
@@ -24,12 +31,31 @@ CASES = {
 }
 
 
+# ==================== 逐笔订单与权益账本核对 ====================
+# 允许浮点累加误差，但对非有限值或超过容差的账本差异立即报错。
 def close(actual: float, expected: float, name: str) -> None:
+    """核对一个独立重算字段与 C++ 导出值。
+
+    输入 actual 为文件或汇总中的值，expected 为 Python 重算值，name 标识检查位置。
+    输出为正常返回或 ValueError，比较采用 1e-10 相对容差与 1e-7 绝对容差。
+    用于吸收跨语言浮点表示与累加误差，同时保留可定位到字段的失败信息。
+    """
     if not math.isfinite(actual) or not math.isclose(actual, expected, rel_tol=1e-10, abs_tol=1e-7):
         raise ValueError(f"{name} 不一致：{actual} != {expected}")
 
 
+# 从订单流水重算请求和回报分类，建立供成交检查使用的原始委托量索引。
 def audit_orders(directory: Path, summary: dict) -> dict[int, float]:
+    """检查一组实验的 orders.csv 与汇总计数相符。
+
+    输入
+        directory 包含 C++ 导出的逐笔文件，summary 为同目录的 summary.json 内容。
+    输出
+        返回订单 ID 到提交数量的映射，重复 ID 或分类数量不符时抛出 ValueError。
+    用途
+        在成交核对前确定每个订单的原始数量，并区分拒绝请求与有经济变化的成交回报。
+        兼容分支保存的是原始载荷，因此旧 Partial/Filled 拒绝也可从流水中再次识别。
+    """
     submitted = {}
     counts = Counter()
     with (directory / "orders.csv").open() as source:
@@ -63,7 +89,20 @@ def audit_orders(directory: Path, summary: dict) -> dict[int, float]:
     return submitted
 
 
+# 按逐笔成交重建平均成本账本，并检查累计成交量和每笔费用。
 def audit_fills(directory: Path, summary: dict, submitted: dict[int, float]) -> dict:
+    """独立重算交易现金流、净仓位、费用与已实现收益。
+
+    输入
+        directory 提供 fills.csv，summary 提供费率、最终标记价格和原生核对后的汇总。
+        submitted 来自 audit_orders，指定每个有效订单可成交的原始数量。
+    输出
+        返回等长数组 times、prices、quantities、signs 和 mids，供后续 markout 使用。
+        数量超出委托、字段差异或汇总成交数不符时抛出 ValueError。
+    用途
+        按新增执行量逐笔计账，验证方向抵消和部分成交都保留完整现金流。
+        times 使用回报本地接收纳秒，signs 中买为 1、卖为 -1，金额单位为 USDT。
+    """
     position = 0.0
     balance = 0.0
     fees = 0.0
@@ -93,6 +132,7 @@ def audit_fills(directory: Path, summary: dict, submitted: dict[int, float]) -> 
             if old_position == 0 or old_position * sign > 0:
                 average_cost = (abs(old_position) * average_cost + price * quantity) / (abs(old_position) + quantity)
             else:
+                # 先实现被对冲旧仓位的收益，剩余新方向仓位的成本改用本次成交价。
                 realized_gross += min(abs(old_position), quantity) * (price - average_cost) * math.copysign(1, old_position)
                 if abs(position) < 1e-12:
                     average_cost = 0.0
@@ -135,7 +175,18 @@ def audit_fills(directory: Path, summary: dict, submitted: dict[int, float]) -> 
     }
 
 
+# 从权益观察点核对 PnL 分解、库存预留及累计金额回撤。
 def audit_equity(directory: Path, summary: dict) -> tuple[np.ndarray, np.ndarray]:
+    """验收逐点权益并取得后续 markout 所需的本地中间价序列。
+
+    输入
+        directory 包含 equity.csv，summary 给出初始资金、风险上限和最终风险指标。
+    输出
+        返回非递减的 int64 本地时间数组与对应 mid 数组，空序列或任一核对失败时抛异常。
+    用途
+        将现金流加库存市值减费用的表达与已实现加未实现收益分解交叉核对。
+        回撤取已导出决策点与成交点的金额峰谷差，预留风险仅检查有相应字段的决策点。
+    """
     times = []
     mids = []
     peak = summary["initial_capital"]
@@ -156,6 +207,7 @@ def audit_equity(directory: Path, summary: dict) -> tuple[np.ndarray, np.ndarray
             if abs(position) > summary["max_position"] + 1e-10:
                 raise ValueError("实际库存超过上限")
             if row["reserved_buy"]:
+                # 成交点的预留字段留空，决策点的字符串 "0" 仍应进入实际预算检查。
                 if position + float(row["reserved_buy"]) > summary["max_position"] + 1e-10:
                     raise ValueError("买方在途敞口超限")
                 if position - float(row["reserved_sell"]) < -summary["max_position"] - 1e-10:
@@ -169,7 +221,20 @@ def audit_equity(directory: Path, summary: dict) -> tuple[np.ndarray, np.ndarray
     return np.asarray(times, dtype=np.int64), np.asarray(mids)
 
 
+# ==================== 完整日验收与成交质量分析 ====================
+# 核对完整日的一组实验，再按成交量加权计算本地回报后一秒的收益标记。
 def analyze_run(directory: Path, manifest: dict) -> dict:
+    """为一组已完成的 C++ 回测补充独立核对和短期成交质量统计。
+
+    输入
+        directory 包含 summary.json 和三份 CSV，manifest 为本日标准事件清单。
+    输出
+        返回加入 markout、观察样本数、末端剔除数和 csv_reconciled 的汇总字典。
+        无可用一秒样本时，各 markout 指标为 None。
+    用途
+        先确认两侧完整消费同一日行情，再计算买卖方向统一的成交后标记。
+        未来价格使用 t+1s 之前最后一个权益观察点，按成交 BTC 数量加权。
+    """
     summary = json.loads((directory / "summary.json").read_text())
     if summary["date"] != manifest["date"]:
         raise ValueError("行情日期不符")
@@ -180,6 +245,7 @@ def analyze_run(directory: Path, manifest: dict) -> dict:
     times, mids = audit_equity(directory, summary)
     valid = fills["times"] + 1_000_000_000 <= times[-1]
     if valid.any():
+        # right 再减一得到目标时刻的 as-of 值，同时间戳取最后一条已记录观察。
         indices = np.searchsorted(times, fills["times"][valid] + 1_000_000_000, side="right") - 1
         sign = fills["signs"][valid]
         prices = fills["prices"][valid]
@@ -198,7 +264,21 @@ def analyze_run(directory: Path, manifest: dict) -> dict:
     return summary
 
 
+# ==================== 实验编排与研究报告输出 ====================
+# 逐组生成独立配置、运行同一 C++ 策略入口，并在每组成功后保存核对结果。
 def run_experiments(output_root: Path) -> list[dict]:
+    """串行执行 CASES 中定义的七组单日机制实验。
+
+    输入
+        output_root 为实验输出根目录，每个案例的子目录必须尚未存在。
+        默认参数来自项目 config/baseline_mm.yaml，可执行文件来自 Release 构建目录。
+    输出
+        返回按 CASES 顺序排列的分析结果，并持续写入 output_root/analysis.json。
+        每组生成的绝对位置配置保存在旁边的 <输出目录名>_configs 目录。
+    用途
+        统一数据、费率和延迟，仅按各案例覆盖指定因素。C++ 失败或 CSV 核对失败时停止，
+        已完成组的配置、逐笔文件及进度结果可用于定位异常和复核。
+    """
     base = yaml.safe_load((ROOT / "config/baseline_mm.yaml").read_text())
     manifest = json.loads((ROOT / base["source"]).read_text())
     configuration_directory = output_root.parent / (output_root.name + "_configs")
@@ -221,7 +301,19 @@ def run_experiments(output_root: Path) -> list[dict]:
     return results
 
 
+# 将固定七组的核对结果排成对照表，并用实测数值解释三个机制实验。
 def write_report(results: list[dict], destination: Path) -> None:
+    """保存可独立阅读的 M1 聚合结果与中文报告。
+
+    输入
+        results 应包含 CASES 的全部七个名称，当前报告叙述要求对照组具有有效 markout。
+        destination 指定报告目录，目录可自动创建。
+    输出
+        写出 results.json 与 report.md，前者保留完整指标，后者展示主要对照与测量口径。
+    用途
+        把报价宽度、库存上限和更新频率的变化与费用、回撤及成交后价格走势联系起来。
+        本步骤使用已核对的结果，重新生成报告时可直接传入缓存分析字典。
+    """
     destination.mkdir(parents=True, exist_ok=True)
     (destination / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=2) + "\n")
     lines = [
@@ -295,7 +387,14 @@ def write_report(results: list[dict], destination: Path) -> None:
     (destination / "report.md").write_text("\n".join(lines) + "\n")
 
 
+# 根据命令行选择新运行或读取已有实验，最后生成同一格式的报告。
 def main() -> None:
+    """提供实验编排与离线复核的命令行入口。
+
+    输入为互斥的 --run-experiments 或 --analyze-existing，以及输出和报告目录选项。
+    输出为逐组结果和 write_report 生成的聚合文件，失败异常向调用命令传播。
+    仅分析已有实验时读取各组 CSV，新的回测由 run_experiments 分支启动。
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--run-experiments", action="store_true")

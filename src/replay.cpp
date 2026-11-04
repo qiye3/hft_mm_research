@@ -1,3 +1,8 @@
+/**
+ * M0 原生回放接入与性能报告，将共享事件缓存交给 Backtest 的双时钟调度器。
+ * 处理器适配层增加观察和计数，run_replay 选择数据来源，write_report 输出 JSON。
+ * 行情加载、订单簿更新和事件顺序由依赖引擎执行。
+ */
 #include "mm/replay.hpp"
 
 #include <algorithm>
@@ -22,14 +27,19 @@ using Local = hbt::Local<Asset, Latency, Depth, Fees>;
 using Exchange = hbt::NoPartialFillExchange<Asset, Latency, Queue, Depth, Fees>;
 using Clock = std::chrono::steady_clock;
 
-// 上游 Local 是 final 且 Backtest 没有逐事件回调，因此只在公开处理器边界装饰它。
-// 所有状态和订单操作仍转发给原生 Local；不维护独立盘口或订单生命周期。
+// 在 final Local 的公开处理器边界接入观察器，以实际 process 调用统计逐条行情。
 class ObservedLocal final : public hbt::LocalProcessor {
 public:
+    // 接管原生处理器，并以 sample_every 指定本地处理耗时的系统采样间隔。
     ObservedLocal(std::unique_ptr<Local> local, MarketObserver& observer, std::size_t sample_every)
         : local_(std::move(local)), observer_(observer), sample_every_(sample_every) {}
 
+    // 更新原生本地状态后通知观察器，并按配置测量本地事件处理耗时。
     void process(const hbt::Event& event) override {
+        /** 输入是引擎按 local_ts 交付的一条行情，输出包括观察统计和可选纳秒耗时样本。
+         * sample_every 为零时关闭计时，为正时从第零条开始每隔该数量取样。
+         * 样本覆盖 Local::process 与观察器调用，交易所处理、调度和文件 IO 位于此范围之外。
+         */
         const bool sample = sample_every_ > 0 && observer_.statistics().total % sample_every_ == 0;
         const auto start = sample ? Clock::now() : Clock::time_point{};
         local_->process(event);
@@ -38,11 +48,13 @@ public:
             samples_ns.push_back(std::chrono::duration<double, std::nano>(Clock::now() - start).count());
         }
         if (hbt::event_is(event, hbt::EXCH_EVENT)) {
+            // 双路由共用同一记录时，最终统计需减去这部分交集，避免把物理行数加倍。
             ++combined_local_rows;
         }
         last_event = event;
     }
 
+    // 以下 LocalProcessor 接口直接交给原生 Local，供调度器选时和回测 API 读写状态。
     std::optional<std::int64_t> event_seen_timestamp(const hbt::Event& event) const noexcept override {
         return local_->event_seen_timestamp(event);
     }
@@ -97,10 +109,16 @@ private:
     std::size_t sample_every_;
 };
 
+// 在交易所处理器外围检查该侧时序并记录实际处理次数。
 class CountedExchange final : public hbt::Processor {
 public:
+    // 接管实际交易所处理器，保留其深度更新、排队和成交行为。
     explicit CountedExchange(std::unique_ptr<Exchange> exchange) : exchange_(std::move(exchange)) {}
+    // 按交易所时钟验证一条行情，再交给原生处理器应用。
     void process(const hbt::Event& event) override {
+        /** 输入事件须按 exch_ts 非递减到达，输出为原生状态变化和侧内计数。
+         * 时序错误直接抛出异常，用于检查跨分片后的交易所路由完整性。
+         */
         if (count > 0 && event.exch_ts < last_timestamp_) {
             throw std::runtime_error("exchange event timestamps moved backwards");
         }
@@ -127,7 +145,11 @@ private:
     std::int64_t last_timestamp_ = 0;
 };
 
+// 读取本进程截至当前时刻的驻留内存高水位，并统一换算成字节。
 std::uint64_t peak_rss_bytes() {
+    /** 输入来自操作系统 getrusage，返回累计 Peak RSS。
+     * macOS 原值为字节，Linux 原值为 KiB，读取失败时抛出异常。
+     */
     rusage usage{};
     if (getrusage(RUSAGE_SELF, &usage) != 0) {
         throw std::runtime_error("getrusage failed");
@@ -139,7 +161,12 @@ std::uint64_t peak_rss_bytes() {
 #endif
 }
 
+// 组装双侧原生处理器，完整消费共享行情缓存并汇总观察结果。
 ReplayResult replay_reader(const ReplayConfig& config, std::shared_ptr<hbt::EventReaderCache> reader) {
+    /** config 指定步长、观察深度和采样频率，reader 必须提供非空且分侧有序的事件。
+     * 返回 ReplayResult，包含本地分类计数、最终 Top-N、整体耗时和局部耗时样本。
+     * Local 与 Exchange 共用缓存，Backtest 持有处理器，裸观测指针只在该会话内使用。
+     */
     MarketObserver observer{config.depth_levels, config.snapshot_interval_ns};
     auto [exchange_bus, local_bus] = hbt::make_order_buses<Latency>(Latency{100'000, 50'000});
     auto native_local = std::make_unique<Local>(
@@ -157,12 +184,14 @@ ReplayResult replay_reader(const ReplayConfig& config, std::shared_ptr<hbt::Even
     backtest.add_asset(std::move(local), std::move(exchange), reader);
 
     const auto start = Clock::now();
+    // close 自身进入原生调度循环，首次解压和后续分片加载也计入整体回放耗时。
     const auto status = backtest.close();
     const double elapsed = std::chrono::duration<double>(Clock::now() - start).count();
     if (status != hbt::ElapseResult::EndOfData || observer.statistics().total == 0) {
         throw std::runtime_error("replay did not consume a nonempty stream to EndOfData");
     }
     observer.capture(local_view->last_event, local_view->depth());
+    // M0 的观察流程应保持零订单、零仓位，这一检查隔离策略行为与回放验证。
     if (!backtest.orders(0).empty() || backtest.position(0) != 0.0) {
         throw std::runtime_error("M0 must not submit orders or hold positions");
     }
@@ -179,7 +208,11 @@ ReplayResult replay_reader(const ReplayConfig& config, std::shared_ptr<hbt::Even
     return result;
 }
 
+// 从一行配置的键或标量两端裁去空白，便于识别空行与数值。
 std::string trim(std::string value) {
+    /** 输入是配置文本片段，输出保留内部空白的字符串，全空白时返回空串。
+     * 由 load_config 调用，文件读取和字段解释由调用方完成。
+     */
     const auto start = value.find_first_not_of(" \t\r\n");
     if (start == std::string::npos) {
         return {};
@@ -188,7 +221,11 @@ std::string trim(std::string value) {
     return value.substr(start, end - start + 1);
 }
 
+// 把有限浮点数写入 JSON，缺少有效行情指标时输出 null。
 void write_number(std::ostream& output, double value) {
+    /** output 是报告流，value 可包含空簿产生的 NaN。
+     * 写入符合 JSON 语法的数值或 null，供报告中的 Mid、Spread 与采样指标复用。
+     */
     if (std::isfinite(value)) {
         output << value;
     } else {
@@ -196,7 +233,11 @@ void write_number(std::ostream& output, double value) {
     }
 }
 
+// 将快照有效前缀导出为按最优价优先排列的价格数量二元组数组。
 void write_levels(std::ostream& output, const std::array<PriceLevel, 10>& levels, std::size_t count) {
+    /** levels 已按方向排好序，count 必须在数组容量以内。
+     * 输出 JSON 数组，每个元素依次为实际价格和该价位挂单数量。
+     */
     output << '[';
     for (std::size_t index = 0; index < count; ++index) {
         if (index > 0) {
@@ -209,7 +250,12 @@ void write_levels(std::ostream& output, const std::array<PriceLevel, 10>& levels
 
 } // namespace
 
+// 读取观察回放参数，并以配置所在项目解析行情清单与报告输出位置。
 ReplayConfig load_config(const std::filesystem::path& filename) {
+    /** 输入为 config 目录下的平铺 YAML，返回带默认值的 ReplayConfig。
+     * source=synthetic 选择内存合成行情，其余 source 作为标准事件清单文件处理。
+     * 未知字段、无效 BTCUSDT 步长或缺少输出位置时抛出异常。
+     */
     std::ifstream input(filename);
     if (!input) {
         throw std::runtime_error("cannot open replay config: " + filename.string());
@@ -269,7 +315,12 @@ ReplayConfig load_config(const std::filesystem::path& filename) {
     return config;
 }
 
+// 建立包含交易、深档挂单和删除买一事件的确定性回放夹具。
 std::vector<hbt::Event> synthetic_events() {
+    /** 无外部输入，返回同时具有 EXCH/LOCAL 标志的 25 条原生事件。
+     * 初始四条沿用上游示例，扩展部分使原第十一档可在买一删除后进入前十档。
+     * 用于检查观察深度、分类数量和双时钟回放接入是否正确。
+     */
     // 前四条来自上游 examples/market_making.cpp；追加 11 档及删除买一用例。
     const auto both = hbt::EXCH_EVENT | hbt::LOCAL_EVENT;
     std::vector<hbt::Event> events{
@@ -291,18 +342,31 @@ std::vector<hbt::Event> synthetic_events() {
     return events;
 }
 
+// 为内存行情夹具建立双消费者缓存，再执行统一观察回放流程。
 ReplayResult run_memory_replay(const ReplayConfig& config, std::vector<std::vector<hbt::Event>> chunks) {
+    /** 输入 chunks 按分片顺序提供原生事件，函数接管这些数组并返回 ReplayResult。
+     * 两个消费者分别对应本地和交易所处理器，测试可据此验证跨分片释放语义。
+     */
     return replay_reader(config, hbt::EventReaderCache::from_chunks(std::move(chunks), 2));
 }
 
+// 根据配置选择合成夹具或磁盘分片，并调用相同的原生回放接入层。
 ReplayResult run_replay(const ReplayConfig& config) {
+    /** 输入 config.source 为 synthetic 或可读取的转换清单，返回观察回放汇总。
+     * 文件模式通过 event_files_from_manifest 和 EventReaderCache 逐片加载数据。
+     */
     if (config.source == "synthetic") {
         return run_memory_replay(config, {synthetic_events()});
     }
     return replay_reader(config, hbt::event_reader_from_files(hbt::event_files_from_manifest(config.source)));
 }
 
+// 保存回放完整性、最终盘口与具有明确测量范围的性能指标。
 void write_report(const ReplayConfig& config, const ReplayResult& result, const std::filesystem::path& output) {
+    /** config 提供实验标签，result 必须来自已完整消费的回放，output 指定 JSON 文件。
+     * 输出同时列出逻辑事件吞吐和双侧 dispatch 吞吐，便于解释物理记录与处理次数。
+     * 局部耗时样本按 nearest-rank 求分位数，关闭采样时对应字段输出 null。
+     */
     std::filesystem::create_directories(output.parent_path());
     std::ofstream report(output);
     if (!report) {
