@@ -1,8 +1,8 @@
 # 2026-11-03 M1：手续费与固定延迟均为机制实验假设，不是认证历史账户费率。
 name: A_width20
 date: 2025-02-01
-source: data/normalized/BTCUSDT_2025-02-01/manifest.json
-output: results/m1/A_width20
+source: workspace/data/normalized/BTCUSDT_2025-02-01/manifest.json
+output: workspace/results/m1/BTCUSDT_2025-02-01/A_width20
 tick_size: 0.1
 lot_size: 0.001
 order_quantity: 0.001

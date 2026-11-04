@@ -1,5 +1,7 @@
 # 2026-11-03 — M1 报价、委托与交易账本
 
+运行路径于 2026-11-04 适配当前目录布局。
+
 ## 目标与当前链路
 
 M1 使用 M0 的同一份 2025-02-01 BTCUSDT 数据，完成“本地可见盘口 → 报价 → 原生委托 → 原生成交 → 费用/库存 → PnL”。不开发 Alpha、机器学习、库存 skew 或自定义撮合。
@@ -18,13 +20,13 @@ EventReaderCache → Backtest::elapse
 
 | 文件 | 关键接口与职责 |
 | --- | --- |
-| `include/mm/market_maker.hpp`、`src/market_maker.cpp` | `fixed_quotes`、`MarketMaker::on_decision/quote_side/reservations`；只计算目标报价并调用原生 API，不另存订单状态机 |
-| `include/mm/trade_recorder.hpp`、`src/trade_recorder.cpp` | `TradeRecorder::response/reconcile/checkpoint/finish`；记录逐笔流水、平均成本法已实现/未实现收益，与原生 StateValues 对账 |
-| `src/trading_engine.hpp` | 使用原生 `OrderBus`、`Local`、`PartialFillExchange`、`ConstantLatency` 和 `RiskAdverseQueueModel`；RecordingLocal 是公开 LocalProcessor 接口的转发适配，不重新实现订单生命周期 |
-| `src/strategy/baseline_mm.cpp` | CLI 入口，调用 `run_baseline` |
+| `src/mm/market_maker.hpp`、`src/mm/market_maker.cpp` | `fixed_quotes`、`MarketMaker::on_decision/quote_side/reservations`；只计算目标报价并调用原生 API，不另存订单状态机 |
+| `src/mm/trade_recorder.hpp`、`src/mm/trade_recorder.cpp` | `TradeRecorder::response/reconcile/checkpoint/finish`；记录逐笔流水、平均成本法已实现/未实现收益，与原生 StateValues 对账 |
+| `src/mm/detail/trading_engine.hpp` | 使用原生 `OrderBus`、`Local`、`PartialFillExchange`、`ConstantLatency` 和 `RiskAdverseQueueModel`；RecordingLocal 是公开 LocalProcessor 接口的转发适配，不重新实现订单生命周期 |
+| `src/apps/baseline_mm.cpp` | CLI 入口，调用 `run_baseline` |
 | `config/baseline_mm.yaml` | 报价半宽、每单数量、库存上限、手续费、延迟、更新模式、停止报价时间 |
 | `tests/test_market_maker.cpp` | 原生引擎驱动的成交、费用、部分成交、撤单竞态与敞口回归测试 |
-| `research/analyze_baseline.py` | 串行运行 A/B/C 实验、从 CSV 独立对账、计算本地接收时刻后 1 秒 markout |
+| `scripts/analyze_baseline.py` | 串行运行 A/B/C 实验、从 CSV 独立对账、计算本地接收时刻后 1 秒 markout |
 
 ## 报价与风控
 

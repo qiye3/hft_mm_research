@@ -28,7 +28,7 @@ Local Processor 表示策略当时能看到的本地状态；Exchange Processor 
 
 ## 观察器适配边界
 
-`Local` 是 final，`Backtest` 不提供逐事件 callback，`wait_next_feed` 会处理同一时间戳的一组事件。因此，不能将调用次数当作事件数量。本项目 `src/replay.cpp` 的 `ObservedLocal` 实现原生 `LocalProcessor` 接口，只将所有调用转发给实际 `Local`，在其 `process` 返回后通知 `MarketObserver`。`CountedExchange` 同样转发给实际 Exchange，仅增加计数及时间顺序检查。
+`Local` 是 final，`Backtest` 不提供逐事件 callback，`wait_next_feed` 会处理同一时间戳的一组事件。因此，不能将调用次数当作事件数量。本项目 `src/mm/replay.cpp` 的 `ObservedLocal` 实现原生 `LocalProcessor` 接口，只将所有调用转发给实际 `Local`，在其 `process` 返回后通知 `MarketObserver`。`CountedExchange` 同样转发给实际 Exchange，仅增加计数及时间顺序检查。
 
 事件计数与 BBO 价差统计逐事件进行。完整前 N 档按 `snapshot_interval_ns` 采样，结束时额外采集最终盘口。默认 100 ms，设为 0 可逐事件提取。采样是读取频率，不影响输入数据和引擎盘口完整性。Top-N 使用原始 map 的只读视图及 `partial_sort_copy`，与上游 snapshot 一样过滤越过当前 BBO 的旧价位。
 

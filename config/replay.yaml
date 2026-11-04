@@ -7,4 +7,4 @@ lot_size: 0.001
 depth_levels: 10
 snapshot_interval_ns: 100000000
 latency_sample_every: 0
-output: results/synthetic.json
+output: workspace/results/synthetic/replay.json

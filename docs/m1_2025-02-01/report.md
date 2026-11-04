@@ -1,5 +1,7 @@
 # 2026-11-03 — M1 固定报价做市机制实验
 
+运行路径于 2026-11-04 适配当前目录布局。
+
 全部实验使用 M0 同一份 2025-02-01 UTC BTCUSDT 完整日数据。原生 PartialFillExchange + RiskAdverseQueueModel，GTX 仅挂单，每笔 0.001 BTC，初始资金 10,000 USDT。
 
 假设 maker 费率 0.0002（2 bps）、taker 费率 0.0005（5 bps），请求/响应延迟 1 ms / 0.5 ms。费率及延迟是机制实验参数；历史合约规则未认证。PnL 为交易现金流、尾仓盯市减手续费，不含资金费率，不作期末强平。
@@ -42,8 +44,10 @@ A：半宽 10/20/50 ticks（1/2/5 USDT），其他参数相同。B：保留 widt
 
 ## 复现
 
-在项目根目录执行 `.venv/bin/python research/analyze_baseline.py --run-experiments`。输出目录必须不存在，以避免覆盖一次实验；可用 --output-root 指定新目录。已有输出可用 `--analyze-existing results/m1` 重新核对，完整参数见 config/baseline_mm.yaml 与脚本 CASES。C++ 入口为 src/strategy/baseline_mm.cpp。
+在项目根目录执行 `.venv/bin/python scripts/analyze_baseline.py --run-experiments`。每个实验子目录必须不存在，以避免覆盖一次实验；可用 --output-root 指定新目录。已有输出可用 `--analyze-existing workspace/results/m1/BTCUSDT_2025-02-01` 重新核对，完整参数见 config/baseline_mm.yaml 与脚本 CASES。C++ 入口为 src/apps/baseline_mm.cpp。
 
-原始逐笔文件保存在 results/m1/<实验>/{orders.csv,fills.csv,equity.csv,summary.json}，不纳入 Git。此目录提交聚合结果和方法说明，不提交历史行情。
+原始逐笔文件保存在 workspace/results/m1/BTCUSDT_2025-02-01/<实验>/{orders.csv,fills.csv,equity.csv,summary.json}，不纳入 Git。完整聚合指标保存在实验输出根目录的 analysis.json，报告目录保存方法说明与结果解读。
 
 上游旧拒绝回报的兼容处理、假设范围与单元测试见 [M1 实现笔记](../m1_notes.md)。没有修改第三方源码，未开发 Alpha 或机器学习。
+
+本次实验的结构化结果归档见 [完整指标](../../workspace/results/archive/m1_2025-02-01/results.json)。
