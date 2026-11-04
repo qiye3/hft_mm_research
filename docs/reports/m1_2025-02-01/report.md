@@ -48,6 +48,6 @@ A：半宽 10/20/50 ticks（1/2/5 USDT），其他参数相同。B：保留 widt
 
 原始逐笔文件保存在 workspace/results/m1/BTCUSDT_2025-02-01/<实验>/{orders.csv,fills.csv,equity.csv,summary.json}，不纳入 Git。完整聚合指标保存在实验输出根目录的 analysis.json，报告目录保存方法说明与结果解读。
 
-上游旧拒绝回报的兼容处理、假设范围与单元测试见 [M1 实现笔记](../m1_notes.md)。没有修改第三方源码，未开发 Alpha 或机器学习。
+上游旧拒绝回报的兼容处理、假设范围与单元测试见 [M1 实现笔记](../../implementation/m1_notes.md)。没有修改第三方源码，未开发 Alpha 或机器学习。
 
-本次实验的结构化结果归档见 [完整指标](../../workspace/results/archive/m1_2025-02-01/results.json)。
+本次实验的结构化结果归档见 [完整指标](../../../workspace/results/archive/m1_2025-02-01/results.json)。

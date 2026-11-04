@@ -65,7 +65,7 @@ python scripts/convert_tardis.py \
 mkdir -p workspace/results/m1/BTCUSDT_2025-02-01_repeat
 python scripts/analyze_baseline.py --run-experiments \
   --output-root workspace/results/m1/BTCUSDT_2025-02-01_repeat \
-  --report-dir docs/m1_repeat_2025-02-01 \
+  --report-dir docs/reports/m1_repeat_2025-02-01 \
   > workspace/results/m1/BTCUSDT_2025-02-01_repeat/experiments.log 2>&1
 ```
 
@@ -86,7 +86,10 @@ hft_mm_research/
 ├── scripts/      下载、转换、校验与实验分析
 ├── tests/        单元测试、集成测试与 benchmarks
 ├── third_party/  固定版本的回测引擎
-├── docs/         实现笔记与实验报告
+├── docs/
+│   ├── reading_guide.md  整体阅读入口
+│   ├── implementation/  引擎与做市实现说明
+│   └── reports/         按阶段和数据日期保存实验报告
 └── workspace/    本地 data、results 与 build
 ```
 
@@ -109,7 +112,7 @@ workspace/results/
 └── archive/                    已归档的实验附件
 ```
 
-M0 性能测试及日志保存命令见 [单日性能报告](docs/benchmark_2025-02-01.md#复现命令)。
+M0 性能测试及日志保存命令见 [单日性能报告](docs/reports/m0_2025-02-01/report.md#复现命令)。
 
 从 `src/apps/baseline_mm.cpp` 阅读策略入口，随后查看 `src/mm/market_maker.cpp` 的报价与库存控制，以及 `src/mm/trade_recorder.cpp` 的账本和收益计算。
 
@@ -121,8 +124,9 @@ M1 默认每单 0.001 BTC、最大净仓位 0.01 BTC，Maker/Taker 费率为 2/5
 
 ## 文档
 
-- [M0 引擎接口与回放流程](docs/engine_notes.md)
-- [M0 单日性能结果](docs/benchmark_2025-02-01.md)
-- [M1 委托状态、库存与账本](docs/m1_notes.md)
-- [M1 报价宽度、库存上限与更新频率实验](docs/m1_2025-02-01/report.md)
-- [历史合约规则获取状态](docs/benchmark_2025-02-01.md#未取得的合约元数据)
+- [项目阅读指南](docs/reading_guide.md)
+- [M0 引擎接口与回放流程](docs/implementation/engine_notes.md)
+- [M0 单日性能结果](docs/reports/m0_2025-02-01/report.md)
+- [M1 委托状态、库存与账本](docs/implementation/m1_notes.md)
+- [M1 报价宽度、库存上限与更新频率实验](docs/reports/m1_2025-02-01/report.md)
+- [历史合约规则获取状态](docs/reports/m0_2025-02-01/report.md#未取得的合约元数据)
