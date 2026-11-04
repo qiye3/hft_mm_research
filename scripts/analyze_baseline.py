@@ -11,6 +11,7 @@ import argparse
 import csv
 import json
 import math
+import os
 import subprocess
 from collections import Counter
 from pathlib import Path
@@ -315,6 +316,9 @@ def write_report(results: list[dict], destination: Path) -> None:
         本步骤使用已核对的结果，重新生成报告时可直接传入缓存分析字典。
     """
     destination.mkdir(parents=True, exist_ok=True)
+    notes_link = Path(
+        os.path.relpath(ROOT / "docs/implementation/m1_notes.md", destination.resolve())
+    ).as_posix()
     lines = [
         "# 2026-11-03 — M1 固定报价做市机制实验",
         "",
@@ -381,7 +385,7 @@ def write_report(results: list[dict], destination: Path) -> None:
         "",
         "原始逐笔文件保存在 workspace/results/m1/BTCUSDT_2025-02-01/<实验>/{orders.csv,fills.csv,equity.csv,summary.json}，不纳入 Git。完整聚合指标保存在实验输出根目录的 analysis.json，报告目录保存方法说明与结果解读。",
         "",
-        "上游旧拒绝回报的兼容处理、假设范围与单元测试见 [M1 实现笔记](../m1_notes.md)。没有修改第三方源码，未开发 Alpha 或机器学习。",
+        f"上游旧拒绝回报的兼容处理、假设范围与单元测试见 [M1 实现笔记]({notes_link})。没有修改第三方源码，未开发 Alpha 或机器学习。",
     ])
     (destination / "report.md").write_text("\n".join(lines) + "\n")
 
@@ -398,7 +402,7 @@ def main() -> None:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--run-experiments", action="store_true")
     group.add_argument("--analyze-existing", type=Path)
-    parser.add_argument("--report-dir", type=Path, default=ROOT / "docs/m1_2025-02-01")
+    parser.add_argument("--report-dir", type=Path, default=ROOT / "docs/reports/m1_2025-02-01")
     parser.add_argument("--output-root", type=Path, default=ROOT / "workspace/results/m1/BTCUSDT_2025-02-01")
     arguments = parser.parse_args()
     if arguments.run_experiments:
