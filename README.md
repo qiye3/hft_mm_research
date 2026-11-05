@@ -1,9 +1,10 @@
-# 2026-11-04 — 高频做市研究项目
+# 2026-11-05 — 高频做市研究项目
 
 基于 C++20 和 hftbacktest-cpp 的 Binance Futures BTCUSDT 永续合约研究项目，使用 Tardis 历史 L2 盘口与逐笔成交进行事件驱动回测。
 
 - **M0 行情回放**支持双时间戳事件调度、盘口重建、前 5／10 档观察及整日性能测试。
 - **M1 做市基线**支持固定宽度报价、GTX 委托、在途敞口限制、成交记录和 PnL 核对。
+- **M2-A 研究数据**通过 C++ 固定 100ms 采样与 Polars 构造基础特征和未来 1s 标签，按日保存 Parquet。
 - Python 用于离线数据转换与实验分析，C++ 负责回放和策略运行。
 
 第三方引擎通过 Git Submodule 固定在 v0.1.0，提交为 `e0d2f7887c68755b220d9e69425d61d27e5b6432`。
@@ -76,6 +77,9 @@ python scripts/analyze_baseline.py --analyze-existing workspace/results/m1/BTCUS
 ```
 
 ## 项目结构
+
+M2-A 数据准备、生成和读取见 [研究数据集指南](docs/implementation/m2_a_dataset.md)。
+首批 2026-07-12 至 07-18 数据包含 437 万条可用研究样本，实际数据量与质量问题见 [七天验收报告](docs/reports/m2_a_2026-07-12_2026-07-18/report.md)。
 
 ```text
 hft_mm_research/

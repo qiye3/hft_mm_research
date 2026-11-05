@@ -31,8 +31,9 @@ using Clock = std::chrono::steady_clock;
 class ObservedLocal final : public hbt::LocalProcessor {
 public:
     // 接管原生处理器，并以 sample_every 指定本地处理耗时的系统采样间隔。
-    ObservedLocal(std::unique_ptr<Local> local, MarketObserver& observer, std::size_t sample_every)
-        : local_(std::move(local)), observer_(observer), sample_every_(sample_every) {}
+    ObservedLocal(std::unique_ptr<Local> local, MarketObserver& observer, std::size_t sample_every,
+                  ReplayEventSink* sink)
+        : local_(std::move(local)), observer_(observer), sample_every_(sample_every), sink_(sink) {}
 
     // 更新原生本地状态后通知观察器，并按配置测量本地事件处理耗时。
     void process(const hbt::Event& event) override {
@@ -42,7 +43,13 @@ public:
          */
         const bool sample = sample_every_ > 0 && observer_.statistics().total % sample_every_ == 0;
         const auto start = sample ? Clock::now() : Clock::time_point{};
+        if (sink_) {
+            sink_->before_event(event, local_->depth());
+        }
         local_->process(event);
+        if (sink_) {
+            sink_->after_event(event, local_->depth());
+        }
         observer_.on_event(event, local_->depth());
         if (sample) {
             samples_ns.push_back(std::chrono::duration<double, std::nano>(Clock::now() - start).count());
@@ -107,6 +114,7 @@ private:
     std::unique_ptr<Local> local_;
     MarketObserver& observer_;
     std::size_t sample_every_;
+    ReplayEventSink* sink_;
 };
 
 // 在交易所处理器外围检查该侧时序并记录实际处理次数。
@@ -162,7 +170,8 @@ std::uint64_t peak_rss_bytes() {
 }
 
 // 组装双侧原生处理器，完整消费共享行情缓存并汇总观察结果。
-ReplayResult replay_reader(const ReplayConfig& config, std::shared_ptr<hbt::EventReaderCache> reader) {
+ReplayResult replay_reader(const ReplayConfig& config, std::shared_ptr<hbt::EventReaderCache> reader,
+                           ReplayEventSink* sink) {
     /** config 指定步长、观察深度和采样频率，reader 必须提供非空且分侧有序的事件。
      * 返回 ReplayResult，包含本地分类计数、最终 Top-N、整体耗时和局部耗时样本。
      * Local 与 Exchange 共用缓存，Backtest 持有处理器，裸观测指针只在该会话内使用。
@@ -176,7 +185,7 @@ ReplayResult replay_reader(const ReplayConfig& config, std::shared_ptr<hbt::Even
         Depth{config.tick_size, config.lot_size},
         hbt::State<Asset, Fees, Queue::OrderState>{Asset{1.0}, Fees{hbt::CommonFees{0.0, 0.0}}},
         Queue{}, std::move(exchange_bus));
-    auto local = std::make_unique<ObservedLocal>(std::move(native_local), observer, config.latency_sample_every);
+    auto local = std::make_unique<ObservedLocal>(std::move(native_local), observer, config.latency_sample_every, sink);
     auto exchange = std::make_unique<CountedExchange>(std::move(native_exchange));
     auto* local_view = local.get();
     auto* exchange_view = exchange.get();
@@ -191,6 +200,9 @@ ReplayResult replay_reader(const ReplayConfig& config, std::shared_ptr<hbt::Even
         throw std::runtime_error("replay did not consume a nonempty stream to EndOfData");
     }
     observer.capture(local_view->last_event, local_view->depth());
+    if (sink) {
+        sink->finish(local_view->depth());
+    }
     // M0 的观察流程应保持零订单、零仓位，这一检查隔离策略行为与回放验证。
     if (!backtest.orders(0).empty() || backtest.position(0) != 0.0) {
         throw std::runtime_error("M0 must not submit orders or hold positions");
@@ -343,22 +355,23 @@ std::vector<hbt::Event> synthetic_events() {
 }
 
 // 为内存行情夹具建立双消费者缓存，再执行统一观察回放流程。
-ReplayResult run_memory_replay(const ReplayConfig& config, std::vector<std::vector<hbt::Event>> chunks) {
+ReplayResult run_memory_replay(const ReplayConfig& config, std::vector<std::vector<hbt::Event>> chunks,
+                               ReplayEventSink* sink) {
     /** 输入 chunks 按分片顺序提供原生事件，函数接管这些数组并返回 ReplayResult。
      * 两个消费者分别对应本地和交易所处理器，测试可据此验证跨分片释放语义。
      */
-    return replay_reader(config, hbt::EventReaderCache::from_chunks(std::move(chunks), 2));
+    return replay_reader(config, hbt::EventReaderCache::from_chunks(std::move(chunks), 2), sink);
 }
 
 // 根据配置选择合成夹具或磁盘分片，并调用相同的原生回放接入层。
-ReplayResult run_replay(const ReplayConfig& config) {
+ReplayResult run_replay(const ReplayConfig& config, ReplayEventSink* sink) {
     /** 输入 config.source 为 synthetic 或可读取的转换清单，返回观察回放汇总。
      * 文件模式通过 event_files_from_manifest 和 EventReaderCache 逐片加载数据。
      */
     if (config.source == "synthetic") {
-        return run_memory_replay(config, {synthetic_events()});
+        return run_memory_replay(config, {synthetic_events()}, sink);
     }
-    return replay_reader(config, hbt::event_reader_from_files(hbt::event_files_from_manifest(config.source)));
+    return replay_reader(config, hbt::event_reader_from_files(hbt::event_files_from_manifest(config.source)), sink);
 }
 
 // 保存回放完整性、最终盘口与具有明确测量范围的性能指标。

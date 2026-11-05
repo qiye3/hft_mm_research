@@ -1,4 +1,4 @@
-# 2026-11-04 — 项目阅读指南
+# 2026-11-05 — 项目阅读指南
 
 ## 一、先理解这个项目要回答什么
 
@@ -49,6 +49,8 @@
 有了真实数据后，`config/replay_btcusdt.yaml` 将 `source` 指向数据清单。程序从文件建立读取器，之后仍然进入前面读过的 `replay_reader`。可以把真实行情和合成行情理解成同一条回放流程的两种输入。更多接口名称和时间处理细节集中在引擎笔记中。 [真实行情配置](../config/replay_btcusdt.yaml) · [引擎接口与事件流程](implementation/engine_notes.md)
 
 ## 五、第二遍阅读，跟着一笔委托理解做市
+
+如果当前重点是因子研究，可以先转到 M2-A。它复用前面的行情回放，在固定 100ms 网格输出盘口与基础统计，随后由 Python 生成研究特征和未来 1s 标签。先阅读数据集指南，再从 `extract_research` 跟到 `ResearchSampler`，最后阅读 Polars 的表构造过程。 [M2-A 数据集指南](implementation/m2_a_dataset.md)
 
 先打开 `src/apps/baseline_mm.cpp`，它读取策略配置后调用 `run_baseline`。再对照 `config/baseline_mm.yaml` 阅读 `TradingConfig`，认识策略使用的参数。默认价格步长 `tick_size` 为 0.1 USDT，表示一 tick 对应 0.1 USDT。报价半宽 `half_width_ticks` 为 20，表示买价和卖价各距离中间价约 2 USDT。每笔订单为 0.001 BTC，最大净持仓绝对值为 0.01 BTC。 [做市入口](../src/apps/baseline_mm.cpp) · [做市配置](../config/baseline_mm.yaml) · [参数定义](../src/mm/trade_recorder.hpp)
 

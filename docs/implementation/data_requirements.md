@@ -55,6 +55,8 @@ exchange,symbol,timestamp,local_timestamp,id,side,price,amount
 
 `timestamp` 与 `local_timestamp` 均为 UTC Unix 微秒，转换后乘以 1000，统一成引擎使用的纳秒。`exchange` 为 `binance-futures`，`symbol` 为 `BTCUSDT`。价格单位为 USDT/BTC，数量为 BTC。
 
+2026-08-01 的整日成交匹配确认，原始成交 `timestamp` 对应 Parquet `trade_time`；盘口窗口匹配确认，原始盘口 `timestamp` 对应 Parquet `event_time`。两类消息按各自的交易所字段含义处理，接收时间继续使用原始来源。 [接收时间与字段口径诊断](../reports/time_alignment_2026-08-01/report.md)
+
 盘口 `side=bid/ask`，`amount` 表示更新后该价位应有的总数量，零表示删除价位。`is_snapshot=true` 表示快照中的价位，初始快照和重连快照都要先建立完整的一批状态，再继续处理增量。逐笔成交 `side=buy/sell` 表示主动成交方向，`id` 是成交编号。
 
 当前使用价格步长 0.1 USDT、数量步长 0.001 BTC，在转换时逐行核对数据网格。历史最小下单量、最小名义金额和其他规则还需要对应日期的认证资料。已有网格检查只证明数据与研究步长相容。
@@ -185,3 +187,5 @@ M1 基线成功产生订单和成交，最终净收益为 -153.115508 USDT、费
 先用 7 天检查批处理，再用 30—90 天建立 Alpha 特征和预测基线，之后在连续的有效覆盖中按时间划分开发、验证和最终测试。已有检查显示原始成交 ZIP 覆盖至 2026-07-31，HFT Parquet 的 8—9 月需要单独解决快照与时间口径，再决定如何进入同一研究链路。
 
 当前归档保留原始压缩文件；研究特征、标签和预测优先使用 Parquet + ZSTD；引擎的 NPZ 分片按运行日期缓存。全部采用 Parquet 的接口改造与压缩实测见单独说明。 [GPU 与 Parquet 选择](gpu_and_parquet.md)
+
+M2-A 的固定 100ms 数据生产、特征与未来 1s 标签定义、七天数据准备和 Python 读取方法见专门指南。 [M2-A 研究数据集](m2_a_dataset.md)

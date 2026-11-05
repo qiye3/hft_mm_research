@@ -11,6 +11,15 @@
 
 namespace mm {
 
+// 在原生 Local 应用行情的前后接收通知，研究统计只读取本地可见状态。
+class ReplayEventSink {
+public:
+    virtual ~ReplayEventSink() = default;
+    virtual void before_event(const hbt::Event& event, const hbt::HashMapMarketDepth& depth) = 0;
+    virtual void after_event(const hbt::Event& event, const hbt::HashMapMarketDepth& depth) = 0;
+    virtual void finish(const hbt::HashMapMarketDepth& depth) = 0;
+};
+
 // 回放参数的时间统一使用纳秒，source 在 synthetic 和清单文件两种来源间选择。
 struct ReplayConfig {
     std::string source = "synthetic"; // 数据来源，synthetic 表示合成数据，清单文件表示真实数据。
@@ -42,10 +51,11 @@ ReplayConfig load_config(const std::filesystem::path& filename);
 // 返回用于检查 BBO、分类计数和深档升入前十档的确定性事件。
 std::vector<hbt::Event> synthetic_events();
 // 根据 source 选择数据来源，返回完整原生回放后的观察结果。
-ReplayResult run_replay(const ReplayConfig& config);
+ReplayResult run_replay(const ReplayConfig& config, ReplayEventSink* sink = nullptr);
 // 接管内存分片进行双时钟回放，供合成测试检查路由顺序与缓存释放。
 ReplayResult run_memory_replay(const ReplayConfig& config,
-                               std::vector<std::vector<hbt::Event>> chunks);
+                               std::vector<std::vector<hbt::Event>> chunks,
+                               ReplayEventSink* sink = nullptr);
 // 将回放汇总序列化为 JSON，分别报告逻辑事件吞吐和处理器 dispatch 吞吐。
 void write_report(const ReplayConfig& config, const ReplayResult& result,
                   const std::filesystem::path& output);
