@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+import zstandard
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("convert_tardis", ROOT / "scripts/convert_tardis.py")
@@ -18,6 +19,39 @@ PROBE = Path(sys.argv[1]).resolve()
 
 
 class ConversionTests(unittest.TestCase):
+    def test_zstandard_sources_match_gzip(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            book_csv = (
+                "exchange,symbol,timestamp,local_timestamp,is_snapshot,side,price,amount\n"
+                "binance-futures,BTCUSDT,100,110,true,bid,99.9,1\n"
+                "binance-futures,BTCUSDT,100,110,true,ask,100.1,2\n"
+                "binance-futures,BTCUSDT,200,210,false,bid,99.9,0\n"
+                "binance-futures,BTCUSDT,200,210,false,bid,99.8,1\n"
+            )
+            trades_csv = (
+                "exchange,symbol,timestamp,local_timestamp,id,side,price,amount\n"
+                "binance-futures,BTCUSDT,150,170,1,buy,100.1,1\n"
+            )
+            sources = [("book", book_csv, ".zstd"), ("trades", trades_csv, ".zst")]
+            for name, content, suffix in sources:
+                with gzip.open(workspace / f"{name}.csv.gz", "wt") as output:
+                    output.write(content)
+                (workspace / f"{name}.csv{suffix}").write_bytes(
+                    zstandard.ZstdCompressor().compress(content.encode())
+                )
+            CONVERTER.convert(
+                workspace / "book.csv.gz", workspace / "trades.csv.gz", "2026-07-12",
+                workspace / "gzip", full_day=False,
+            )
+            CONVERTER.convert(
+                workspace / "book.csv.zstd", workspace / "trades.csv.zst", "2026-07-12",
+                workspace / "zstandard", full_day=False,
+            )
+            with np.load(workspace / "gzip/events-00000.npz") as expected:
+                with np.load(workspace / "zstandard/events-00000.npz") as actual:
+                    np.testing.assert_array_equal(actual["data"], expected["data"])
+
     def test_split_clock_shards_and_snapshot_reset(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)

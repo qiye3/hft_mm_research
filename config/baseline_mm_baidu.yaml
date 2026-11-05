@@ -1,0 +1,19 @@
+# 使用已有 M1 固定报价规则，检查百度网盘行情上的订单与账本链路。
+name: baidu_baseline
+date: 2026-07-12
+source: workspace/data/normalized/BTCUSDT_2026-07-12/manifest.json
+output: workspace/results/validation/baidu_2026-07-12/baseline
+tick_size: 0.1
+lot_size: 0.001
+order_quantity: 0.001
+max_position: 0.01
+initial_capital: 10000
+maker_fee: 0.0002
+taker_fee: 0.0005
+half_width_ticks: 20
+decision_interval_ns: 100000000
+update_mode: time
+price_threshold_ticks: 20
+entry_latency_ns: 1000000
+response_latency_ns: 500000
+quote_stop_timestamp_ns: 1783900799000000000

@@ -1,7 +1,7 @@
 """准备 M0/M1 共用的 Tardis 单日标准事件分片。
 
 convert 编排 CSV 校验、双时钟路由和 NPZ 输出，append_source 读取单个压缩源文件，
-write_routed_shards 负责分侧排序与分片。输入为 BTCUSDT 全深度 L2 和逐笔成交 CSV.gz，
+write_routed_shards 负责分侧排序与分片。输入为 BTCUSDT 全深度 L2 和逐笔成交 CSV.gz 或 CSV.zst/.zstd，
 输出为与 C++ hbt.Event 二进制布局兼容的 NPZ，以及含原始计数和最终盘口的 manifest。
 最终盘口字典用于离线对照，回测中的盘口更新由 C++ 引擎执行。
 """
@@ -19,6 +19,7 @@ from collections import Counter
 from pathlib import Path
 
 import numpy as np
+import zstandard
 
 BUY = 1 << 29
 SELL = 1 << 28
@@ -63,13 +64,26 @@ def validate_grid(price: float, quantity: float, tick_size: float, lot_size: flo
         raise ValueError(f"数量不符合 lot_size：{quantity}")
 
 
+# 按源文件压缩格式建立文本流，供盘口与成交流共用。
+def open_market_csv(filename: Path):
+    """打开 gzip 或 Zstandard 压缩的行情 CSV。
+
+    filename 为既有源文件，.zst/.zstd 使用 Zstandard，其余延续原有 gzip 读取方式。
+    返回可用于 with 的文本流，换行交给 csv.reader 处理，关闭时同时释放底层文件。
+    两种压缩格式共用后续字段、时间和盘口检查。
+    """
+    if filename.suffix in {".zst", ".zstd"}:
+        return zstandard.open(filename, "rt", encoding="utf-8", newline="")
+    return gzip.open(filename, "rt", newline="")
+
+
 # 将一个压缩源文件校验并追加为标准记录，同时保存原始数据的对照统计。
 def append_source(filename: Path, kind: str, output, tick_size: float, lot_size: float,
                   chunk_rows: int) -> dict:
     """读取完整 Tardis 源流，为后续双侧路由准备无路由标志的事件。
 
     输入
-        filename 为带表头的 CSV.gz，kind 取 book 或 trades。
+        filename 为带表头的 CSV.gz 或 CSV.zst/.zstd，kind 取 book 或 trades。
         output 是已打开的二进制输出流，记录追加到其当前位置。
         tick_size 和 lot_size 指定研究网格，chunk_rows 指定内存写出缓冲区容量。
     输出
@@ -88,7 +102,7 @@ def append_source(filename: Path, kind: str, output, tick_size: float, lot_size:
     previous_snapshot = False
     bids = {}
     asks = {}
-    with gzip.open(filename, "rt", newline="") as source:
+    with open_market_csv(filename) as source:
         rows = csv.reader(source)
         columns = {name: index for index, name in enumerate(next(rows))}
         required = {"exchange", "symbol", "timestamp", "local_timestamp", "side", "price", "amount"}

@@ -36,6 +36,8 @@
 
 ## 四、再看真实行情如何进入同一套回放流程
 
+数据说明整理了网盘文件、原始字段、下载转换方式和整日验证结果。服务器配置、费用，以及 GPU 与 Parquet 的选择分别保存在另外两份说明中。 [研究数据说明](implementation/data_requirements.md) · [服务器配置与费用](implementation/server_recommendation.md) · [GPU 与 Parquet 选择](implementation/gpu_and_parquet.md)
+
 真实数据来自 Tardis。盘口文件包含快照和增量更新。快照描述某个时刻的盘口，增量描述之后某个价位的数量变化，数量为零表示删除该价位。逐笔成交文件记录市场中已经发生的买卖成交。转换脚本将这些信息整理成框架能够读取的事件。
 
 阅读 `scripts/convert_tardis.py` 时，可以先看 `convert` 的整体顺序，再进入 `append_source` 和 `write_routed_shards`。前者读取原始 CSV 记录，检查价格和数量步长，处理快照与更新。后者整理两侧的时间顺序，并把事件写成多个 NPZ 文件。NPZ 是保存数组的压缩文件，拆成多个分片方便框架逐批读取。旁边的 `manifest.json` 是数据清单，记录分片位置、事件数量和检查结果。 [数据转换脚本](../scripts/convert_tardis.py)
