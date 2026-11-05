@@ -13,8 +13,11 @@ int main(int argc, char** argv) {
         if (argc > 2) {
             throw std::invalid_argument("usage: replay_probe [config/replay.yaml]");
         }
+        // 读取参数
         const auto config = mm::load_config(argc == 2 ? argv[1] : "config/replay.yaml");
+        // 运行行情回放
         const auto result = mm::run_replay(config);
+        // 写入报告
         mm::write_report(config, result, config.output);
         return 0;
     } catch (const std::exception& error) {

@@ -1,0 +1,10 @@
+# 百度网盘同源完整日，用于原始 CSV.zst 至 C++ 回放的一致性验证。
+source: workspace/data/normalized/BTCUSDT_2026-07-12/manifest.json
+date: 2026-07-12
+symbol: BTCUSDT
+tick_size: 0.1
+lot_size: 0.001
+depth_levels: 10
+snapshot_interval_ns: 100000000
+latency_sample_every: 1024
+output: workspace/results/validation/baidu_2026-07-12/replay.json

@@ -125,6 +125,9 @@ M1 默认每单 0.001 BTC、最大净仓位 0.01 BTC，Maker/Taker 费率为 2/5
 ## 文档
 
 - [项目阅读指南](docs/reading_guide.md)
+- [研究数据的组织、下载、处理与详细概况](docs/implementation/data_requirements.md)
+- [服务器推荐配置与费用估算](docs/implementation/server_recommendation.md)
+- [GPU、策略组合与 Parquet 存储选择](docs/implementation/gpu_and_parquet.md)
 - [M0 引擎接口与回放流程](docs/implementation/engine_notes.md)
 - [M0 单日性能结果](docs/reports/m0_2025-02-01/report.md)
 - [M1 委托状态、库存与账本](docs/implementation/m1_notes.md)
