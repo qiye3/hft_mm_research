@@ -4,6 +4,7 @@
 /workspace/data/raw/*
 /workspace/data/normalized/*
 /workspace/data/samples/*
+/workspace/data/research/
 !/workspace/data/raw/.gitkeep
 !/workspace/data/normalized/.gitkeep
 !/workspace/data/samples/.gitkeep

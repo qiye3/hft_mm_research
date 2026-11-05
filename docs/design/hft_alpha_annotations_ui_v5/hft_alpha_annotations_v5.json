@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "annotations": [
+    {
+      "id": "codex-v5-polars-snapshot-use",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "备注",
+      "body": "网盘 25 档快照可用于离线前十档研究，七天 6,029,211 个有效采样点已与回放核对一致。新日期继续核查时间、来源与覆盖。保留 7 月 14 日已识别中断；快照空窗不能单独证明断线。",
+      "created_at": "2026-11-05T07:44:22.762Z",
+      "updated_at": "2026-11-05T07:44:22.762Z"
+    },
+    {
+      "id": "codex-v5-polars-polars-input",
+      "target": "node:a1",
+      "author": "Codex",
+      "status": "待办",
+      "body": "在 data/base.py 增加快照+同源 Trades 的 Polars 入口，按接收时间 backward 对齐 100ms 网格。沿用现有 C++ base.parquet 作为事件路径变量来源；对照已有七天基础字段后再使用新入口。",
+      "created_at": "2026-11-05T07:44:22.762Z",
+      "updated_at": "2026-11-05T07:44:22.762Z"
+    },
+    {
+      "id": "codex-v5-polars-event-feature-limit",
+      "target": "node:a2",
+      "author": "Codex",
+      "status": "备注",
+      "body": "OBI、Microprice、Spread、收益、波动和主动成交窗口可在 Polars 构造。快照未保存的逐事件路径不可恢复；精确事件 OFI 复用已有 C++ 结果。快照差分 OFI 若研究，应独立命名和版本化。",
+      "created_at": "2026-11-05T07:44:22.762Z",
+      "updated_at": "2026-11-05T07:44:22.762Z"
+    },
+    {
+      "id": "codex-v5-polars-research-cpp-division",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "待办",
+      "body": "完整候选特征研究放在 Python/Polars。C++ 保留事件状态与基础中间变量，待模型冻结后才实现入选实时特征，并逐行核对窗口、预热、缺失、质量标记、标准化和顺序。",
+      "created_at": "2026-11-05T07:44:22.762Z",
+      "updated_at": "2026-11-05T07:44:22.762Z"
+    },
+    {
+      "id": "codex-v5-polars-package-migration",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "待办",
+      "body": "先迁移现有脚本到研究包并保持现有结果一致。生产编排、X/y 加载与基础统计进入 data/dataset.py，基础源适配进入 data/base.py，质检进入 data/quality.py，因子进入 features/transform.py，标签进入 targets/midprice.py。命令脚本保留轻量入口，数据下载和转换工具继续使用现有 scripts。",
+      "created_at": "2026-11-05T07:44:22.762Z",
+      "updated_at": "2026-11-05T07:44:22.762Z"
+    },
+    {
+      "id": "codex-v5-polars-feature-label-versions",
+      "target": "section:a3:输出",
+      "author": "Codex",
+      "status": "待办",
+      "body": "保留按日期存储的基础变量。特征和标签分别保存于 features/<feature_version>/date=... 与 labels/<label_version>/horizon=.../date=...，使用独立有效标志。加载时按 symbol/date/timestamp_ns 一对一关联，并检查 base_version 和来源时钟一致。",
+      "created_at": "2026-11-05T07:44:22.762Z",
+      "updated_at": "2026-11-05T07:44:22.762Z"
+    },
+    {
+      "id": "codex-v5-polars-bps-targets",
+      "target": "note:a3:处理:1",
+      "author": "Codex",
+      "status": "待办",
+      "body": "主标签统一 bps，保留同 horizon 的 Ticks 和 USDT 辅助列。先对照当前 1s bps 与 USDT 标签，再扩展 100ms、500ms、5s；检查单位换算、精确未来时刻、缺口和日尾。现有基础数据可以复用。",
+      "created_at": "2026-11-05T07:44:22.762Z",
+      "updated_at": "2026-11-05T07:44:22.762Z"
+    },
+    {
+      "id": "codex-v5-polars-polars-factors",
+      "target": "file:python/mm_research/features/transform.py",
+      "author": "Codex",
+      "status": "待办",
+      "body": "从现有 build_research_table 提取候选特征计算，保留整数数量滚动累计以消除空窗口残差。以基础表为输入，特征工件不依赖某一个未来标签的有效性。",
+      "created_at": "2026-11-05T07:44:22.762Z",
+      "updated_at": "2026-11-05T07:44:22.762Z"
+    },
+    {
+      "id": "codex-v5-polars-dataset-loader",
+      "target": "file:python/mm_research/data/dataset.py",
+      "author": "Codex",
+      "status": "待办",
+      "body": "迁入现有生产编排、加载和基础统计。允许选择 feature_version、label_version、horizon 和主标签 bps；关联前核验一对一键及基础版本、时钟，不把未来列放入 X。",
+      "created_at": "2026-11-05T07:44:22.762Z",
+      "updated_at": "2026-11-05T07:44:22.762Z"
+    },
+    {
+      "id": "codex-v5-polars-cpp-parity",
+      "target": "node:b2",
+      "author": "Codex",
+      "status": "待办",
+      "body": "模型冻结后从 Polars 定义移植入选特征，复用已有事件状态。包含成交跳号的首次可见时刻和缺口预热，避免离线质量规则与 C++ 回放不一致。",
+      "created_at": "2026-11-05T07:44:22.762Z",
+      "updated_at": "2026-11-05T07:44:22.762Z"
+    },
+    {
+      "id": "codex-v5-polars-prediction-bps",
+      "target": "node:b3",
+      "author": "Codex",
+      "status": "待办",
+      "body": "Python 训练、模型工件和 C++ 推理统一输出 bps。进入决策时使用当前 Mid 与 Tick Size 换算价格变化和 Ticks；本轮只明确接口单位，交易规则仍按后续阶段实施。",
+      "created_at": "2026-11-05T07:44:22.762Z",
+      "updated_at": "2026-11-05T07:44:22.762Z"
+    },
+    {
+      "id": "codex-v5-detail-panel-toggle",
+      "target": "ui:detail-panel",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "新增工具栏的收起右侧笔记/展开右侧笔记按钮。收起时流程图占满内容区，展开后恢复右侧详情；收起期间选择节点会更新详情，展开即可查看。按钮同步 aria-expanded 与面板 hidden 状态。",
+      "created_at": "2026-11-05T09:46:48.392Z",
+      "updated_at": "2026-11-05T09:46:48.392Z"
+    }
+  ]
+}
