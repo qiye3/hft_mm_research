@@ -108,6 +108,78 @@
       "body": "新增工具栏的收起右侧笔记/展开右侧笔记按钮。收起时流程图占满内容区，展开后恢复右侧详情；收起期间选择节点会更新详情，展开即可查看。按钮同步 aria-expanded 与面板 hidden 状态。",
       "created_at": "2026-11-05T09:46:48.392Z",
       "updated_at": "2026-11-05T09:46:48.392Z"
+    },
+    {
+      "id": "codex-v5-20261106-feature-categories",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "已拆分四类正式研究特征，transform.py 只组织计算与有效性。book/order_flow/trades/returns 各自维护公式和列清单，现有列顺序保持一致。7月14日事件与快照基础表逐行精确对照通过。",
+      "created_at": "2026-11-06T10:28:19+08:00",
+      "updated_at": "2026-11-06T10:28:19+08:00"
+    },
+    {
+      "id": "codex-v5-20261106-snapshot-example",
+      "target": "file:research/mm_research/features/snapshot.py",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "快照模块示例位于 features/snapshot.py。add_snapshot_notional_features() 接收已对齐盘口，输出前十档双侧挂单金额及金额失衡。book_valid 为假时输出为空，新增快照特征可参考其接口和表达式。",
+      "created_at": "2026-11-06T10:28:19+08:00",
+      "updated_at": "2026-11-06T10:28:19+08:00"
+    },
+    {
+      "id": "codex-v5-20261106-trades-example",
+      "target": "file:research/mm_research/features/trade_events.py",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "逐笔模块示例位于 features/trade_events.py。build_trade_event_features() 接收成交分桶和连续网格，构建净成交金额与成交强度，展示编号疑点切段和五秒预热。",
+      "created_at": "2026-11-06T10:28:19+08:00",
+      "updated_at": "2026-11-06T10:28:19+08:00"
+    },
+    {
+      "id": "codex-v5-20261106-common-expressions",
+      "target": "file:research/mm_research/features/expressions.py",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "只提取重复使用的基础运算 normalized_imbalance、rolling_sum_in_segment。前者显式指定零量窗口返回值，后者按区段累计完整窗口并支持整数 Lot。三类示例独立定义业务特征。",
+      "created_at": "2026-11-06T10:28:19+08:00",
+      "updated_at": "2026-11-06T10:28:19+08:00"
+    },
+    {
+      "id": "codex-v5-20261106-cpp-ofi-example",
+      "target": "node:b2",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "C++ 模块示例位于 src/mm/features/order_flow.hpp。BboState 与 calculate_bbo_ofi() 提供输入结构和纯计算，现有 ResearchSampler 负责状态及区段管理，可参考模块定义和实际调用增加特征。",
+      "created_at": "2026-11-06T10:28:19+08:00",
+      "updated_at": "2026-11-06T10:28:19+08:00"
+    },
+    {
+      "id": "codex-v5-20261106-feature-entrypoint-locations",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "三个示例按计算模块组织。快照和逐笔分别位于 features/snapshot.py、features/trade_events.py，C++ OFI 位于 src/mm/features/order_flow.hpp。已清理命令行、示例程序和相关构建目标，供后续新增特征时参考模块接口。",
+      "created_at": "2026-11-06T10:38:56+08:00",
+      "updated_at": "2026-11-06T10:38:56+08:00"
+    },
+    {
+      "id": "codex-v5-20261106-features-colocated",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "按用户要求，示例运行入口与对应公式放在同一个 features 模块。删除两份 scripts 特征示例脚本，Python main 合并到 snapshot.py 和 trade_events.py。C++ event_ofi.cpp 移入 src/mm/features。运行说明和 HTML 定位已同步修正。",
+      "created_at": "2026-11-06T10:41:29+08:00",
+      "updated_at": "2026-11-06T10:41:29+08:00"
+    },
+    {
+      "id": "codex-v5-20261106-module-reference-only",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "按用户要求保留三个可直接参考的特征计算模块。Python 清理 main、参数解析、读写文件，C++ 清理 event_ofi.cpp 程序与构建目标。参考 snapshot.py、trade_events.py 和 order_flow.hpp 的输入、输出、特征公式与有效性定义新增模块。",
+      "created_at": "2026-11-06T10:44:50+08:00",
+      "updated_at": "2026-11-06T10:44:50+08:00"
     }
   ]
 }
