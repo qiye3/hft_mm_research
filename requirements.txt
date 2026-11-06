@@ -1,7 +1,4 @@
 cmake==4.4.4
 ninja==1.13.2
-numpy==2.5.4
-PyYAML==6.0.3
-zstandard==0.25.0
-polars==2.1.0
 pyarrow==26.0.1
+-e .

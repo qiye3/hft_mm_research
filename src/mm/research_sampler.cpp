@@ -1,5 +1,6 @@
 /** 在原生 Local 处理边界累计 BBO OFI 和主动成交，按 UTC 固定网格输出研究基础表。 */
 #include "mm/research_sampler.hpp"
+#include "mm/features/order_flow.hpp"
 
 #include <cmath>
 #include <iomanip>
@@ -82,8 +83,9 @@ void ResearchSampler::after_event(const hbt::Event& event, const hbt::HashMapMar
     const double bid_quantity = valid_bbo ? depth.bid_qty_at_tick(depth.best_bid_tick()) : 0;
     const double ask_quantity = valid_bbo ? depth.ask_qty_at_tick(depth.best_ask_tick()) : 0;
     if (kind == hbt::DEPTH_EVENT && initialized_ && previous_bbo_valid_ && valid_bbo) {
-        ofi_ += (bid >= previous_bid_ ? bid_quantity : 0) - (bid <= previous_bid_ ? previous_bid_quantity_ : 0)
-              - (ask <= previous_ask_ ? ask_quantity : 0) + (ask >= previous_ask_ ? previous_ask_quantity_ : 0);
+        const BboState previous{previous_bid_, previous_ask_, previous_bid_quantity_, previous_ask_quantity_};
+        const BboState current{bid, ask, bid_quantity, ask_quantity};
+        ofi_ += calculate_bbo_ofi(previous, current);
     }
     if (!valid_bbo && previous_bbo_valid_ && !snapshot_active_) {
         reset_segment(event.local_ts);

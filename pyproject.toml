@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=78"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mm-research"
+version = "0.1.0"
+description = "BTCUSDT 高频研究的数据、特征与标签"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy==2.5.4",
+    "polars==2.1.0",
+    "PyYAML==6.0.3",
+    "zstandard==0.25.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["research"]

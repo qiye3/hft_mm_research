@@ -608,7 +608,7 @@
       "target": "note:a3:处理:0",
       "kind": "note",
       "label": "Polars 特征与独立版本标签 / 处理 / 第1条",
-      "text": "python/mm_research/features/transform.py 使用 Polars 计算 OBI、Microprice、滚动 OFI、主动成交失衡、历史收益与波动等候选特征，所需字段不足时明确标记。"
+      "text": "features/transform.py 组织 book.py、order_flow.py、trades.py、returns.py 四类公式。各类别声明列清单，统一入口保持现有十九/十六列顺序和有效性。"
     },
     {
       "target": "note:a3:处理:1",
@@ -1539,6 +1539,114 @@
       "target": "ui:detail-panel",
       "kind": "ui",
       "label": "右侧笔记面板的收起与展开"
+    },
+    {
+      "target": "file:research/mm_research/features/transform.py",
+      "kind": "file",
+      "label": "research/mm_research/features/transform.py"
+    },
+    {
+      "target": "file:research/mm_research/features/book.py",
+      "kind": "file",
+      "label": "research/mm_research/features/book.py"
+    },
+    {
+      "target": "file:research/mm_research/features/order_flow.py",
+      "kind": "file",
+      "label": "research/mm_research/features/order_flow.py"
+    },
+    {
+      "target": "file:research/mm_research/features/trades.py",
+      "kind": "file",
+      "label": "research/mm_research/features/trades.py"
+    },
+    {
+      "target": "file:research/mm_research/features/returns.py",
+      "kind": "file",
+      "label": "research/mm_research/features/returns.py"
+    },
+    {
+      "target": "file:research/mm_research/features/expressions.py",
+      "kind": "file",
+      "label": "research/mm_research/features/expressions.py"
+    },
+    {
+      "target": "file:research/mm_research/features/snapshot.py",
+      "kind": "file",
+      "label": "research/mm_research/features/snapshot.py"
+    },
+    {
+      "target": "file:research/mm_research/features/trade_events.py",
+      "kind": "file",
+      "label": "research/mm_research/features/trade_events.py"
+    },
+    {
+      "target": "file:src/mm/features/order_flow.hpp",
+      "kind": "file",
+      "label": "src/mm/features/order_flow.hpp"
+    },
+    {
+      "target": "file:tests/test_feature_examples.py",
+      "kind": "file",
+      "label": "tests/test_feature_examples.py"
+    },
+    {
+      "target": "file:pyproject.toml",
+      "kind": "file",
+      "label": "pyproject.toml"
+    },
+    {
+      "target": "file:docs/implementation/research_package.md",
+      "kind": "file",
+      "label": "docs/implementation/research_package.md"
+    },
+    {
+      "target": "note:a3:处理:7",
+      "kind": "note",
+      "label": "Polars 特征与独立版本标签 / 处理 / 第8条",
+      "text": "快照模块示例 features/snapshot.py 提供 add_snapshot_notional_features()，接收对齐后的前十档盘口，计算双侧挂单金额和金额失衡，按 book_valid 处理缺失。"
+    },
+    {
+      "target": "note:a3:处理:8",
+      "kind": "note",
+      "label": "Polars 特征与独立版本标签 / 处理 / 第9条",
+      "text": "逐笔模块示例 features/trade_events.py 提供 build_trade_event_features()，接收成交分桶与网格，计算主动净额和成交强度，按编号疑点切段并预热五秒。"
+    },
+    {
+      "target": "note:a3:处理:9",
+      "kind": "note",
+      "label": "Polars 特征与独立版本标签 / 处理 / 第10条",
+      "text": "expressions.py 提供失衡比值和分段完整窗口运算。三个模块示例各自定义特征，供新增特征时参考。"
+    },
+    {
+      "target": "note:a3:代码:0",
+      "kind": "note",
+      "label": "Polars 特征与独立版本标签 / 代码 / 第1条",
+      "text": "研究包本轮计划包含 data/base.py、data/quality.py、data/dataset.py、features/transform.py、targets/midprice.py；迁移复用现有脚本中的业务函数。"
+    },
+    {
+      "target": "note:a3:代码:1",
+      "kind": "note",
+      "label": "Polars 特征与独立版本标签 / 代码 / 第2条",
+      "text": "已实现分类特征及纯计算模块示例，新增模块参考 docs/implementation/research_package.md。"
+    },
+    {
+      "target": "note:b2:处理:2",
+      "kind": "note",
+      "label": "C++ 实时特征更新 / 处理 / 第3条",
+      "text": "src/mm/features/order_flow.hpp 提供 BboState 和 calculate_bbo_ofi()，ResearchSampler 复用该无状态公式。"
+    },
+    {
+      "target": "note:b2:代码:0",
+      "kind": "note",
+      "label": "C++ 实时特征更新 / 代码 / 第1条",
+      "text": "src/mm/features/feature_engine.cpp 计划承载入选特征的 C++ 实时计算，并复用现有事件状态；候选特征的探索实现位于 Python/Polars。"
+    },
+    {
+      "target": "note:b2:代码:1",
+      "kind": "note",
+      "label": "C++ 实时特征更新 / 代码 / 第2条",
+      "text": "C++ 模块示例使用前后有效 BBO 作为输入，调用方管理连续性与窗口，实际调用位于 src/mm/research_sampler.cpp。"
     }
   ]
 }
