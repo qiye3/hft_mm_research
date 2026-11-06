@@ -36,6 +36,8 @@ if(BUILD_TESTING)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_research_dataset.py $<TARGET_FILE:extract_research>)
     add_test(NAME mm.feature_examples
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_feature_examples.py)
+    add_test(NAME mm.standard_data
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_standard_data.py)
 endif()
 
 add_library(mm_strategy src/mm/market_maker.cpp src/mm/trade_recorder.cpp)

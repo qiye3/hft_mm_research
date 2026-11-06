@@ -267,3 +267,16 @@ def validate_base_reference(base: pl.DataFrame, reference: Path) -> dict:
     if report["mismatched_books"] or report["mismatched_flows"] or report["compared_books"] == 0:
         raise ValueError(f"快照入口与已有 C++ 基础表不一致 {report}")
     return report
+
+
+# 将逐条检查结果转换为可读标签，供标准盘口与成交表共同使用。
+def build_record_flags(rules: dict[str, pl.Expr]) -> pl.Expr:
+    """输入标签名与布尔表达式，返回 List(String) 类型的标签表达式。
+
+    未命中的条件产生空列表，条件为空值时按未命中处理。
+    调用方负责为缺失字段设置明确规则，本函数只组织标签，保留所有输入行。
+    """
+    return pl.concat_list([
+        pl.when(condition.fill_null(False)).then(pl.lit(name)).otherwise(None)
+        for name, condition in rules.items()
+    ]).list.drop_nulls()
