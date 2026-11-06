@@ -10,7 +10,7 @@ import math
 from pathlib import Path
 
 
-# 将实际双侧消费结果与转换阶段保存的原始统计和最终盘口逐项核对。
+# 【非核心】将实际双侧消费结果与转换阶段保存的原始统计和最终盘口逐项核对。
 def validate(manifest: dict, replay: dict) -> None:
     """检查一个完整日回放是否与离线数据准备阶段一致。
 
@@ -21,8 +21,10 @@ def validate(manifest: dict, replay: dict) -> None:
         全部一致时返回 None 并打印完成信息，计数、时间或价位差异触发 ValueError。
     用途
         同时检查两个处理器各自恰好消费一次逻辑事件，并确认分片缓存全部释放。
-        首尾本地时间按原始两源的最早和最晚边界加统一偏移计算，价格数量采用绝对误差比较。
+        首尾本地时间按原始两源的最早和最晚边界计算，价格数量采用绝对误差比较。
     """
+    if manifest["timestamp_policy"] != "source_local_time":
+        raise ValueError("回放校验只接受未经自动平移的源接收时间")
     for name in ["normalized_rows", "depth_updates", "snapshot_levels", "clear_events", "trade_events"]:
         if manifest[name] != replay[name]:
             raise ValueError(f"{name} 不一致：{manifest[name]} != {replay[name]}")
@@ -34,7 +36,7 @@ def validate(manifest: dict, replay: dict) -> None:
         raise ValueError("分片没有全部加载或释放")
     for boundary, operation in [("first", min), ("last", max)]:
         key = f"{boundary}_local_timestamp_ns"
-        expected = operation(manifest["book"][key], manifest["trades"][key]) + manifest["local_timestamp_offset_ns"]
+        expected = operation(manifest["book"][key], manifest["trades"][key])
         if replay[key] != expected:
             raise ValueError(f"回放时间边界错误：{key}")
     for side in ["bids", "asks"]:
@@ -49,7 +51,7 @@ def validate(manifest: dict, replay: dict) -> None:
     print("实际双侧回放与原始 CSV 的事件计数、时间边界、最终盘口一致。")
 
 
-# 从命令行加载清单与回放报告，执行完整日一致性检查。
+# 【非核心】从命令行加载清单与回放报告，执行完整日一致性检查。
 def main() -> None:
     """读取位置参数 manifest 和 report 对应的两个 JSON 文件。
 

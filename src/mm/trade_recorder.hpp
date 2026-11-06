@@ -41,7 +41,6 @@ struct TradingSummary {
     std::uint64_t rejected = 0;
     std::uint64_t partial_fills = 0;
     std::uint64_t fills = 0;
-    std::uint64_t normalized_rejections = 0; // 携带旧成交字段而触发适配处理的拒绝回报数。
     double position = 0.0;
     double balance = 0.0; // 累计买卖现金流，初始资金单独计入 equity。
     double fees = 0.0;
@@ -65,34 +64,32 @@ struct TradingSummary {
  */
 class TradeRecorder {
 public:
-    // 为全新输出目录建立三个 CSV，拒绝覆盖已有实验。
+    // 【非核心】为全新输出目录建立三个 CSV，拒绝覆盖已有实验。
     explicit TradeRecorder(const TradingConfig& config);
-    // 记录原生 submit 或 cancel_request 操作及当时的订单视图。
+    // 【核心逻辑56】记录原生 submit 或 cancel_request 操作及当时的订单视图。
     void action(const std::string& kind, const hbt::Order<>& order, std::int64_t local_timestamp);
-    // 保存一条原始回报，依据状态与新增执行量累计成交账本。
+    // 【核心逻辑61】保存一条原始回报，依据状态与新增执行量累计成交账本。
     void response(const hbt::Order<>& order, std::int64_t local_timestamp, double mid);
-    // 在同批回报处理完成后，对齐原生现金流、费用、仓位与成交统计。
+    // 【非核心】在同批回报处理完成后，对齐原生现金流、费用、仓位与成交统计。
     void reconcile(const hbt::StateValues& state) const;
-    // 核对决策点最坏方向敞口，并记录带未成交风险数量的权益值。
+    // 【核心逻辑58】集中核对决策点最坏方向敞口，并记录带预留数量的权益值。
     void checkpoint(std::int64_t timestamp, double mid, const hbt::StateValues& state,
                     double reserved_buy, double reserved_sell);
-    // 依据最终 checkpoint 的账本保存 JSON 汇总，并检查 CSV 刷新结果。
+    // 【非核心】依据最终 checkpoint 的账本保存 JSON 汇总，并检查 CSV 刷新结果。
     void finish(const hbt::StateValues& state, double mid, std::uint64_t local_events,
                 std::uint64_t exchange_events, double elapsed_seconds);
-    // 记录旧拒绝回报兼容分支的触发次数。
-    void normalized_rejection();
-    // 返回当前汇总的只读引用，用于回测结束时形成返回结果。
+    // 【非核心】返回当前汇总的只读引用，用于回测结束时形成返回结果。
     [[nodiscard]] const TradingSummary& summary() const noexcept;
 
 private:
-    // 序列化订单动作和原始回报共用的生命周期字段。
+    // 【非核心】序列化订单动作和原始回报共用的生命周期字段。
     void write_order(const std::string& kind, const hbt::Order<>& order, std::int64_t timestamp);
-    // 用本次新增执行量更新现金、费用、平均成本和仓位。
+    // 【核心逻辑62】用本次新增执行量更新现金、费用、平均成本和仓位。
     void apply_fill(const hbt::Order<>& order, std::int64_t timestamp, double mid);
-    // 盯市并更新权益峰值，空的预留数量在 CSV 中保留为空字段。
+    // 【核心逻辑59】盯市并更新权益峰值，空的预留数量在 CSV 中保留为空字段。
     void record_equity(std::int64_t timestamp, double mid, std::optional<double> reserved_buy,
                        std::optional<double> reserved_sell);
-    // 输出可供离线独立核对的参数、收益分解和最终统计。
+    // 【非核心】输出可供离线独立核对的参数、收益分解和最终统计。
     void write_summary();
     TradingConfig config_;
     TradingSummary summary_;
@@ -102,7 +99,7 @@ private:
     std::ofstream equity_;
 };
 
-// 将订单状态或请求状态映射成 CSV 使用的协议文本。
+// 【非核心】将订单状态或请求状态映射成 CSV 使用的协议文本。
 std::string order_status(hbt::Status status);
 
 } // namespace mm

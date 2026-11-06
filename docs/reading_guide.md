@@ -38,7 +38,7 @@
 
 数据说明整理了网盘文件、原始字段、下载转换方式和整日验证结果。服务器配置、费用，以及 GPU 与 Parquet 的选择分别保存在另外两份说明中。 [研究数据说明](implementation/data_requirements.md) · [服务器配置与费用](implementation/server_recommendation.md) · [GPU 与 Parquet 选择](implementation/gpu_and_parquet.md)
 
-真实数据来自 Tardis。盘口文件包含快照和增量更新。快照描述某个时刻的盘口，增量描述之后某个价位的数量变化，数量为零表示删除该价位。逐笔成交文件记录市场中已经发生的买卖成交。转换脚本将这些信息整理成框架能够读取的事件。
+M0的历史样本来自Tardis。盘口文件包含快照和增量更新。快照描述某个时刻的盘口，增量描述之后某个价位的数量变化，数量为零表示删除该价位。逐笔成交文件记录市场中已经发生的买卖成交。转换脚本将这些信息整理成框架能够读取的事件。
 
 阅读 `scripts/convert_tardis.py` 时，可以先看 `convert` 的整体顺序，再进入 `append_source` 和 `write_routed_shards`。前者读取原始 CSV 记录，检查价格和数量步长，处理快照与更新。后者整理两侧的时间顺序，并把事件写成多个 NPZ 文件。NPZ 是保存数组的压缩文件，拆成多个分片方便框架逐批读取。旁边的 `manifest.json` 是数据清单，记录分片位置、事件数量和检查结果。 [数据转换脚本](../scripts/convert_tardis.py)
 
@@ -48,9 +48,11 @@
 
 有了真实数据后，`config/replay_btcusdt.yaml` 将 `source` 指向数据清单。程序从文件建立读取器，之后仍然进入前面读过的 `replay_reader`。可以把真实行情和合成行情理解成同一条回放流程的两种输入。更多接口名称和时间处理细节集中在引擎笔记中。 [真实行情配置](../config/replay_btcusdt.yaml) · [引擎接口与事件流程](implementation/engine_notes.md)
 
+当前探索性研究使用`research/mm_research/`。先从`data/standard.py`看官方成交与25档快照的标准化，再从`features/base.py`、`snapshot.py`、`trades.py`看100ms对齐。随后查看`features/transform.py`的分组定义、`targets/midprice.py`的未来标签，以及`data/dataset.py`的增量生产和按组读取。 [研究包指南](implementation/research_package.md)
+
 ## 五、第二遍阅读，跟着一笔委托理解做市
 
-如果当前重点是因子研究，可以先转到 M2-A。它复用前面的行情回放，在固定 100ms 网格输出盘口与基础统计，随后由 Python 生成研究特征和未来 1s 标签。先阅读数据集指南，再从 `extract_research` 跟到 `ResearchSampler`，最后阅读 Polars 的表构造过程。 [M2-A 数据集指南](implementation/m2_a_dataset.md)
+如果当前重点是因子研究，可以先转到M2-A。当前离线入口读取标准Parquet，在Features内部建立100ms网格，生成分组特征和独立多周期标签。先读数据集指南，再从`build_features_targets.py`进入`run_dataset_production()`。C++事件OFI路径可从`extract_research`跟到`ResearchSampler`。 [M2-A 数据集指南](implementation/m2_a_dataset.md)
 
 先打开 `src/apps/baseline_mm.cpp`，它读取策略配置后调用 `run_baseline`。再对照 `config/baseline_mm.yaml` 阅读 `TradingConfig`，认识策略使用的参数。默认价格步长 `tick_size` 为 0.1 USDT，表示一 tick 对应 0.1 USDT。报价半宽 `half_width_ticks` 为 20，表示买价和卖价各距离中间价约 2 USDT。每笔订单为 0.001 BTC，最大净持仓绝对值为 0.01 BTC。 [做市入口](../src/apps/baseline_mm.cpp) · [做市配置](../config/baseline_mm.yaml) · [参数定义](../src/mm/trade_recorder.hpp)
 
@@ -101,3 +103,13 @@
 如果想理解“挂在同一价格的订单，为什么有的先成交、有的后成交”，再读 `models/queue.hpp`。如果想理解成交后仓位、现金流和费用如何变化，再读 `backtest/state.hpp`。每次带着项目中已经遇到的一个问题进入框架，可以逐步把策略调用、框架处理和输出结果连起来。具体源码位置和接口索引见引擎笔记。 [引擎源码阅读索引](implementation/engine_notes.md)
 
 完整阅读可以分成三轮。第一轮跟随合成行情，读懂盘口和两个时间。第二轮跟随一笔委托，读懂报价、成交、撤单等待和库存变化。第三轮从成交记录重算收益，再比较单日实验。当前实验采用配置中的费率和延迟假设；评估完整的合约账户收益时，还需要结合资金费率、保证金和强平规则。相关参数与历史交易规则的获取情况记录在现有项目文档中。 [实验参数](../config/baseline_mm.yaml) · [历史合约规则获取情况](reports/m0_2025-02-01/report.md#未取得的合约元数据)
+
+## 当前研究数据入口
+
+Data使用`config/data_standardize_30d.yaml`，入口为`scripts/build_standard_data.py`。Features/Targets使用`config/features_targets_30d.yaml`，入口为`scripts/build_features_targets.py`。
+
+标准文件保存到`workspace/data/standard/market_v2/{snapshots,trades}/YYYY-MM-DD.parquet`。base与衍生组共同写入`features/market_groups_v2/YYYY-MM-DD.parquet`，标签位于`labels/market_mid_groups_v2/horizon=周期/YYYY-MM-DD.parquet`。
+
+`features/transform.py`注册base、book、trades、returns四组。当前可见时间为交易所时间加20ms，各组分别管理有效性。研究读取使用`load_samples()`或`load_xy()`，默认选择16个衍生特征。
+
+完整命令见 [研究包指南](implementation/research_package.md)。历史报告按对应的数据版本、时钟和质量规则阅读。

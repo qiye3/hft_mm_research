@@ -4,7 +4,7 @@
 #include <exception>
 #include <iostream>
 
-// 在 Release 构建中按指定配置回放，输出吞吐、局部耗时分位数和内存高水位。
+// 【非核心】在 Release 构建中按指定配置回放，输出吞吐、局部耗时分位数和内存高水位。
 int main(int argc, char** argv) {
     /** argv 必须提供一份回放配置，报告写到其中的 output，成功返回 0。
      * 调试构建或运行异常返回 1，防止把不同编译优化条件的结果混作同一基准。

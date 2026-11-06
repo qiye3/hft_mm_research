@@ -3,20 +3,24 @@
 
 #include <cmath>
 #include <iostream>
+#include <fstream>
 #include <stdexcept>
 #include <unistd.h>
 
 namespace {
 
+// 【非核心】在测试条件不成立时用指定信息终止当前用例。
 void require(bool condition, const char* message) {
     if (!condition) {
         throw std::runtime_error(message);
     }
 }
+// 【非核心】按测试容差比较库存、费用与收益的浮点结果。
 void near(double actual, double expected, const char* message) {
     require(std::abs(actual - expected) < 1e-8, message);
 }
 
+// 【非核心】构造具有独立输出目录与固定延迟的做市测试配置。
 mm::TradingConfig config_for(const std::filesystem::path& root, const std::string& name) {
     mm::TradingConfig config;
     config.name = name;
@@ -36,11 +40,13 @@ mm::TradingConfig config_for(const std::filesystem::path& root, const std::strin
     return config;
 }
 
+// 【非核心】构造同时路由到交易所和本地的确定性测试事件。
 hbt::Event event(std::uint64_t kind, std::int64_t timestamp, double price, double quantity) {
     return {kind | hbt::EXCH_EVENT | hbt::LOCAL_EVENT, timestamp, timestamp + 50,
             price, quantity, 0, 0, 0};
 }
 
+// 【非核心】构造买一99、卖一101的初始盘口夹具。
 std::vector<hbt::Event> book() {
     return {
         event(hbt::BUY_EVENT | hbt::DEPTH_EVENT, 1000, 99, 1),
@@ -48,10 +54,36 @@ std::vector<hbt::Event> book() {
     };
 }
 
+// 【非核心】追加尾部行情，使测试引擎能够推进到停止报价之后。
 void add_end(std::vector<hbt::Event>& events) {
     events.push_back(event(hbt::SELL_EVENT | hbt::DEPTH_EVENT, 5000, 101, 1));
 }
 
+// 【非核心】检查做市配置缺少必填参数时明确失败。
+void test_required_trading_config(const std::filesystem::path& root) {
+    std::filesystem::create_directories(root);
+    const auto filename = root / "incomplete.yaml";
+    std::ofstream(filename) << "source: memory\noutput: unused\n";
+    bool rejected = false;
+    try {
+        (void)mm::load_trading_config(filename);
+    } catch (const std::runtime_error& error) {
+        rejected = std::string(error.what()).find("missing required config field") != std::string::npos;
+    }
+    require(rejected, "missing trading parameters must not use defaults");
+    auto config = config_for(root, "invalid_quantity");
+    config.order_quantity = 0;
+    rejected = false;
+    try {
+        (void)mm::run_baseline(config, hbt::EventReaderCache::from_chunks({book()}, 2));
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    require(rejected, "replay entry must validate directly constructed configuration");
+    require(!std::filesystem::exists(config.output), "invalid configuration must fail before creating outputs");
+}
+
+// 【非核心】核对报价Tick取整、完整买卖回合及负费率返佣。
 void test_quotes_and_round_trip(const std::filesystem::path& root) {
     const auto quotes = mm::fixed_quotes(599999, 600002, 20);
     require(quotes.bid == 599980 && quotes.ask == 600021, "outward tick rounding");
@@ -73,6 +105,7 @@ void test_quotes_and_round_trip(const std::filesystem::path& root) {
     near(result.net_pnl, 2.02, "negative maker fee rebate");
 }
 
+// 【非核心】核对部分成交新增量，以及严格和宽松仓位上限的实际约束。
 void test_partial_fills_and_limits(const std::filesystem::path& root) {
     auto config = config_for(root, "partial");
     config.order_quantity = 3;
@@ -101,6 +134,7 @@ void test_partial_fills_and_limits(const std::filesystem::path& root) {
     require(loose.fills == 3, "loose safety cap");
 }
 
+// 【非核心】检查撤单在途仍预留库存，确认到达后才允许补单。
 void test_cancel_in_flight(const std::filesystem::path& root) {
     auto config = config_for(root, "pending_cancel");
     config.max_position = 1;
@@ -124,6 +158,7 @@ void test_cancel_in_flight(const std::filesystem::path& root) {
     require(recorder.summary().submissions == 4, "replace after cancel ack");
 }
 
+// 【非核心】检查携带成交状态的异常撤单拒绝回报在重复记账前中止。
 void test_partial_cancel_race_regression(const std::filesystem::path& root) {
     auto config = config_for(root, "partial_cancel_race");
     config.entry_latency_ns = 200;
@@ -142,28 +177,20 @@ void test_partial_cancel_race_regression(const std::filesystem::path& root) {
     near(backtest.position(0), 1, "partial before cancellation");
     backtest.cancel(0, 1);
     recorder.action("cancel_request", backtest.orders(0).at(1), backtest.current_timestamp());
-    backtest.elapse(300);
-    near(backtest.position(0), 3, "late cancel rejection must not duplicate old partial fill");
-    require(recorder.summary().fills == 2 && recorder.summary().normalized_rejections == 1,
-            "two real fills and one non-economic rejected cancel");
+    bool rejected = false;
+    try {
+        backtest.elapse(300);
+    } catch (const std::runtime_error& error) {
+        rejected = std::string(error.what()).find("rejected response carries a fill status") != std::string::npos;
+    }
+    require(rejected, "malformed cancel rejection must stop replay");
+    near(backtest.position(0), 3, "rejection must stop before duplicate fill accounting");
+    require(recorder.summary().fills == 2, "only real fills are recorded before failure");
     recorder.reconcile(backtest.state_values(0));
 
-    // 直接复现固定上游版本的缺陷：没有任何真实成交也会计入旧拒绝 payload。
-    hbt::OrderBus<> requests;
-    hbt::OrderBus<> responses;
-    hbt::Order<> stale{42, 99, 1, 3, hbt::Side::Buy, hbt::OrdType::Limit, hbt::TimeInForce::GTX};
-    stale.status = hbt::Status::PartiallyFilled;
-    stale.req = hbt::Status::Rejected;
-    stale.exec_qty = 1;
-    stale.exec_price_tick = 99;
-    responses.append(stale, 300);
-    mm::detail::Local stock_local{mm::detail::Depth{1, 1},
-        hbt::State<mm::detail::Asset, mm::detail::Fees>{mm::detail::Asset{1}, mm::detail::Fees{hbt::CommonFees{0, 0}}},
-        0, hbt::LocalToExch<mm::detail::Latency>{requests, responses, mm::detail::Latency{100, 50}}};
-    stock_local.process_recv_order(300, std::nullopt);
-    near(stock_local.position(), 1, "pinned upstream stale reject reproduction");
 }
 
+// 【非核心】核对GTX穿价失效，以及同一回报时刻双边成交的逐笔记账。
 void test_post_only_and_same_timestamp_fills(const std::filesystem::path& root) {
     auto config = config_for(root, "post_only");
     auto events = book();
@@ -187,9 +214,11 @@ void test_post_only_and_same_timestamp_fills(const std::filesystem::path& root) 
 
 } // namespace
 
+// 【非核心】运行做市测试用例，成功后清理本次生成的临时实验目录。
 int main() {
     const auto root = std::filesystem::temp_directory_path() / ("hft_mm_m1_tests_" + std::to_string(getpid()));
     try {
+        test_required_trading_config(root);
         test_quotes_and_round_trip(root);
         test_partial_fills_and_limits(root);
         test_cancel_in_flight(root);

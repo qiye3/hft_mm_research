@@ -6,7 +6,7 @@ from pathlib import Path
 from mm_research.data.standard import run_standard_production
 
 
-# 配置仅属于Data阶段，原始文件需先准备到对应位置。
+# 【非核心】读取Data阶段的命令行配置，将生产任务交给标准化模块。
 def main() -> None:
     """输入Data配置路径，生成或复用对应版本的标准盘口和逐笔文件。"""
     parser = argparse.ArgumentParser(description=__doc__)

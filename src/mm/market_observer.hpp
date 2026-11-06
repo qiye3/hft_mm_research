@@ -49,17 +49,17 @@ struct EventStatistics {
 // 从原生订单簿读取状态，逐条统计本地行情，并按配置提取深度快照。
 class MarketObserver {
 public:
-    // 以 5 或 10 档和非负纳秒间隔初始化观察状态。
+    // 【核心逻辑31】以 5 或 10 档和非负纳秒间隔初始化观察状态。
     explicit MarketObserver(std::size_t depth_levels, std::int64_t snapshot_interval_ns);
-    // 接收已经应用到 depth 的本地事件，累计计数并按间隔刷新快照。
+    // 【核心逻辑43】接收已经应用到 depth 的本地事件，累计计数并按间隔刷新快照。
     void on_event(const hbt::Event& event, const hbt::HashMapMarketDepth& depth);
-    // 主动保存当前盘口，回放结束时用它补齐最后一个观察点。
+    // 【核心逻辑38】主动保存当前盘口，回放结束时用它补齐最后一个观察点。
     void capture(const hbt::Event& event, const hbt::HashMapMarketDepth& depth);
-    // 取得统计的只读引用，首尾时间表示本地接收顺序中的事件边界。
+    // 【非核心】取得统计的只读引用，首尾时间表示本地接收顺序中的事件边界。
     [[nodiscard]] const EventStatistics& statistics() const noexcept;
-    // 取得最新 Top-N 视图，只有 count 指定的数组前缀有效。
+    // 【非核心】取得最新 Top-N 视图，只有 count 指定的数组前缀有效。
     [[nodiscard]] const BookSnapshot& latest_snapshot() const noexcept;
-    // 取得当前观察档数，返回值为构造时校验过的 5 或 10。
+    // 【非核心】取得当前观察档数，返回值为构造时校验过的 5 或 10。
     [[nodiscard]] std::size_t depth_levels() const noexcept;
 
 private:

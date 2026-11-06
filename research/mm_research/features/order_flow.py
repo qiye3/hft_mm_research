@@ -11,7 +11,7 @@ from mm_research.features.expressions import rolling_sum_in_segment
 ORDER_FLOW_FEATURE_COLUMNS = ["ofi_100ms", "ofi_1s", "ofi_5s"]
 
 
-# 累计逐事件 OFI，滚动窗口不跨越质量区段。
+# 【核心逻辑66】将逐事件OFI累计为100ms、1秒和5秒订单流特征。
 def add_order_flow_features(table: pl.DataFrame) -> pl.DataFrame:
     """输入有 ofi_bbo 与 segment_id 的连续网格，返回附加三个 OFI 窗口的表。
 

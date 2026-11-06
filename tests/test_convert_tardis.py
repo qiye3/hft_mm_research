@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import zstandard
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("convert_tardis", ROOT / "scripts/convert_tardis.py")
@@ -19,6 +20,7 @@ PROBE = Path(sys.argv[1]).resolve()
 
 
 class ConversionTests(unittest.TestCase):
+    # 【非核心】核对Zstandard和gzip原始文件转换后的事件内容一致。
     def test_zstandard_sources_match_gzip(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
@@ -52,6 +54,7 @@ class ConversionTests(unittest.TestCase):
                 with np.load(workspace / "zstandard/events-00000.npz") as actual:
                     np.testing.assert_array_equal(actual["data"], expected["data"])
 
+    # 【非核心】检查双时钟分片路由与快照清空后的原生回放结果。
     def test_split_clock_shards_and_snapshot_reset(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
@@ -81,7 +84,11 @@ class ConversionTests(unittest.TestCase):
                 self.assertTrue(np.all(routed[field][1:] >= routed[field][:-1]))
             config = workspace / "replay.yaml"
             result_file = workspace / "result.json"
-            config.write_text(f"source: {destination / 'manifest.json'}\noutput: {result_file}\ndepth_levels: 10\n")
+            config.write_text(yaml.safe_dump({
+                "source": str(destination / "manifest.json"), "output": str(result_file),
+                "date": "2025-02-01", "symbol": "BTCUSDT", "tick_size": 0.1, "lot_size": 0.001,
+                "depth_levels": 10, "snapshot_interval_ns": 100_000_000, "latency_sample_every": 0,
+            }))
             subprocess.run([str(PROBE), str(config)], check=True)
             result = json.loads(result_file.read_text())
             for name in ["normalized_rows", "depth_updates", "snapshot_levels", "clear_events", "trade_events"]:
@@ -92,6 +99,49 @@ class ConversionTests(unittest.TestCase):
             self.assertEqual(result["final_asks"], [[102, 4]])
             self.assertEqual(result["shards_released"], len(manifest["shards"]))
 
+    # 【非核心】检查未知压缩格式与非正行情延迟会明确报错。
+    def test_unknown_compression_and_nonpositive_latency_fail(self):
+        with self.assertRaises(ValueError):
+            CONVERTER.open_market_csv(Path("unknown.csv.zip"))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            book = root / "book.csv.gz"
+            trades = root / "trades.csv.gz"
+            with gzip.open(book, "wt") as stream:
+                stream.write("exchange,symbol,timestamp,local_timestamp,is_snapshot,side,price,amount\n"
+                             "binance-futures,BTCUSDT,100,90,true,bid,99.9,1\n"
+                             "binance-futures,BTCUSDT,100,90,true,ask,100.1,1\n")
+            with gzip.open(trades, "wt") as stream:
+                stream.write("exchange,symbol,timestamp,local_timestamp,id,side,price,amount\n"
+                             "binance-futures,BTCUSDT,110,120,1,buy,100.1,1\n")
+            with self.assertRaisesRegex(ValueError, "不会自动平移"):
+                CONVERTER.convert(book, trades, "2026-07-12", root / "output", full_day=False)
+            self.assertFalse(list((root / "output").glob("*.npz")))
+
+    # 【非核心】检查回放配置拒绝缺失项、重复键及未完整解析的数值。
+    def test_replay_config_requires_all_fields_and_exact_numbers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = {
+                "source": "synthetic", "date": "synthetic", "symbol": "BTCUSDT",
+                "tick_size": 0.1, "lot_size": 0.001, "depth_levels": 10,
+                "snapshot_interval_ns": 100_000_000, "latency_sample_every": 0,
+                "output": str(root / "report.json"),
+            }
+            missing = dict(config)
+            del missing["tick_size"]
+            malformed = {**config, "snapshot_interval_ns": "100ms"}
+            negative = {**config, "depth_levels": -1}
+            cases = [yaml.safe_dump(missing), yaml.safe_dump(malformed), yaml.safe_dump(negative),
+                     yaml.safe_dump(config) + "tick_size: 1\n"]
+            filename = root / "replay.yaml"
+            for content in cases:
+                filename.write_text(content)
+                result = subprocess.run([str(PROBE), str(filename)], capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("config field", result.stderr)
+
+    # 【非核心】检查非法价格网格与未覆盖完整交易日的源数据被拒绝。
     def test_data_boundaries_reject_invalid_inputs(self):
         with self.assertRaises(ValueError):
             CONVERTER.validate_grid(100.05, 1, 0.1, 0.001)

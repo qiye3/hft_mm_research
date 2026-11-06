@@ -14,17 +14,18 @@ import zstandard
 
 from mm_research.data.quality import build_record_flags
 
+# 一天的纳秒数 = 24 * 60 * 60 * 1000 * 1000 * 1000 = 86_400_000_000_000
 DAY_NS = 86_400_000_000_000
 
-TRADE_KEYS = ["exchange", "symbol", "trade_id"]
-TRADE_VALUES = ["exchange_timestamp_ns", "price", "quantity", "side", "record_kind"]
+TRADE_KEYS = ["exchange", "symbol", "trade_id"] # 逐笔行情的key列
+TRADE_VALUES = ["exchange_timestamp_ns", "price", "quantity", "side", "record_kind"] # 逐笔行情的value列
 TRADE_COLUMNS = [
-    *TRADE_KEYS, "exchange_timestamp_ns", "price", "quantity", "side", "record_kind",
-    "source", "source_row", "quality_flags",
+    *TRADE_KEYS, *TRADE_VALUES,
+    "source", "source_row", "quality_flags", # 逐笔行情的全部列
 ]
 
 
-# 将快照全部二十五档映射成统一字段，保留源行序供检查和追溯。
+# 【核心逻辑5】读取原始快照，将完整25档及时间字段转换为标准结构。
 def scan_snapshot_source(filename: Path, source: str) -> pl.LazyFrame:
     """输入快照 CSV 和来源标识，返回流式二十五档表。
 
@@ -32,6 +33,7 @@ def scan_snapshot_source(filename: Path, source: str) -> pl.LazyFrame:
     source_row 从第一条数据记录的1开始计数，同时间戳的连续状态保持源顺序。
     """
     schema = {"timestamp": pl.Int64, "local_timestamp": pl.Int64}
+
     levels = []
     for level in range(25):
         for raw_side, side in [("bids", "bid"), ("asks", "ask")]:
@@ -39,15 +41,15 @@ def scan_snapshot_source(filename: Path, source: str) -> pl.LazyFrame:
                 raw = f"{raw_side}[{level}].{raw_field}"
                 schema[raw] = pl.Float64
                 levels.append(pl.col(raw).alias(f"{side}_{field}_{level + 1}"))
-    return pl.scan_csv(filename, schema_overrides=schema).with_row_index("source_row", offset=1).select(
-        "exchange", "symbol",
-        (pl.col("timestamp") * 1000).alias("exchange_timestamp_ns"),
-        (pl.col("local_timestamp") * 1000).alias("received_timestamp_ns"),
-        *levels, pl.lit(source).cast(pl.Categorical).alias("source"), "source_row",
-    )
 
+    return pl.scan_csv(filename, schema_overrides=schema).with_row_index("source_row", offset=1).select( # 读取CSV文件，并添加源行号
+        "exchange", "symbol", # 交易所和符号
+        (pl.col("timestamp") * 1000).alias("exchange_timestamp_ns"), # 交易所时间，纳秒
+        (pl.col("local_timestamp") * 1000).alias("received_timestamp_ns"), # 原始接收时间，纳秒
+        *levels, pl.lit(source).cast(pl.Categorical).alias("source"), "source_row", # 盘口价格和数量，来源，源行号
+    ) # 返回流式二十五档表
 
-# 直接读取官方日度成交档案，统一时间、方向和数量并保留字段异常。
+# 【核心逻辑7】读取官方成交ZIP，统一时间、价量和主动方向字段。
 def load_official_trades(filename: Path, source: str, tick_size: float, lot_size: float) -> pl.DataFrame:
     """输入 Binance USD-M 官方成交 ZIP、来源和价格数量步长，返回标准逐笔。
 
@@ -63,6 +65,8 @@ def load_official_trades(filename: Path, source: str, tick_size: float, lot_size
                 "id": pl.Int64, "time": pl.Int64, "price": pl.Float64,
                 "qty": pl.Float64, "is_buyer_maker": pl.Boolean,
             })
+
+    # 转换为标准逐笔行情
     table = table.with_row_index("source_row", offset=1).select(
         pl.lit("binance-futures").alias("exchange"), pl.lit("BTCUSDT").alias("symbol"),
         pl.col("id").alias("trade_id"),
@@ -73,43 +77,49 @@ def load_official_trades(filename: Path, source: str, tick_size: float, lot_size
         pl.lit("MARKET").alias("record_kind"),
         pl.lit(source).cast(pl.Categorical).alias("source"), "source_row",
     )
+
     rules = {
-        "missing_trade_id": pl.col("trade_id").is_null(),
-        "missing_exchange_time": pl.col("exchange_timestamp_ns").is_null(),
-        "invalid_price": pl.col("price").is_null() | ~pl.col("price").is_finite() | (pl.col("price") <= 0),
-        "invalid_quantity": pl.col("quantity").is_null() | ~pl.col("quantity").is_finite() | (pl.col("quantity") <= 0),
-        "invalid_side": pl.col("side").is_null() | ~pl.col("side").is_in(["buy", "sell"]),
-        "off_tick": ((pl.col("price") / tick_size).round() - pl.col("price") / tick_size).abs() > 1e-6,
-        "off_lot": ((pl.col("quantity") / lot_size).round() - pl.col("quantity") / lot_size).abs() > 1e-6,
-        "exchange_time_backwards": pl.col("exchange_timestamp_ns").diff() < 0,
+        "missing_trade_id": pl.col("trade_id").is_null(), # 交易ID缺失
+        "missing_exchange_time": pl.col("exchange_timestamp_ns").is_null(), # 交易所时间缺失
+        "invalid_price": pl.col("price").is_null() | ~pl.col("price").is_finite() | (pl.col("price") <= 0), # 价格无效
+        "invalid_quantity": pl.col("quantity").is_null() | ~pl.col("quantity").is_finite() | (pl.col("quantity") <= 0), # 数量无效
+        "invalid_side": pl.col("side").is_null() | ~pl.col("side").is_in(["buy", "sell"]), # 方向无效
+        "off_tick": ((pl.col("price") / tick_size).round() - pl.col("price") / tick_size).abs() > 1e-6, # 价格步长无效
+        "off_lot": ((pl.col("quantity") / lot_size).round() - pl.col("quantity") / lot_size).abs() > 1e-6, # 数量步长无效
+        "exchange_time_backwards": pl.col("exchange_timestamp_ns").diff() < 0, # 交易所时间倒退
     }
+
     return table.with_columns(build_record_flags(rules).alias("quality_flags")).select(TRADE_COLUMNS)
 
 
-# 按源文件压缩格式建立文本流，供盘口与成交流共用。
+# 【非核心】按声明的压缩格式打开CSV文本流，拒绝未知后缀。
 def open_market_csv(filename: Path):
     """打开 gzip 或 Zstandard 压缩的行情 CSV。
 
-    filename 为既有源文件，.zst/.zstd 使用 Zstandard，其余延续原有 gzip 读取方式。
+    filename只接受明确声明的.gz、.zst或.zstd后缀。
     返回可用于 with 的文本流，换行交给 csv.reader 处理，关闭时同时释放底层文件。
     两种压缩格式共用后续字段、时间和盘口检查。
     """
     if filename.suffix in {".zst", ".zstd"}:
         return zstandard.open(filename, "rt", encoding="utf-8", newline="")
-    return gzip.open(filename, "rt", newline="")
+    if filename.suffix == ".gz":
+        return gzip.open(filename, "rt", newline="")
+    raise ValueError(f"不支持的压缩行情格式 {filename.name}")
 
 
-# 读取当前日和已有前日标准表，接回固定延迟后跨午夜到达的记录。
-def scan_standard_history(folder: Path, kind: str) -> pl.LazyFrame:
-    """输入标准日期目录及表类型，返回按交易所时间和源行号排序的行情。
+# 【核心逻辑13】合并本日与已有前日标准行情，按事件时间稳定排序。
+def scan_standard_history(folder: Path, kind: str, date: str) -> pl.LazyFrame:
+    """输入标准版本目录、表类型与日期，返回按交易所时间和源行号排序的行情。
 
     首个已下载日期的前日可能不可用，基础表会明确屏蔽无法确认的起始成交区间。
     """
-    date = dt.date.fromisoformat(folder.name.removeprefix("date="))
-    previous = folder.parent / f"date={date - dt.timedelta(days=1)}" / f"{kind}.parquet"
-    filenames = [folder / f"{kind}.parquet"]
+    calendar = dt.date.fromisoformat(date)
+    previous = folder / kind / f"{calendar - dt.timedelta(days=1)}.parquet"
+    filenames = [folder / kind / f"{date}.parquet"]
+
     if previous.exists():
-        filenames.insert(0, previous)
+        filenames.insert(0, previous) # 将前一日标准行情插入到列表开头
+
     return pl.scan_parquet(filenames).with_row_index("_history_row").sort(
-        ["exchange_timestamp_ns", "_history_row"], maintain_order=True,
+        ["exchange_timestamp_ns", "_history_row"], maintain_order=True, # 按交易所时间和源行号排序
     ).drop("_history_row")

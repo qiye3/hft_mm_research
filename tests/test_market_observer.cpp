@@ -6,16 +6,19 @@
 
 namespace {
 
+// 【非核心】在测试条件不成立时用指定信息终止当前用例。
 void require(bool condition, const char* message) {
     if (!condition) {
         throw std::runtime_error(message);
     }
 }
 
+// 【非核心】按测试容差检查盘口统计的浮点结果。
 void require_near(double actual, double expected, const char* message) {
     require(std::abs(actual - expected) < 1e-9, message);
 }
 
+// 【非核心】核对上游合成行情的事件计数、最优价量和双时间戳边界。
 void test_upstream_synthetic_feed() {
     auto events = mm::synthetic_events();
     events.resize(4);
@@ -30,6 +33,7 @@ void test_upstream_synthetic_feed() {
     require(result.events.last_local_timestamp == 4'010'000, "last local timestamp");
 }
 
+// 【非核心】检查五档和十档观察配置，以及删除买一后的深档晋升。
 void test_depth_promotion_and_configuration() {
     for (const auto depth_levels : {5U, 10U}) {
         mm::ReplayConfig config;
@@ -58,6 +62,7 @@ void test_depth_promotion_and_configuration() {
     require(rejected, "invalid depth must fail");
 }
 
+// 【非核心】检查快照替换旧盘口与双时钟跨分片回放结果。
 void test_snapshot_clear_and_split_clocks() {
     const auto both = hbt::EXCH_EVENT | hbt::LOCAL_EVENT;
     const std::vector<hbt::Event> events{
@@ -86,6 +91,7 @@ void test_snapshot_clear_and_split_clocks() {
 
 } // namespace
 
+// 【非核心】顺序运行观察器用例，并把断言失败转换为进程失败状态。
 int main() {
     try {
         test_upstream_synthetic_feed();

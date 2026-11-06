@@ -5,8 +5,6 @@ run_experiments 将同一日行情交给 C++ baseline_mm 逐组运行，audit_or
 analyze_run 在核对后计算本地成交回报时刻起的一秒 markout，聚合 JSON 保存在实验输出目录，
 write_report 生成中文报告。输入为策略配置、数据清单及实验 CSV，输出为核对后的七组机制实验结果。
 """
-from __future__ import annotations
-
 import argparse
 import csv
 import json
@@ -33,7 +31,7 @@ CASES = {
 
 
 # ==================== 逐笔订单与权益账本核对 ====================
-# 允许浮点累加误差，但对非有限值或超过容差的账本差异立即报错。
+# 【非核心】允许浮点累加误差，但对非有限值或超过容差的账本差异立即报错。
 def close(actual: float, expected: float, name: str) -> None:
     """核对一个独立重算字段与 C++ 导出值。
 
@@ -45,7 +43,7 @@ def close(actual: float, expected: float, name: str) -> None:
         raise ValueError(f"{name} 不一致：{actual} != {expected}")
 
 
-# 从订单流水重算请求和回报分类，建立供成交检查使用的原始委托量索引。
+# 【非核心】从订单流水重算请求和回报分类，建立供成交检查使用的原始委托量索引。
 def audit_orders(directory: Path, summary: dict) -> dict[int, float]:
     """检查一组实验的 orders.csv 与汇总计数相符。
 
@@ -55,7 +53,7 @@ def audit_orders(directory: Path, summary: dict) -> dict[int, float]:
         返回订单 ID 到提交数量的映射，重复 ID 或分类数量不符时抛出 ValueError。
     用途
         在成交核对前确定每个订单的原始数量，并区分拒绝请求与有经济变化的成交回报。
-        兼容分支保存的是原始载荷，因此旧 Partial/Filled 拒绝也可从流水中再次识别。
+        拒绝回报携带成交状态时直接报错，避免再次计入历史执行量。
     """
     submitted = {}
     counts = Counter()
@@ -71,7 +69,8 @@ def audit_orders(directory: Path, summary: dict) -> dict[int, float]:
             elif kind == "response":
                 if row["request"] == "rejected":
                     counts["rejected"] += 1
-                    counts["normalized_rejections"] += int(row["status"] in {"filled", "partial"})
+                    if row["status"] in {"filled", "partial"}:
+                        raise ValueError("拒绝回报携带成交状态，不能核算为有效回测")
                 elif row["status"] in {"canceled", "expired"}:
                     counts[row["status"]] += 1
                 elif row["status"] in {"filled", "partial"} and float(row["exec_quantity"]) > 0:
@@ -82,7 +81,6 @@ def audit_orders(directory: Path, summary: dict) -> dict[int, float]:
         ("cancellations", "canceled"),
         ("expired", "expired"),
         ("rejected", "rejected"),
-        ("normalized_rejections", "normalized_rejections"),
         ("fills", "fills"),
     ]:
         if counts[count_key] != summary[summary_key]:
@@ -90,7 +88,7 @@ def audit_orders(directory: Path, summary: dict) -> dict[int, float]:
     return submitted
 
 
-# 按逐笔成交重建平均成本账本，并检查累计成交量和每笔费用。
+# 【非核心】按逐笔成交重建平均成本账本，并检查累计成交量和每笔费用。
 def audit_fills(directory: Path, summary: dict, submitted: dict[int, float]) -> dict:
     """独立重算交易现金流、净仓位、费用与已实现收益。
 
@@ -176,7 +174,7 @@ def audit_fills(directory: Path, summary: dict, submitted: dict[int, float]) -> 
     }
 
 
-# 从权益观察点核对 PnL 分解、库存预留及累计金额回撤。
+# 【非核心】从权益观察点核对 PnL 分解、库存预留及累计金额回撤。
 def audit_equity(directory: Path, summary: dict) -> tuple[np.ndarray, np.ndarray]:
     """验收逐点权益并取得后续 markout 所需的本地中间价序列。
 
@@ -223,7 +221,7 @@ def audit_equity(directory: Path, summary: dict) -> tuple[np.ndarray, np.ndarray
 
 
 # ==================== 完整日验收与成交质量分析 ====================
-# 核对完整日的一组实验，再按成交量加权计算本地回报后一秒的收益标记。
+# 【核心逻辑63】核对完整日的一组实验，再按成交量加权计算本地回报后一秒的收益标记。
 def analyze_run(directory: Path, manifest: dict) -> dict:
     """为一组已完成的 C++ 回测补充独立核对和短期成交质量统计。
 
@@ -266,7 +264,7 @@ def analyze_run(directory: Path, manifest: dict) -> dict:
 
 
 # ==================== 实验编排与研究报告输出 ====================
-# 逐组生成独立配置、运行同一 C++ 策略入口，并在每组成功后保存核对结果。
+# 【核心逻辑45】逐组生成独立配置、运行同一 C++ 策略入口，并在每组成功后保存核对结果。
 def run_experiments(output_root: Path) -> list[dict]:
     """串行执行 CASES 中定义的七组单日机制实验。
 
@@ -302,7 +300,7 @@ def run_experiments(output_root: Path) -> list[dict]:
     return results
 
 
-# 将固定七组的核对结果排成对照表，并用实测数值解释三个机制实验。
+# 【非核心】将固定七组的核对结果排成对照表，并用实测数值解释三个机制实验。
 def write_report(results: list[dict], destination: Path) -> None:
     """保存可独立阅读的 M1 中文实验报告。
 
@@ -385,12 +383,12 @@ def write_report(results: list[dict], destination: Path) -> None:
         "",
         "原始逐笔文件保存在 workspace/results/m1/BTCUSDT_2025-02-01/<实验>/{orders.csv,fills.csv,equity.csv,summary.json}，不纳入 Git。完整聚合指标保存在实验输出根目录的 analysis.json，报告目录保存方法说明与结果解读。",
         "",
-        f"上游旧拒绝回报的兼容处理、假设范围与单元测试见 [M1 实现笔记]({notes_link})。没有修改第三方源码，未开发 Alpha 或机器学习。",
+        f"异常拒绝回报会中止回测，假设范围与单元测试见 [M1 实现笔记]({notes_link})。没有修改第三方源码，未开发 Alpha 或机器学习。",
     ])
     (destination / "report.md").write_text("\n".join(lines) + "\n")
 
 
-# 根据命令行选择新运行或读取已有实验，最后生成同一格式的报告。
+# 【非核心】根据命令行选择新运行或读取已有实验，最后生成同一格式的报告。
 def main() -> None:
     """提供实验编排与离线复核的命令行入口。
 

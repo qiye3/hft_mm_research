@@ -15,7 +15,7 @@ from mm_research.features.trade_events import build_trade_event_features
 class FeatureExampleTests(unittest.TestCase):
     """检查 Polars 模块示例的数据口径及共用数学运算。"""
 
-    # 盘口金额公式可手算，失效盘口不能输出可用特征。
+    # 【非核心】盘口金额公式可手算，失效盘口不能输出可用特征。
     def test_snapshot_notional_features(self):
         """输入两行相同盘口和不同质量标记，检查金额单位、失衡和空值。"""
         values = {"book_valid": [True, False]}
@@ -31,7 +31,7 @@ class FeatureExampleTests(unittest.TestCase):
         for column in SNAPSHOT_EXAMPLE_COLUMNS:
             self.assertIsNone(table[column][1])
 
-    # 净额、笔数和跳号后的重预热都只使用采样时刻已收到的成交。
+    # 【非核心】净额、笔数和异常区间后的窗口恢复都只使用采样时刻已收到的成交。
     def test_trade_windows_gaps_and_causality(self):
         """输入已分桶成交和 100ms 网格，核对窗口右端点、缺口和追加未来数据。"""
         grid = pl.DataFrame({"timestamp_ns": [index * 100_000_000 for index in range(150)]})
@@ -40,23 +40,23 @@ class FeatureExampleTests(unittest.TestCase):
             "trade_count": [2, 1, 1],
             "buy_notional": [20.0, 0.0, 10.0],
             "sell_notional": [0.0, 5.0, 0.0],
-            "trade_sequence_gap": [False, False, True],
+            "trade_valid": [True, True, False],
         })
         table = build_trade_event_features(bins, grid)
         self.assertEqual(table["trade_net_notional_1s"][52], 15.0)
         self.assertEqual(table["trade_intensity_1s"][52], 3.0)
         self.assertEqual(table["trade_net_notional_100ms"][52], -5.0)
         self.assertEqual(table["trade_intensity_1s"][62], 0.0)
-        self.assertFalse(table["trade_feature_valid"][49])
-        self.assertTrue(table["trade_feature_valid"][50])
+        self.assertFalse(table["trade_feature_valid"][9])
+        self.assertTrue(table["trade_feature_valid"][10])
         self.assertFalse(table["trade_feature_valid"][70])
-        self.assertFalse(table["trade_feature_valid"][119])
-        self.assertTrue(table["trade_feature_valid"][120])
+        self.assertFalse(table["trade_feature_valid"][79])
+        self.assertTrue(table["trade_feature_valid"][80])
         self.assertIsNone(table["trade_net_notional_1s"][70])
         prefix = build_trade_event_features(bins.head(2), grid.head(60))
         assert_frame_equal(prefix, table.head(60), check_exact=True)
 
-    # 公共运算区分未知值与零成交，整数窗口不跨质量区段。
+    # 【非核心】公共运算区分未知值与零成交，整数窗口不跨质量区段。
     def test_shared_expression_boundaries(self):
         """输入零量、缺失量及两个区段，检查空窗约定与窗口重新预热。"""
         table = pl.DataFrame({

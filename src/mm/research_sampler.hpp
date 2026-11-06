@@ -10,17 +10,20 @@ namespace mm {
 // 每个网格输出截至该时刻的盘口，以及左开右闭区间内的事件累计量。
 class ResearchSampler final : public ReplayEventSink {
 public:
-    // 建立 [start, end) 的固定网格，max_book_age 限制允许沿用旧盘口的时长。
+    // 【核心逻辑30】建立 [start, end) 的固定网格，max_book_age 限制允许沿用旧盘口的时长。
     ResearchSampler(const std::filesystem::path& output, std::int64_t start, std::int64_t end,
                     std::int64_t interval, std::int64_t max_book_age, std::size_t depth_levels);
+    // 【核心逻辑36】用事件应用前的盘口补齐严格早于当前事件的网格点。
     void before_event(const hbt::Event& event, const hbt::HashMapMarketDepth& depth) override;
+    // 【核心逻辑40】用事件应用后的盘口更新OFI、主动成交与连续区段。
     void after_event(const hbt::Event& event, const hbt::HashMapMarketDepth& depth) override;
+    // 【核心逻辑44】补齐回放结束后的剩余网格，并标记超出源流覆盖的样本。
     void finish(const hbt::HashMapMarketDepth& depth) override;
 
 private:
-    // 写出一个网格点，并清零已输出区间的事件量。
+    // 【核心逻辑37】写出一个网格点，并清零已输出区间的事件量。
     void write_sample(const hbt::HashMapMarketDepth& depth, bool covered);
-    // 切断快照、失效盘口或长时间缺口前后的流量累计关系。
+    // 【核心逻辑41】切断快照、失效盘口或长时间缺口前后的流量累计关系。
     void reset_segment(std::int64_t timestamp);
 
     std::ofstream output_;

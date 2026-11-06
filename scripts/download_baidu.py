@@ -1,6 +1,6 @@
 """按明确日期下载已授权网盘中的 BTCUSDT 文件，供数据质检与研究生产使用。
 
-download_day 保存同源盘口、成交或校验快照，download_file 支持分段续传。
+download_day 保存L2盘口或25档快照，download_file 支持分段续传。
 输入为日期、来源类别和私有凭证文件，输出为原始文件与不含凭证的来源清单。
 """
 
@@ -17,7 +17,7 @@ from urllib.request import Request, urlopen
 REMOTE_ROOT = "/STUDY/Binance-BTC-Futures"
 
 
-# 通过官方接口读取元数据，接口错误仅显示错误码。
+# 【非核心】通过官方接口读取元数据，接口错误仅显示错误码。
 def request_metadata(resource: str, parameters: dict, token: str) -> dict:
     """输入资源名、接口参数和私有 token，返回百度 JSON 响应。
 
@@ -35,7 +35,7 @@ def request_metadata(resource: str, parameters: dict, token: str) -> dict:
     return result
 
 
-# 将一个网盘文件下载到临时文件，完整后再替换正式文件名。
+# 【核心逻辑2】将一个网盘文件下载到临时文件，完整后再替换正式文件名。
 def download_file(entry: dict, destination: Path, token: str) -> dict:
     """输入网盘目录项和目标文件，返回来源、长度及下载耗时。
 
@@ -90,24 +90,17 @@ def download_file(entry: dict, destination: Path, token: str) -> dict:
     }
 
 
-# 按日期解析同源原始行情、25 档快照或 HFT Parquet 的具体文件。
+# 【核心逻辑1】按日期定位并下载L2增量盘口或25档快照文件。
 def download_day(date: str, kind: str, output_root: Path, token: str) -> None:
     """输入日期、来源类别、输出根目录和授权，写入该日期文件及 sources.json。
 
-    paired 下载盘口和成交，snapshot 下载独立校验快照，hft 下载两份 Parquet。
+    book下载L2增量，snapshot下载25档快照。普通成交由官方日档提供。
     文件名明确区分来源，避免网盘中的同名文件互相覆盖。
     """
     calendar_path = date.replace("-", "/")
     sources = {
-        "paired": [
-            (f"L2增量 2020-2026/BTCUSDT/{calendar_path}", "BTCUSDT.csv.zst", "book.csv.zst"),
-            (f"BTCUSDT/{date}", "BTCUSDT.csv.zst", "trades.csv.zst"),
-        ],
+        "book": [(f"L2增量 2020-2026/BTCUSDT/{calendar_path}", "BTCUSDT.csv.zst", "book.csv.zst")],
         "snapshot": [(f"25-orderbook 2020-2026/BTCUSDT/{calendar_path}", "BTCUSDT.csv.zst", "snapshot25.csv.zst")],
-        "hft": [
-            ("HFT-8.1-9.30", f"BTCUSDT-orderbook-{date}.parquet", "orderbook.parquet"),
-            ("HFT-8.1-9.30", f"BTCUSDT-trades-{date}.parquet", "trades.parquet"),
-        ],
     }
     destination = output_root / f"baidu_{date}"
     records = []
@@ -123,7 +116,7 @@ def download_day(date: str, kind: str, output_root: Path, token: str) -> None:
     print(f"下载完成 {date} {kind}", flush=True)
 
 
-# 启动日期下载任务，账号凭证仅在当前进程内使用。
+# 【非核心】启动日期下载任务，账号凭证仅在当前进程内使用。
 def main() -> None:
     """读取日期列表、来源类别、并发上限及凭证文件，执行可恢复下载。
 
@@ -131,7 +124,7 @@ def main() -> None:
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dates", nargs="+", required=True)
-    parser.add_argument("--kind", choices=["paired", "snapshot", "hft"], default="paired")
+    parser.add_argument("--kind", choices=["book", "snapshot"], required=True)
     parser.add_argument("--output-root", type=Path, default=Path("workspace/data/raw"))
     parser.add_argument("--credential-file", type=Path, required=True)
     parser.add_argument("--jobs", type=int, default=1)

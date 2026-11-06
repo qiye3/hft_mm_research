@@ -7,11 +7,14 @@ import datetime as dt
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 import polars as pl
 from polars.testing import assert_frame_equal
 import zstandard
+
+from mm_research.config import load_pipeline_config
 
 from mm_research.data.sources import load_official_trades
 from mm_research.data.standard import build_standard_day, read_standard_metadata, run_standard_production
@@ -22,14 +25,14 @@ START_US = int(dt.datetime(2026, 7, 12, tzinfo=dt.timezone.utc).timestamp()) * 1
 
 
 # ==================== 确定性压缩源文件 ====================
-# 写出实际会被Polars读取的压缩CSV，保留测试给定的行顺序。
+# 【非核心】写出实际会被Polars读取的压缩CSV，保留测试给定的行顺序。
 def write_compressed_csv(filename: Path, table: pl.DataFrame) -> None:
     """输入文件位置与表，写出Zstandard CSV，供生产读取路径验收。"""
     filename.parent.mkdir(parents=True, exist_ok=True)
     filename.write_bytes(zstandard.ZstdCompressor().compress(table.write_csv().encode()))
 
 
-# 构造带完整二十五档且具有重复时点的原始快照。
+# 【非核心】构造带完整二十五档且具有重复时点的原始快照。
 def make_snapshots() -> pl.DataFrame:
     """返回四行源顺序快照，包含相同时刻、已知缺口、乱序和最深档缺失。"""
     values = {
@@ -45,7 +48,7 @@ def make_snapshots() -> pl.DataFrame:
     return pl.DataFrame(values)
 
 
-# 以真实ZIP布局保存官方格式成交，接收时间不属于该来源。
+# 【非核心】以真实ZIP布局保存官方格式成交，接收时间不属于该来源。
 def write_official_archive(filename: Path, ids: list[int], times_ms: list[int]) -> None:
     """输入官方编号及毫秒时间，生成价格数量方向确定的普通成交ZIP。"""
     table = pl.DataFrame({
@@ -61,7 +64,7 @@ def write_official_archive(filename: Path, ids: list[int], times_ms: list[int]) 
 class StandardDataTests(unittest.TestCase):
     """通过实际压缩源文件验证官方成交与快照生产接口。"""
 
-    # 两份YAML所属阶段不同，传错入口时明确说明应使用的配置。
+    # 【非核心】两份YAML所属阶段不同，传错入口时明确说明应使用的配置。
     def test_reject_features_config(self):
         """检查Features配置不能被Data标准化入口执行。"""
         with tempfile.TemporaryDirectory() as directory:
@@ -70,7 +73,21 @@ class StandardDataTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Data标准化"):
                 run_standard_production(config_file)
 
-    # 官方编号跳跃直接保留，重复副本合并且冲突可追溯。
+    # 【非核心】历史字段、重复键和缺失项均应中止配置读取。
+    def test_strict_pipeline_config(self):
+        """直接读取当前配置契约，拒绝隐式默认或覆盖。"""
+        source = Path(__file__).resolve().parents[1] / "config/data_standardize_30d.yaml"
+        content = source.read_text()
+        with tempfile.TemporaryDirectory() as directory:
+            filename = Path(directory) / "config.yaml"
+            cases = [content + "legacy_source: old\n", content + "version: duplicate\n",
+                     content.replace("tick_size: 0.1\n", "")]
+            for invalid in cases:
+                filename.write_text(invalid)
+                with self.assertRaises(ValueError):
+                    load_pipeline_config(filename, "data_standardize")
+
+    # 【非核心】官方编号跳跃直接保留，重复副本合并且冲突可追溯。
     def test_official_duplicates_and_number_gaps(self):
         """检查毫秒转换、来源行号、重复冲突与确定性。"""
         with tempfile.TemporaryDirectory() as directory:
@@ -94,7 +111,7 @@ class StandardDataTests(unittest.TestCase):
             self.assertFalse(any("id_gap" in flag for flags in result["quality_flags"] for flag in flags))
             assert_frame_equal(result, prepare_official_trades(raw, DATE), check_exact=True)
 
-    # 异常字段保留原值并附加标签，未知方向不能默认成买入。
+    # 【非核心】异常字段保留原值并附加标签，未知方向不能默认成买入。
     def test_unknown_and_invalid_fields(self):
         """检查方向、非正价量、乱序时间及越日记录。"""
         with tempfile.TemporaryDirectory() as directory:
@@ -112,7 +129,34 @@ class StandardDataTests(unittest.TestCase):
             self.assertEqual(result.filter(pl.col("trade_id") == 1)["side"][0], "sell")
             self.assertIn("outside_trade_day", result.filter(pl.col("trade_id").is_null())["quality_flags"][0])
 
-    # 无需采集成交CSV，直接生产两份交易所时钟的标准表。
+    # 【非核心】检查双文件发布中途失败时撤回已移动文件，随后可以重新生产。
+    def test_standard_publication_failure_and_retry(self):
+        """模拟第二份文件移动失败，核对首份文件清理和正常重试。"""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_compressed_csv(root / "snapshots.zst", make_snapshots())
+            write_official_archive(root / "trades.zip", [1], [START_US // 1000 + 1])
+            config = {
+                "version": "test", "output_root": "standard", "snapshots": "snapshots.zst",
+                "trades": "trades.zip", "tick_size": 0.1, "lot_size": 0.001,
+                "snapshot_silence_ns": 1_000_000_000, "confirmed_snapshot_gaps": {},
+            }
+            original_replace = Path.replace
+
+            # 【非核心】让第二份标准文件的发布失败，其余文件移动使用真实文件系统。
+            def fail_trade_publication(source, destination):
+                """输入待移动路径，仅对成交发布注入磁盘错误。"""
+                if destination.parent.name == "trades":
+                    raise OSError("模拟成交发布失败")
+                return original_replace(source, destination)
+
+            with patch.object(Path, "replace", new=fail_trade_publication):
+                with self.assertRaisesRegex(OSError, "成交发布失败"):
+                    build_standard_day(root, config, DATE)
+            self.assertEqual(list((root / "standard/test").rglob("*.parquet")), [])
+            self.assertEqual(build_standard_day(root, config, DATE)["trade_rows"], 1)
+
+    # 【非核心】无需采集成交CSV，直接生产两份交易所时钟的标准表。
     def test_day_publication_depth_clock_and_cache(self):
         """验证完整25档、原始行序、时间模型、缓存和失败清理。"""
         with tempfile.TemporaryDirectory() as directory:
@@ -126,9 +170,9 @@ class StandardDataTests(unittest.TestCase):
                 "confirmed_snapshot_gaps": {DATE: [[(START_US + 100_000) * 1000, (START_US + 1_500_000) * 1000]]},
             }
             summary = build_standard_day(root, config, DATE)
-            folder = root / f"standard/market_v2/date={DATE}"
-            self.assertEqual(sorted(path.name for path in folder.iterdir()), ["snapshots.parquet", "trades.parquet"])
-            snapshots = pl.read_parquet(folder / "snapshots.parquet")
+            folder = root / "standard/market_v2"
+            self.assertEqual(sorted(path.name for path in folder.iterdir()), ["snapshots", "trades"])
+            snapshots = pl.read_parquet(folder / "snapshots" / f"{DATE}.parquet")
             self.assertEqual(snapshots.height, 4)
             self.assertEqual(snapshots["source_row"].to_list(), [1, 2, 3, 4])
             self.assertIsNone(snapshots["ask_quantity_25"][-1])
@@ -136,22 +180,25 @@ class StandardDataTests(unittest.TestCase):
             self.assertIn("source_received_time_backwards", snapshots["quality_flags"][3])
             self.assertIn("incomplete_depth", snapshots["quality_flags"][3])
             self.assertNotIn("received_timestamp_ns", snapshots.columns)
-            self.assertNotIn("received_timestamp_ns", pl.read_parquet_schema(folder / "trades.parquet"))
-            definition = read_standard_metadata(folder / "snapshots.parquet")["definition"]
+            self.assertNotIn("received_timestamp_ns", pl.read_parquet_schema(folder / "trades" / f"{DATE}.parquet"))
+            definition = read_standard_metadata(folder / "snapshots" / f"{DATE}.parquet")["definition"]
             self.assertEqual(definition["schema_version"], 2)
             self.assertEqual(definition["snapshot_depth"], 25)
             self.assertEqual(definition["market_clock"], "exchange_timestamp_ns")
             self.assertIn("at replay", definition["receipt_time_model"])
-            modified = (folder / "trades.parquet").stat().st_mtime_ns
-            self.assertEqual(build_standard_day(root, config, DATE), summary)
-            self.assertEqual((folder / "trades.parquet").stat().st_mtime_ns, modified)
+            modified = (folder / "trades" / f"{DATE}.parquet").stat().st_mtime_ns
+            self.assertEqual(summary["snapshot_rows"], 4)
+            self.assertEqual(summary["trade_rows"], 2)
+            with patch("mm_research.data.standard.summarize_standard_day", side_effect=AssertionError("重复扫描标准行情")):
+                self.assertEqual(build_standard_day(root, config, DATE), {"date": DATE, "reused": True})
+            self.assertEqual((folder / "trades" / f"{DATE}.parquet").stat().st_mtime_ns, modified)
             with self.assertRaises(ValueError):
                 build_standard_day(root, config | {"tick_size": 0.2}, DATE)
             with zipfile.ZipFile(root / f"raw/{DATE}/trades.zip", "w") as archive:
                 archive.writestr("empty.txt", "bad input")
             with self.assertRaises(ValueError):
                 build_standard_day(root, config | {"version": "failed"}, DATE)
-            self.assertFalse((root / f"standard/failed/date={DATE}").exists())
+            self.assertFalse((root / f"standard/failed/snapshots/{DATE}.parquet").exists())
             self.assertEqual(list((root / "standard/failed").iterdir()), [])
 
 
