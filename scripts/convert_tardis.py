@@ -5,12 +5,9 @@ write_routed_shards 负责分侧排序与分片。输入为 BTCUSDT 全深度 L2
 输出为与 C++ hbt.Event 二进制布局兼容的 NPZ，以及含原始计数和最终盘口的 manifest。
 最终盘口字典用于离线对照，回测中的盘口更新由 C++ 引擎执行。
 """
-from __future__ import annotations
-
 import argparse
 import csv
 import datetime as dt
-import gzip
 import json
 import math
 import shutil
@@ -19,7 +16,7 @@ from collections import Counter
 from pathlib import Path
 
 import numpy as np
-import zstandard
+from mm_research.data.sources import open_market_csv
 
 BUY = 1 << 29
 SELL = 1 << 28
@@ -43,7 +40,7 @@ EVENT_DTYPE = np.dtype([
 
 
 # ==================== 原始源流与时间边界校验 ====================
-# 检查单行价格与数量满足研究配置的有限值和整数网格约束。
+# 【非核心】检查单行价格与数量满足研究配置的有限值和整数网格约束。
 def validate_grid(price: float, quantity: float, tick_size: float, lot_size: float) -> None:
     """验证原始行情的一组价格与数量。
 
@@ -64,20 +61,7 @@ def validate_grid(price: float, quantity: float, tick_size: float, lot_size: flo
         raise ValueError(f"数量不符合 lot_size：{quantity}")
 
 
-# 按源文件压缩格式建立文本流，供盘口与成交流共用。
-def open_market_csv(filename: Path):
-    """打开 gzip 或 Zstandard 压缩的行情 CSV。
-
-    filename 为既有源文件，.zst/.zstd 使用 Zstandard，其余延续原有 gzip 读取方式。
-    返回可用于 with 的文本流，换行交给 csv.reader 处理，关闭时同时释放底层文件。
-    两种压缩格式共用后续字段、时间和盘口检查。
-    """
-    if filename.suffix in {".zst", ".zstd"}:
-        return zstandard.open(filename, "rt", encoding="utf-8", newline="")
-    return gzip.open(filename, "rt", newline="")
-
-
-# 将一个压缩源文件校验并追加为标准记录，同时保存原始数据的对照统计。
+# 【核心逻辑28】将一个压缩源文件校验并追加为标准记录，同时保存原始数据的对照统计。
 def append_source(filename: Path, kind: str, output, tick_size: float, lot_size: float,
                   chunk_rows: int) -> dict:
     """读取完整 Tardis 源流，为后续双侧路由准备无路由标志的事件。
@@ -126,7 +110,8 @@ def append_source(filename: Path, kind: str, output, tick_size: float, lot_size:
             quantity = float(row[columns["amount"]])
             validate_grid(price, quantity, tick_size, lot_size)
             side = row[columns["side"]]
-            if side not in {"buy", "sell", "bid", "ask"}:
+            allowed_sides = {"bid", "ask"} if kind == "book" else {"buy", "sell"}
+            if side not in allowed_sides:
                 raise ValueError(f"未知方向：{side}")
             flag = BUY if side in {"buy", "bid"} else SELL
             event_kind = TRADE
@@ -186,7 +171,7 @@ def append_source(filename: Path, kind: str, output, tick_size: float, lot_size:
     }
 
 
-# 用两个源文件的首尾接收时刻检查它们是否覆盖指定 UTC 日的两端。
+# 【非核心】用两个源文件的首尾接收时刻检查它们是否覆盖指定 UTC 日的两端。
 def validate_day(sources: list[dict], date: str) -> None:
     """验证单日样本的时间边界。
 
@@ -208,7 +193,7 @@ def validate_day(sources: list[dict], date: str) -> None:
 
 
 # ==================== 双时钟路由与分片落盘 ====================
-# 为交易所与本地分别生成可见事件，并按可见时间稳定排序写出 NPZ。
+# 【核心逻辑29】为交易所与本地分别生成可见事件，并按可见时间稳定排序写出 NPZ。
 def write_routed_shards(events: np.ndarray, destination: Path, shard_rows: int) -> list[dict]:
     """生成两个处理器各自有序的标准事件分片。
 
@@ -258,7 +243,7 @@ def write_routed_shards(events: np.ndarray, destination: Path, shard_rows: int) 
 
 
 # ==================== 单日转换编排与命令行入口 ====================
-# 编排单日全深度行情转换，生成可被原生 C++ reader 直接消费的清单。
+# 【核心逻辑27】编排单日全深度行情转换，生成可被原生 C++ reader 直接消费的清单。
 def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: float = 0.1,
             lot_size: float = 0.001, shard_rows: int = 250_000, full_day: bool = True) -> dict:
     """完成从两个原始压缩文件到标准事件和转换清单的离线准备。
@@ -293,15 +278,12 @@ def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: f
         book_info = append_source(book, "book", output, tick_size, lot_size, shard_rows)
     if full_day:
         validate_day([book_info, trades_info], date)
-    events = np.memmap(raw_file, dtype=EVENT_DTYPE, mode="r+")
-    # 若存在非正行情延迟，统一平移全部 local_ts，使最小值变成 1 ns，并记录该偏移。
     minimum_latency = min(book_info["minimum_feed_latency_ns"], trades_info["minimum_feed_latency_ns"])
-    latency_offset = max(0, 1 - minimum_latency)
-    if latency_offset:
-        events["local_ts"] += latency_offset
-        events.flush()
+    if minimum_latency <= 0:
+        raise ValueError("源行情存在非正接收延迟，请先核实时间戳，转换器不会自动平移时间")
+    events = np.memmap(raw_file, dtype=EVENT_DTYPE, mode="r")
     shards = write_routed_shards(events, destination, shard_rows)
-    counts = book_info["counts"]
+    counts = Counter(book_info["counts"])
     manifest = {
         "schema": "hbt.Event/64-byte-little-endian",
         "symbol": "BTCUSDT",
@@ -311,12 +293,12 @@ def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: f
         "timestamp_unit": "ns",
         "tick_size": tick_size,
         "lot_size": lot_size,
-        "local_timestamp_offset_ns": latency_offset,
+        "timestamp_policy": "source_local_time",
         "logical_events": len(events),
         "normalized_rows": len(events) * 2,
-        "depth_updates": counts.get(str(DEPTH), 0),
-        "snapshot_levels": counts.get(str(SNAPSHOT), 0),
-        "clear_events": counts.get("clear_events", 0),
+        "depth_updates": counts[str(DEPTH)],
+        "snapshot_levels": counts[str(SNAPSHOT)],
+        "clear_events": counts["clear_events"],
         "trade_events": trades_info["counts"]["rows"],
         "book": book_info,
         "trades": trades_info,
@@ -332,7 +314,7 @@ def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: f
     return manifest
 
 
-# 将命令行文件和样本日参数交给单日转换流程，并输出简要完成统计。
+# 【非核心】将命令行文件和样本日参数交给单日转换流程，并输出简要完成统计。
 def main() -> None:
     """执行离线数据准备 CLI。
 

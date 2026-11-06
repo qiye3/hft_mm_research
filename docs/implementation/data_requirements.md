@@ -1,4 +1,12 @@
-# 2026-11-05 — 研究数据的组织、下载、处理与详细概况
+# 2026-11-06 — 研究数据的组织、下载、处理与详细概况
+
+## 当前生产入口
+
+当前Data输入为Binance官方普通成交ZIP与网盘25档快照。标准数据保存到`workspace/data/standard/market_v2/{snapshots,trades}/YYYY-MM-DD.parquet`。
+
+Features使用交易所时间加20ms作为模拟可见时刻。base、book、trades、returns四组共同保存到`features/market_groups_v2/YYYY-MM-DD.parquet`，标签保存到`labels/market_mid_groups_v2/horizon=周期/YYYY-MM-DD.parquet`。组版本、来源与有效行数内嵌Parquet元数据。
+
+下文网盘内容与整日C++验证保留对应检查日期，当前可执行生产命令见第六节。
 
 ## 一、研究需要哪些数据
 
@@ -26,14 +34,16 @@
 | `L2增量 2020-2026/BTCUSDT/YYYY/MM/DD/` | 日文件 `BTCUSDT.csv.zst`；2025-10-01 至 2026-10-21 共 386 个日期目录 | 核对了日期目录，抽查文件，并完成下述一个整日验证 |
 | `BTCUSDT/YYYY-MM-DD/` | 日文件 `BTCUSDT.csv.zst`，已确认包含 Tardis 风格逐笔成交字段 | 检查了同日样本并完成一个整日验证 |
 | `BTC-Trades-23-26/` | 日度 ZIP；2025-10-01 至 2026-07-31 共 304 个匹配日文件，约 9.72 GB | 完整核对文件名和日期清单 |
-| `25-orderbook 2020-2026/BTCUSDT/YYYY/MM/DD/` | 日文件 `BTCUSDT.csv.zstd`，目录标注 25 档快照 | 已核对目录和样本文件名；实际表头与采样细节需在使用时检查 |
+| `25-orderbook 2020-2026/BTCUSDT/YYYY/MM/DD/` | 25 档快照，包含 `.csv.zst/.zstd` 等压缩版本 | 已取得 2026-07-01 至 07-30 的快照与同源成交并生成 Polars 数据；重叠七天与 C++ 核对 |
 | `HFT-8.1-9.30/` | 2026-08-01 至 09-30，共 61 天、366 个 Parquet、36.56 GB | 核对文件清单，检查了 2026-08-01 的盘口和成交 |
 | `增量订单簿-L2/YYYY/` | 另外一套月度 ZIP，2025 年有 12 个月文件 | 目录核对，内部是否与日目录重复需解包比对 |
 | `BTC-OI/`、`爆仓数据/` | 未平仓量年度 ZIP、爆仓数据目录 | 目录核对，使用前确认字段、单位与完整性 |
 
 HFT Parquet 中包含 `orderbook`、`trades`、`mark_price`、`ticker`、`open_interest`、`liquidations` 六类，各 61 个日文件。其中盘口合计约 33.09 GB，成交约 2.96 GB，其余约 0.51 GB。
 
-日期目录存在表示有相应目录项；逐日行情连续性还要通过内容检查确认。2026 年 10 月成交需要继续核查其他目录或补齐来源，已核对的 L2 日期目录也只列到 10 月 21 日。
+日期目录存在表示有相应目录项，逐日行情连续性还要通过内容检查确认。2026-11-06 完整目录核对确认，标准化成交 CSV 在目标区间内有 307 个日期，截止 2026-08-03。快照与 L2 各有 386 个日期，截止 2026-10-21。
+
+Binance 官方 2025-10 至 2026-10 的全部十三个月成交档案已确认可下载。七月三十天已逐条验收，网盘 ZIP 能补足标准化 CSV 缺少的全部普通成交，但 ZIP 没有本地接收时间。七月快照也发现了日内长缺口，成交完整性、接收时钟与盘口覆盖需分别管理。[全区间覆盖与处理调整](../reports/data_coverage_202510_202610/report.md)
 
 ## 三、两套主要格式的字段与时间
 
@@ -79,6 +89,21 @@ exchange,symbol,timestamp,local_timestamp,id,side,price,amount
 
 ## 四、本地和云端怎样组织数据
 
+当前研究目录按以下结构保存。
+
+```text
+workspace/data/
+├── raw/
+├── standard/market_v2/
+│   ├── snapshots/YYYY-MM-DD.parquet
+│   └── trades/YYYY-MM-DD.parquet
+├── features/market_groups_v2/YYYY-MM-DD.parquet
+├── labels/market_mid_groups_v2/horizon=1s/YYYY-MM-DD.parquet
+└── normalized/    C++事件回放的NPZ缓存
+```
+
+下面展示此前单日回放验证的原始文件和结果组织。
+
 ```text
 workspace/
 ├── data/
@@ -102,11 +127,15 @@ workspace/
 
 原始文件按来源和日期隔离，下载时避免两个同名 `BTCUSDT.csv.zst` 相互覆盖。来源清单记录网盘原路径、文件大小、下载后位置和耗时。标准事件清单记录格式、时间单位、步长、分类数量、分片和最终盘口。
 
-后续研究表可按 `BTCUSDT/feature_version/date=YYYY-MM-DD/` 分区，标签同时记录预测周期、价格定义和生成版本。模型输出、预测与交易记录用独立实验编号归档，关联数据版本、参数和 Git 提交。数据和结果保存在当前被忽略的目录中，`docs` 保存说明与报告。
+当前研究表按版本和日期文件组织，标签另按预测周期分目录，记录价格定义和生成版本。模型输出、预测与交易记录用独立实验编号归档，关联数据版本、参数和 Git 提交。数据和结果保存在当前被忽略的目录中，`docs` 保存说明与报告。
 
 云端第一批只预取 7—30 天。标准化和特征生成完成后复用结果，历史原始档案继续保留来源。云端过期缓存清理前确认可从原始档案重建，并保留必要的清单与实验记录。
 
 ## 五、下载方式
+
+### 当前成交来源
+
+普通成交直接使用Binance公开日档，地址为`https://data.binance.vision/data/futures/um/daily/trades/BTCUSDT/BTCUSDT-trades-YYYY-MM-DD.zip`。原始文件保留ZIP压缩格式，Data读取其中的CSV并统一字段。
 
 ### 从百度网盘取得原始文件
 
@@ -133,34 +162,23 @@ Tardis 可提供连续日期的 `incremental_book_L2`、`trades` 和 `derivative
 
 ## 六、处理流程与可复现命令
 
-先按项目 README 准备环境。以下命令在项目根目录执行，转换输出目录应为空，策略实验输出目录应为新的目录。 [环境准备](../../README.md#quickstart)
+在项目根目录执行Data与Features两个阶段。
 
 ```sh
-uv pip install --python .venv/bin/python -r requirements.txt
-.venv/bin/python scripts/convert_tardis.py \
-  --book workspace/data/raw/baidu_2026-07-12/book.csv.zst \
-  --trades workspace/data/raw/baidu_2026-07-12/trades.csv.zst \
-  --date 2026-07-12 --tick-size 0.1 --lot-size 0.001 \
-  --output-dir workspace/data/normalized/BTCUSDT_2026-07-12 \
-  --shard-rows 250000
+.venv/bin/python scripts/build_standard_data.py config/data_standardize_30d.yaml
+.venv/bin/python scripts/build_features_targets.py config/features_targets_30d.yaml
+.venv/bin/python scripts/validate_research_dataset.py \
+  config/features_targets_30d.yaml 2026-07-14 \
+  workspace/results/m2_standard/market_groups_v2/validation_2026-07-14.json
 ```
 
-转换器流式读取压缩 CSV，检查字段、品种、时间顺序、价格数量网格和初始快照。它保留完整源深度，将时间统一为纳秒，再分别整理交易所侧和本地侧记录。同一事件在两侧各生成一次记录，保证各侧按自己的时钟处理。分片中的数组成员名为 `data.npy`，每条记录与框架的 64 字节事件结构一致。
+Data配置引用本地已下载原件。当前官方成交日档位于`workspace/data/raw/binance_public/date=YYYY-MM-DD/BTCUSDT-trades-YYYY-MM-DD.zip`，快照位于`workspace/data/raw/baidu_YYYY-MM-DD/snapshot25.csv.zst`。
 
-随后运行 C++ 回放和独立核对。
+标准行情保留25档和逐笔粒度。Features的base组执行100ms采样，再生成衍生组与独立标签。新增组复用已有base列，研究读取按所选组有效标记与标签关联。
 
-```sh
-./workspace/build/release/benchmark_replay config/replay_baidu.yaml
-.venv/bin/python scripts/validate_replay.py \
-  workspace/data/normalized/BTCUSDT_2026-07-12/manifest.json \
-  workspace/results/validation/baidu_2026-07-12/replay.json
-./workspace/build/release/baseline_mm config/baseline_mm_baidu.yaml
-.venv/bin/python workspace/results/validation/baidu_2026-07-12/audit_baseline.py
-```
+C++事件回放使用L2增量与对应逐笔成交，由`scripts/convert_tardis.py`转换成NPZ分片，再交给原生引擎。M0与M1可执行命令见项目README，七月十二日旧验证的来源、实测数据与结果按第七节记录阅读。复现实验时需按所选日期设置输入清单、回放及策略参数和输出位置。
 
-`validate_replay.py` 核对两侧计数、时间边界、分片消费和最终盘口。策略使用现有委托与成交接口，导出 `orders.csv`、`fills.csv`、`equity.csv`、`summary.json`，独立核对脚本重算成交、现金流、费用、仓位和权益。
-
-更换日期时同步修改数据路径、配置日期和结果目录，并重新计算 `quote_stop_timestamp_ns`，它对应当日 UTC 23:59:59。`config/replay_baidu.yaml` 和 `config/baseline_mm_baidu.yaml` 保存本次可复现参数。 [回放配置](../../config/replay_baidu.yaml) · [策略配置](../../config/baseline_mm_baidu.yaml)
+当前分组生产、元数据和X/y读取见 [研究包指南](research_package.md)。
 
 ## 七、本次完整验证的详细概况
 
@@ -189,3 +207,5 @@ M1 基线成功产生订单和成交，最终净收益为 -153.115508 USDT、费
 当前归档保留原始压缩文件；研究特征、标签和预测优先使用 Parquet + ZSTD；引擎的 NPZ 分片按运行日期缓存。全部采用 Parquet 的接口改造与压缩实测见单独说明。 [GPU 与 Parquet 选择](gpu_and_parquet.md)
 
 M2-A 的固定 100ms 数据生产、特征与未来 1s 标签定义、七天数据准备和 Python 读取方法见专门指南。 [M2-A 研究数据集](m2_a_dataset.md)
+
+当前 Polars 研究包复用基础数据，特征和多周期标签独立保存、分别管理版本，主目标单位为 bps。30 天数据的使用方法见新入口。 [研究包指南](research_package.md)

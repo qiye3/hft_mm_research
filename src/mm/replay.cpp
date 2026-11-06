@@ -4,6 +4,7 @@
  * 行情加载、订单簿更新和事件顺序由依赖引擎执行。
  */
 #include "mm/replay.hpp"
+#include "mm/detail/config.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -11,7 +12,6 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <sstream>
 #include <stdexcept>
 #include <sys/resource.h>
 
@@ -30,12 +30,12 @@ using Clock = std::chrono::steady_clock;
 // 在 final Local 的公开处理器边界接入观察器，以实际 process 调用统计逐条行情。
 class ObservedLocal final : public hbt::LocalProcessor {
 public:
-    // 接管原生处理器，并以 sample_every 指定本地处理耗时的系统采样间隔。
+    // 【核心逻辑34】接管原生处理器，并以 sample_every 指定本地处理耗时的系统采样间隔。
     ObservedLocal(std::unique_ptr<Local> local, MarketObserver& observer, std::size_t sample_every,
                   ReplayEventSink* sink)
         : local_(std::move(local)), observer_(observer), sample_every_(sample_every), sink_(sink) {}
 
-    // 更新原生本地状态后通知观察器，并按配置测量本地事件处理耗时。
+    // 【核心逻辑35】更新原生本地状态后通知观察器，并按配置测量本地事件处理耗时。
     void process(const hbt::Event& event) override {
         /** 输入是引擎按 local_ts 交付的一条行情，输出包括观察统计和可选纳秒耗时样本。
          * sample_every 为零时关闭计时，为正时从第零条开始每隔该数量取样。
@@ -61,49 +61,70 @@ public:
         last_event = event;
     }
 
-    // 以下 LocalProcessor 接口直接交给原生 Local，供调度器选时和回测 API 读写状态。
+    // 【非核心】转交原生Local确定事件的本地可见时刻。
     std::optional<std::int64_t> event_seen_timestamp(const hbt::Event& event) const noexcept override {
         return local_->event_seen_timestamp(event);
     }
+    // 【非核心】将订单回报的消费交给原生Local执行。
     bool process_recv_order(std::int64_t timestamp, std::optional<hbt::OrderId> order_id) override {
         return local_->process_recv_order(timestamp, order_id);
     }
+    // 【非核心】读取原生Local下一条待接收订单回报的时刻。
     std::int64_t earliest_recv_order_timestamp() const noexcept override {
         return local_->earliest_recv_order_timestamp();
     }
+    // 【非核心】读取原生Local下一条待发送请求的时刻。
     std::int64_t earliest_send_order_timestamp() const noexcept override {
         return local_->earliest_send_order_timestamp();
     }
+    // 【非核心】将提交请求原样交给原生Local执行。
     void submit_order(hbt::OrderId order_id, hbt::Side side, double price, double quantity,
                       hbt::OrdType order_type, hbt::TimeInForce time_in_force, std::int64_t timestamp) override {
         local_->submit_order(order_id, side, price, quantity, order_type, time_in_force, timestamp);
     }
+    // 【非核心】将改价改量请求原样交给原生Local执行。
     void modify(hbt::OrderId order_id, double price, double quantity, std::int64_t timestamp) override {
         local_->modify(order_id, price, quantity, timestamp);
     }
+    // 【非核心】将撤单请求原样交给原生Local执行。
     void cancel(hbt::OrderId order_id, std::int64_t timestamp) override {
         local_->cancel(order_id, timestamp);
     }
+    // 【非核心】调用原生Local移除已终结的订单记录。
     void clear_inactive_orders() override { local_->clear_inactive_orders(); }
+    // 【非核心】读取原生账户的当前净仓位。
     double position() const noexcept override { return local_->position(); }
+    // 【非核心】返回原生账户状态的只读引用。
     const hbt::StateValues& state_values() const noexcept override { return local_->state_values(); }
+    // 【非核心】返回原生订单表的只读引用。
     const std::unordered_map<hbt::OrderId, hbt::Order<>>& orders() const noexcept override {
         return local_->orders();
     }
+    // 【非核心】读取原生Local缓存的最近成交事件。
     const std::vector<hbt::Event>& last_trades() const noexcept override { return local_->last_trades(); }
+    // 【非核心】清空原生Local缓存的最近成交事件。
     void clear_last_trades() noexcept override { local_->clear_last_trades(); }
+    // 【非核心】读取最近行情的交易所与本地时间对。
     std::optional<std::pair<std::int64_t, std::int64_t>> feed_latency() const noexcept override {
         return local_->feed_latency();
     }
+    // 【非核心】读取最近订单的请求、交易所处理及回报时刻。
     std::optional<std::tuple<std::int64_t, std::int64_t, std::int64_t>> order_latency() const noexcept override {
         return local_->order_latency();
     }
+    // 【非核心】读取原生本地盘口的最优买价。
     double best_bid() const noexcept override { return local_->best_bid(); }
+    // 【非核心】读取原生本地盘口的最优卖价。
     double best_ask() const noexcept override { return local_->best_ask(); }
+    // 【非核心】读取最优买价对应的整数Tick档位。
     std::int64_t best_bid_tick() const noexcept override { return local_->best_bid_tick(); }
+    // 【非核心】读取最优卖价对应的整数Tick档位。
     std::int64_t best_ask_tick() const noexcept override { return local_->best_ask_tick(); }
+    // 【非核心】读取原生合约配置的价格步长。
     double tick_size() const noexcept override { return local_->tick_size(); }
+    // 【非核心】读取原生合约配置的数量步长。
     double lot_size() const noexcept override { return local_->lot_size(); }
+    // 【非核心】返回原生本地订单簿的只读引用。
     const Depth& depth() const noexcept { return local_->depth(); }
 
     std::uint64_t combined_local_rows = 0;
@@ -120,9 +141,9 @@ private:
 // 在交易所处理器外围检查该侧时序并记录实际处理次数。
 class CountedExchange final : public hbt::Processor {
 public:
-    // 接管实际交易所处理器，保留其深度更新、排队和成交行为。
+    // 【非核心】接管实际交易所处理器，保留其深度更新、排队和成交行为。
     explicit CountedExchange(std::unique_ptr<Exchange> exchange) : exchange_(std::move(exchange)) {}
-    // 按交易所时钟验证一条行情，再交给原生处理器应用。
+    // 【非核心】按交易所时钟验证一条行情，再交给原生处理器应用。
     void process(const hbt::Event& event) override {
         /** 输入事件须按 exch_ts 非递减到达，输出为原生状态变化和侧内计数。
          * 时序错误直接抛出异常，用于检查跨分片后的交易所路由完整性。
@@ -134,15 +155,19 @@ public:
         last_timestamp_ = event.exch_ts;
         ++count;
     }
+    // 【非核心】读取原生交易所处理器确定的事件可见时刻。
     std::optional<std::int64_t> event_seen_timestamp(const hbt::Event& event) const noexcept override {
         return exchange_->event_seen_timestamp(event);
     }
+    // 【非核心】将待处理订单请求交给原生交易所处理器。
     bool process_recv_order(std::int64_t timestamp, std::optional<hbt::OrderId> order_id) override {
         return exchange_->process_recv_order(timestamp, order_id);
     }
+    // 【非核心】读取原生交易所下一条待接收订单请求的时刻。
     std::int64_t earliest_recv_order_timestamp() const noexcept override {
         return exchange_->earliest_recv_order_timestamp();
     }
+    // 【非核心】读取原生交易所下一条待发送订单回报的时刻。
     std::int64_t earliest_send_order_timestamp() const noexcept override {
         return exchange_->earliest_send_order_timestamp();
     }
@@ -153,7 +178,7 @@ private:
     std::int64_t last_timestamp_ = 0;
 };
 
-// 读取本进程截至当前时刻的驻留内存高水位，并统一换算成字节。
+// 【非核心】读取本进程截至当前时刻的驻留内存高水位，并统一换算成字节。
 std::uint64_t peak_rss_bytes() {
     /** 输入来自操作系统 getrusage，返回累计 Peak RSS。
      * macOS 原值为字节，Linux 原值为 KiB，读取失败时抛出异常。
@@ -169,7 +194,7 @@ std::uint64_t peak_rss_bytes() {
 #endif
 }
 
-// 组装双侧原生处理器，完整消费共享行情缓存并汇总观察结果。
+// 【核心逻辑33】组装双侧原生处理器，完整消费共享行情缓存并汇总观察结果。
 ReplayResult replay_reader(const ReplayConfig& config, std::shared_ptr<hbt::EventReaderCache> reader,
                            ReplayEventSink* sink) {
     /** config 指定步长、观察深度和采样频率，reader 必须提供非空且分侧有序的事件。
@@ -220,20 +245,7 @@ ReplayResult replay_reader(const ReplayConfig& config, std::shared_ptr<hbt::Even
     return result;
 }
 
-// 从一行配置的键或标量两端裁去空白，便于识别空行与数值。
-std::string trim(std::string value) {
-    /** 输入是配置文本片段，输出保留内部空白的字符串，全空白时返回空串。
-     * 由 load_config 调用，文件读取和字段解释由调用方完成。
-     */
-    const auto start = value.find_first_not_of(" \t\r\n");
-    if (start == std::string::npos) {
-        return {};
-    }
-    const auto end = value.find_last_not_of(" \t\r\n");
-    return value.substr(start, end - start + 1);
-}
-
-// 把有限浮点数写入 JSON，缺少有效行情指标时输出 null。
+// 【非核心】把有限浮点数写入 JSON，缺少有效行情指标时输出 null。
 void write_number(std::ostream& output, double value) {
     /** output 是报告流，value 可包含空簿产生的 NaN。
      * 写入符合 JSON 语法的数值或 null，供报告中的 Mid、Spread 与采样指标复用。
@@ -245,7 +257,7 @@ void write_number(std::ostream& output, double value) {
     }
 }
 
-// 将快照有效前缀导出为按最优价优先排列的价格数量二元组数组。
+// 【非核心】将快照有效前缀导出为按最优价优先排列的价格数量二元组数组。
 void write_levels(std::ostream& output, const std::array<PriceLevel, 10>& levels, std::size_t count) {
     /** levels 已按方向排好序，count 必须在数组容量以内。
      * 输出 JSON 数组，每个元素依次为实际价格和该价位挂单数量。
@@ -262,56 +274,22 @@ void write_levels(std::ostream& output, const std::array<PriceLevel, 10>& levels
 
 } // namespace
 
-// 读取观察回放参数，并以配置所在项目解析行情清单与报告输出位置。
+// 【非核心】读取观察回放参数，并以配置所在项目解析行情清单与报告输出位置。
 ReplayConfig load_config(const std::filesystem::path& filename) {
-    /** 输入为 config 目录下的平铺 YAML，返回带默认值的 ReplayConfig。
-     * source=synthetic 选择内存合成行情，其余 source 作为标准事件清单文件处理。
-     * 未知字段、无效 BTCUSDT 步长或缺少输出位置时抛出异常。
-     */
-    std::ifstream input(filename);
-    if (!input) {
-        throw std::runtime_error("cannot open replay config: " + filename.string());
-    }
+    const auto fields = detail::read_flat_config(filename, {
+        "source", "date", "symbol", "tick_size", "lot_size", "depth_levels",
+        "snapshot_interval_ns", "latency_sample_every", "output",
+    });
     ReplayConfig config;
-    std::string line;
-    // 当前配置约定为平铺 YAML 标量，遇到未知字段直接报错。
-    while (std::getline(input, line)) {
-        line = trim(line.substr(0, line.find('#')));
-        if (line.empty()) {
-            continue;
-        }
-        const auto separator = line.find(':');
-        if (separator == std::string::npos) {
-            throw std::runtime_error("expected key: value in replay config");
-        }
-        const auto key = trim(line.substr(0, separator));
-        auto value = trim(line.substr(separator + 1));
-        if (value.size() >= 2 && ((value.front() == '"' && value.back() == '"') ||
-                                  (value.front() == '\'' && value.back() == '\''))) {
-            value = value.substr(1, value.size() - 2);
-        }
-        if (key == "source") {
-            config.source = value;
-        } else if (key == "date") {
-            config.date = value;
-        } else if (key == "symbol") {
-            config.symbol = value;
-        } else if (key == "tick_size") {
-            config.tick_size = std::stod(value);
-        } else if (key == "lot_size") {
-            config.lot_size = std::stod(value);
-        } else if (key == "depth_levels") {
-            config.depth_levels = std::stoull(value);
-        } else if (key == "snapshot_interval_ns") {
-            config.snapshot_interval_ns = std::stoll(value);
-        } else if (key == "latency_sample_every") {
-            config.latency_sample_every = std::stoull(value);
-        } else if (key == "output") {
-            config.output = value;
-        } else {
-            throw std::runtime_error("unknown replay config field: " + key);
-        }
-    }
+    config.source = fields.at("source");
+    config.date = fields.at("date");
+    config.symbol = fields.at("symbol");
+    config.tick_size = detail::config_number<double>(fields, "tick_size");
+    config.lot_size = detail::config_number<double>(fields, "lot_size");
+    config.depth_levels = detail::config_number<std::size_t>(fields, "depth_levels");
+    config.snapshot_interval_ns = detail::config_number<std::int64_t>(fields, "snapshot_interval_ns");
+    config.latency_sample_every = detail::config_number<std::size_t>(fields, "latency_sample_every");
+    config.output = fields.at("output");
     if (!std::isfinite(config.tick_size) || config.tick_size <= 0 ||
         !std::isfinite(config.lot_size) || config.lot_size <= 0 || config.symbol != "BTCUSDT") {
         throw std::runtime_error("expected BTCUSDT and positive finite tick_size/lot_size");
@@ -327,7 +305,7 @@ ReplayConfig load_config(const std::filesystem::path& filename) {
     return config;
 }
 
-// 建立包含交易、深档挂单和删除买一事件的确定性回放夹具。
+// 【非核心】建立包含交易、深档挂单和删除买一事件的确定性回放夹具。
 std::vector<hbt::Event> synthetic_events() {
     /** 无外部输入，返回同时具有 EXCH/LOCAL 标志的 25 条原生事件。
      * 初始四条沿用上游示例，扩展部分使原第十一档可在买一删除后进入前十档。
@@ -354,7 +332,7 @@ std::vector<hbt::Event> synthetic_events() {
     return events;
 }
 
-// 为内存行情夹具建立双消费者缓存，再执行统一观察回放流程。
+// 【核心逻辑67】为内存行情夹具建立双消费者缓存，再执行统一观察回放流程。
 ReplayResult run_memory_replay(const ReplayConfig& config, std::vector<std::vector<hbt::Event>> chunks,
                                ReplayEventSink* sink) {
     /** 输入 chunks 按分片顺序提供原生事件，函数接管这些数组并返回 ReplayResult。
@@ -363,7 +341,7 @@ ReplayResult run_memory_replay(const ReplayConfig& config, std::vector<std::vect
     return replay_reader(config, hbt::EventReaderCache::from_chunks(std::move(chunks), 2), sink);
 }
 
-// 根据配置选择合成夹具或磁盘分片，并调用相同的原生回放接入层。
+// 【核心逻辑32】根据配置选择合成夹具或磁盘分片，并调用相同的原生回放接入层。
 ReplayResult run_replay(const ReplayConfig& config, ReplayEventSink* sink) {
     /** 输入 config.source 为 synthetic 或可读取的转换清单，返回观察回放汇总。
      * 文件模式通过 event_files_from_manifest 和 EventReaderCache 逐片加载数据。
@@ -374,7 +352,7 @@ ReplayResult run_replay(const ReplayConfig& config, ReplayEventSink* sink) {
     return replay_reader(config, hbt::event_reader_from_files(hbt::event_files_from_manifest(config.source)), sink);
 }
 
-// 保存回放完整性、最终盘口与具有明确测量范围的性能指标。
+// 【非核心】保存回放完整性、最终盘口与具有明确测量范围的性能指标。
 void write_report(const ReplayConfig& config, const ReplayResult& result, const std::filesystem::path& output) {
     /** config 提供实验标签，result 必须来自已完整消费的回放，output 指定 JSON 文件。
      * 输出同时列出逻辑事件吞吐和双侧 dispatch 吞吐，便于解释物理记录与处理次数。

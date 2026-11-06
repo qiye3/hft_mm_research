@@ -9,7 +9,7 @@ import polars as pl
 from mm_research.data.quality import build_record_flags
 
 
-# 对完整二十五档检查缺档、交叉、顺序和来源接收间隔。
+# 【核心逻辑6】检查25档快照及采集间隔，把异常与缺口证据写入质量标签。
 def annotate_snapshot_records(table: pl.LazyFrame, silence_ns: int,
                               confirmed_gaps: list[list[int]]) -> pl.LazyFrame:
     """输入源顺序快照、一秒等静默门限及已核实区间，返回带 quality_flags 的快照。
@@ -19,16 +19,18 @@ def annotate_snapshot_records(table: pl.LazyFrame, silence_ns: int,
     """
     prices = [pl.col(f"{side}_price_{level}") for level in range(1, 26) for side in ["bid", "ask"]]
     quantities = [pl.col(f"{side}_quantity_{level}") for level in range(1, 26) for side in ["bid", "ask"]]
-    unordered = []
+    unordered = [] # 未排序的盘口
+
     for level in range(1, 25):
         unordered.extend([
-            pl.col(f"bid_price_{level}") <= pl.col(f"bid_price_{level + 1}"),
-            pl.col(f"ask_price_{level}") >= pl.col(f"ask_price_{level + 1}"),
+            pl.col(f"bid_price_{level}") <= pl.col(f"bid_price_{level + 1}"), # 买单价格递减
+            pl.col(f"ask_price_{level}") >= pl.col(f"ask_price_{level + 1}"), # 卖单价格递增
         ])
-    previous = pl.col("received_timestamp_ns").shift(1)
+    previous = pl.col("received_timestamp_ns").shift(1) # 前一行的接收时间
     confirmed = pl.lit(False)
     for start, end in confirmed_gaps:
         confirmed = confirmed | ((previous <= start) & (pl.col("received_timestamp_ns") >= end))
+
     rules = {
         "missing_exchange_time": pl.col("exchange_timestamp_ns").is_null(),
         "source_received_time_unknown": pl.col("received_timestamp_ns").is_null(),
@@ -42,4 +44,5 @@ def annotate_snapshot_records(table: pl.LazyFrame, silence_ns: int,
         "unexpected_market": pl.col("exchange").is_null() | pl.col("symbol").is_null()
                              | (pl.col("exchange") != "binance-futures") | (pl.col("symbol") != "BTCUSDT"),
     }
+
     return table.with_columns(build_record_flags(rules).alias("quality_flags"))

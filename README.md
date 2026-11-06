@@ -1,17 +1,17 @@
-# 2026-11-05 — 高频做市研究项目
+# 2026-11-06 — 高频做市研究项目
 
-基于 C++20 和 hftbacktest-cpp 的 Binance Futures BTCUSDT 永续合约研究项目，使用 Tardis 历史 L2 盘口与逐笔成交进行事件驱动回测。
+基于 C++20 和 hftbacktest-cpp 的 Binance Futures BTCUSDT 永续合约研究项目，使用官方普通成交与网盘25档快照进行离线研究，使用历史L2事件进行交易仿真。
 
 - **M0 行情回放**支持双时间戳事件调度、盘口重建、前 5／10 档观察及整日性能测试。
 - **M1 做市基线**支持固定宽度报价、GTX 委托、在途敞口限制、成交记录和 PnL 核对。
-- **M2-A 研究数据**通过 C++ 固定 100ms 采样与 Polars 构造基础特征和未来 1s 标签，按日保存 Parquet。
+- **M2-A 研究数据**使用官方普通成交与网盘25档快照标准Parquet入口，使用 Polars 构造特征，按独立版本保存特征与多周期 bps 标签。
 - Python 用于离线数据转换与实验分析，C++ 负责回放和策略运行。
 
 第三方引擎通过 Git Submodule 固定在 v0.1.0，提交为 `e0d2f7887c68755b220d9e69425d61d27e5b6432`。
 
 ## Quickstart
 
-需要 C++20 编译器、Git、zlib 和 uv。macOS 可使用 Xcode Command Line Tools，Linux 安装对应编译器与 zlib 开发包。以下命令在项目根目录执行。
+需要 C++20 编译器、Python 3.12+、Git、zlib 和 uv。macOS 可使用 Xcode Command Line Tools，Linux 安装对应编译器与 zlib 开发包。以下命令在项目根目录执行。
 
 ### 1. 安装依赖并构建
 
@@ -25,7 +25,7 @@ cmake -S . -B workspace/build/release -G Ninja -DCMAKE_BUILD_TYPE=Release \
 cmake --build workspace/build/release --parallel 4
 ```
 
-已有 `.venv` 时，从激活环境开始即可。
+已有 `.venv` 时跳过创建步骤，继续安装依赖后再构建。
 
 ### 2. 运行测试与合成行情
 
@@ -76,16 +76,31 @@ python scripts/analyze_baseline.py --run-experiments \
 python scripts/analyze_baseline.py --analyze-existing workspace/results/m1/BTCUSDT_2025-02-01
 ```
 
+### 5. 运行本地 Polars 研究数据生产
+
+已准备2026-07-01至07-30的market_v2标准行情。研究采样使用统一20ms固定行情延迟，生产独立特征与标签。
+
+```sh
+python scripts/build_standard_data.py config/data_standardize_30d.yaml
+python scripts/build_features_targets.py config/features_targets_30d.yaml
+python scripts/summarize_research_dataset.py workspace/data/features/market_groups_v2 \
+  workspace/results/m2_standard/market_groups_v2/statistics_30d.json \
+  --labels workspace/data/labels/market_mid_groups_v2/horizon=1s
+```
+
+Data 使用 `config/data_standardize_30d.yaml`，Features/Targets 使用 `config/features_targets_30d.yaml`。标准数据按 `standard/版本/{snapshots,trades}/日期.parquet` 保存，特征按 `features/版本/日期.parquet` 保存，标签按 `labels/版本/horizon=周期/日期.parquet` 保存。来源、字段、版本和 X、y 读取见 [研究包指南](docs/implementation/research_package.md)。
+
 ## 项目结构
 
 M2-A 数据准备、生成和读取见 [研究数据集指南](docs/implementation/m2_a_dataset.md)。
-首批 2026-07-12 至 07-18 数据包含 437 万条可用研究样本，实际数据量与质量问题见 [七天验收报告](docs/reports/m2_a_2026-07-12_2026-07-18/report.md)。
+当前分组研究结果位于 `workspace/results/m2_standard/market_groups_v2/`。
 
 ```text
 hft_mm_research/
 ├── src/          C++ 源码
 │   ├── apps/     回放与做市命令行入口
 │   └── mm/       模块头文件与实现，detail/ 保存内部接入代码
+├── research/     Python/Polars 研究包 mm_research
 ├── config/       回放与策略参数
 ├── scripts/      下载、转换、校验与实验分析
 ├── tests/        单元测试、集成测试与 benchmarks
@@ -122,13 +137,15 @@ M0 性能测试及日志保存命令见 [单日性能报告](docs/reports/m0_202
 
 ## 实验参数
 
-配置使用平铺 YAML 标量，相对路径以项目根目录解析。NPZ 保留全量深度，观察器按配置提取前 5 或 10 档。
+回放和做市配置使用平铺 YAML 标量，研究配置另有日期和周期列表，相对路径以项目根目录解析。NPZ 保留全量深度，观察器按配置提取前 5 或 10 档。
 
 M1 默认每单 0.001 BTC、最大净仓位 0.01 BTC，Maker/Taker 费率为 2/5 bps，请求/响应延迟为 1 ms/0.5 ms。费率与延迟采用机制实验假设。交易 PnL 覆盖交易现金流、尾仓盯市和手续费，资金费率、保证金与强平留待后续阶段。
 
 ## 文档
 
 - [项目阅读指南](docs/reading_guide.md)
+- [Polars 研究包与独立版本数据](docs/implementation/research_package.md)
+- [30 天快照接入与迁移结果](docs/reports/polars_30d_2026-07/report.md)
 - [研究数据的组织、下载、处理与详细概况](docs/implementation/data_requirements.md)
 - [服务器推荐配置与费用估算](docs/implementation/server_recommendation.md)
 - [GPU、策略组合与 Parquet 存储选择](docs/implementation/gpu_and_parquet.md)

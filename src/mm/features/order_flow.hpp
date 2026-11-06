@@ -14,7 +14,7 @@ struct BboState {
     double ask_quantity;
 };
 
-// 根据一次有效盘口更新前后的最优价量，计算买方为正的 OFI，数量单位沿用源数据。
+// 【核心逻辑42】根据一次有效盘口更新前后的最优价量，计算买方为正的 OFI，数量单位沿用源数据。
 inline double calculate_bbo_ofi(const BboState& previous, const BboState& current) {
     /** 两个输入必须属于同一连续区段，且不能跨越快照初始化或无效盘口。
      * 返回逐事件 OFI，快照、缺口和窗口累计由调用方管理。

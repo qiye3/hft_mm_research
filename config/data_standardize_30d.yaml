@@ -1,7 +1,7 @@
 # 所属阶段为Data标准化，读取原始压缩行情，输出每日两份标准Parquet。
 # 执行命令 .venv/bin/python scripts/build_standard_data.py config/data_standardize_30d.yaml
 # 输入是下方snapshots与trades指向的本地文件，此入口只处理已下载数据。
-# 输出为output_root/version/date=YYYY-MM-DD/{snapshots,trades}.parquet。
+# 输出为output_root/version/{snapshots,trades}/YYYY-MM-DD.parquet。
 stage: data_standardize
 
 # 标准行情输出版本与根目录。

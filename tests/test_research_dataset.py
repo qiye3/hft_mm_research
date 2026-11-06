@@ -13,14 +13,14 @@ from pathlib import Path
 
 import numpy as np
 import polars as pl
-import zstandard as zstd
-import yaml
 from polars.testing import assert_frame_equal
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from build_research_dataset import FEATURE_COLUMNS, annotate_trade_sequence_gaps, build_research_table, run_dataset_production
-from validate_research_dataset import QUALITY_POLICY
+from mm_research.features.book import BOOK_FEATURE_COLUMNS
+from mm_research.features.order_flow import add_order_flow_features
+from mm_research.features.transform import build_feature_group
+from mm_research.targets.midprice import build_midprice_labels
 from convert_tardis import EVENT_DTYPE, LOCAL, EXCHANGE, BUY, SELL, DEPTH, SNAPSHOT, CLEAR, TRADE
 
 EXTRACTOR = Path(sys.argv[1]).resolve()
@@ -29,45 +29,7 @@ EXTRACTOR = Path(sys.argv[1]).resolve()
 class ResearchDatasetTests(unittest.TestCase):
     """针对数据时间口径与计算公式执行小规模回归。"""
 
-    # 发布清单必须等待所有日期的同版本质量验收通过。
-    def test_dataset_publication_requires_validation(self):
-        """构造已完成的缓存，检查失败报告阻止发布，成功报告允许复用。"""
-        with tempfile.TemporaryDirectory() as directory:
-            work = Path(directory)
-            partition = work / "dataset/date=2026-07-12"
-            results = work / "results/date=2026-07-12"
-            partition.mkdir(parents=True)
-            results.mkdir(parents=True)
-            config = {"dates": ["2026-07-12"], "output_root": str(work / "dataset"),
-                      "result_root": str(work / "results"), "interval_ns": 100_000_000}
-            (work / "config.yaml").write_text(yaml.safe_dump(config))
-            for name in ["base", "research"]:
-                pl.DataFrame({"timestamp_ns": [0]}).write_parquet(partition / f"{name}.parquet")
-            (partition / "complete.json").write_text(json.dumps({"config": config, "valid_label_rows": 1}))
-            report_file = results / "validation.json"
-            report = {"passed": False, "quality_policy": QUALITY_POLICY, "valid_labels": 1}
-            report_file.write_text(json.dumps(report))
-            with self.assertRaises(ValueError):
-                run_dataset_production(work / "config.yaml")
-            self.assertFalse((work / "dataset/manifest.json").exists())
-            report["passed"] = True
-            report_file.write_text(json.dumps(report))
-            run_dataset_production(work / "config.yaml")
-            manifest = json.loads((work / "dataset/manifest.json").read_text())
-            self.assertTrue(manifest["validated"])
-
-    # 序号跳跃只在当前成交接收后可见，不能回写更早样本的质量状态。
-    def test_trade_sequence_gap_boundaries(self):
-        """输入两个有跳号的成交，独立检查左开右闭网格的疑点标记。"""
-        base = pl.DataFrame({"timestamp_ns": np.arange(7, dtype=np.int64) * 100_000_000})
-        with tempfile.TemporaryDirectory() as directory:
-            filename = Path(directory) / "trades.csv.zst"
-            content = "id,local_timestamp\n1,50000\n3,250000\n4,450000\n"
-            filename.write_bytes(zstd.ZstdCompressor().compress(content.encode()))
-            annotated = annotate_trade_sequence_gaps(base, filename)
-            self.assertEqual(annotated["trade_sequence_gap"].to_list(), [False, False, False, True, False, False, False])
-
-    # 通过原生 NPZ 读取器验证事件恰落在网格和跨分片时的完整状态。
+    # 【非核心】通过原生 NPZ 读取器验证事件恰落在网格和跨分片时的完整状态。
     def test_cpp_grid_ofi_trades_and_snapshot(self):
         """生成可手算的双时钟行情，检查 C++ 输出的 OFI、成交与快照有效标记。"""
         both = LOCAL | EXCHANGE
@@ -103,6 +65,8 @@ class ResearchDatasetTests(unittest.TestCase):
             (work / "replay.yaml").write_text(
                 f"source: {work / 'manifest.json'}\noutput: {work / 'unused.json'}\n"
                 "snapshot_interval_ns: 100000000\n"
+                "date: synthetic\nsymbol: BTCUSDT\ntick_size: 0.1\nlot_size: 0.001\n"
+                "depth_levels: 10\nlatency_sample_every: 0\n"
             )
             command = [
                 str(EXTRACTOR), str(work / "replay.yaml"), "0", "1800000000", "1000000000", str(work / "samples.csv"),
@@ -128,16 +92,18 @@ class ResearchDatasetTests(unittest.TestCase):
             self.assertEqual(table["ask_quantity_10"][4], 5)
             self.assertEqual(table["book_valid"][-1], 0)
 
-    # 用线性变化行情独立核对滚动统计和未来价格差，并验证前缀不依赖未来。
+    # 【非核心】用线性变化行情独立核对滚动统计和未来价格差，并验证前缀不依赖未来。
     def test_python_features_labels_and_no_future_leakage(self):
         """输入人工网格表，检查 1s/5s 窗口、缺口隔离、日尾标签与前缀一致性。"""
         count = 140
         values = {
             "timestamp_ns": np.arange(count, dtype=np.int64) * 100_000_000,
+            "symbol": ["BTCUSDT"] * count, "date": ["1970-01-01"] * count,
+            "trade_segment_id": [1] * count,
             "segment_id": [1] * 80 + [2] * 60,
             "segment_start_ns": [0] * 80 + [8_000_000_000] * 60,
             "book_valid": [1] * count, "flow_valid": [1] * count,
-            "trade_sequence_gap": [False] * count,
+            "book_segment_id": [1] * 80 + [2] * 60,
             "mid_price": 100 + np.arange(count) * 0.01,
             "spread": [0.2] * count, "ofi_bbo": [1.0] * count,
             "buy_volume": [2.0] * count, "sell_volume": [1.0] * count,
@@ -148,33 +114,34 @@ class ResearchDatasetTests(unittest.TestCase):
             values[f"bid_quantity_{level}"] = [2.0] * count
             values[f"ask_quantity_{level}"] = [1.0] * count
         base = pl.DataFrame(values)
-        result = build_research_table(base, 0.1, 100_000_000)
-        self.assertAlmostEqual(result["ofi_1s"][60], 10)
-        self.assertAlmostEqual(result["ofi_5s"][60], 50)
+        config = {"tick_size": 0.1, "lot_size": 0.001}
+        result = build_feature_group("book", base, config)
+        order_flow = add_order_flow_features(base)
+        returns = build_feature_group("returns", base, config)
+        self.assertAlmostEqual(order_flow["ofi_1s"][60], 10)
+        self.assertAlmostEqual(order_flow["ofi_5s"][60], 50)
         self.assertAlmostEqual(result["imbalance_10"][60], 1 / 3)
-        self.assertAlmostEqual(result["target_mid_change_1s"][60], 0.1)
-        self.assertFalse(result["label_valid"][75])
-        self.assertFalse(result["feature_valid"][85])
-        self.assertTrue(result["feature_valid"][135])
-        self.assertFalse(result.tail(10)["label_valid"].any())
-        prefix = build_research_table(base.head(70), 0.1, 100_000_000)
-        assert_frame_equal(prefix.select(FEATURE_COLUMNS), result.head(70).select(FEATURE_COLUMNS), check_exact=True)
+        labels = build_midprice_labels(base, 0.1, 100_000_000)
+        self.assertAlmostEqual(labels["y_mid_1s_usdt"][60], 0.1)
+        self.assertFalse(labels["label_valid"][75])
+        self.assertFalse(returns["return_feature_valid"][85])
+        self.assertTrue(returns["return_feature_valid"][135])
+        self.assertFalse(labels.tail(10)["label_valid"].any())
+        prefix = build_feature_group("book", base.head(70), config)
+        assert_frame_equal(prefix.select(BOOK_FEATURE_COLUMNS), result.head(70).select(BOOK_FEATURE_COLUMNS), check_exact=True)
         broken = base.with_columns(pl.when(pl.col("timestamp_ns") == 6_500_000_000)
                                    .then(0).otherwise(pl.col("flow_valid")).alias("flow_valid"))
-        broken_result = build_research_table(broken, 0.1, 100_000_000)
-        self.assertFalse(broken_result["label_valid"][60])
-        self.assertFalse(broken_result["feature_valid"][66])
+        broken_result = build_feature_group("trades", broken, config)
+        self.assertTrue(build_midprice_labels(broken, 0.1, 100_000_000)["label_valid"][60])
+        self.assertFalse(broken_result["trade_feature_valid"][66])
         empty_window = base.with_columns(
             pl.Series("buy_volume", [100.123] + [0.0] * (count - 1)),
             pl.lit(0.0).alias("sell_volume"),
         )
-        empty_result = build_research_table(empty_window, 0.1, 100_000_000)
+        empty_result = build_feature_group("trades", empty_window, config)
         self.assertEqual(empty_result["trade_imbalance_1s"][60], 0)
-        self.assertTrue(empty_result["feature_valid"][60])
-        suspected_gap = base.with_columns((pl.col("timestamp_ns") == 6_500_000_000).alias("trade_sequence_gap"))
-        gap_result = build_research_table(suspected_gap, 0.1, 100_000_000)
-        self.assertFalse(gap_result["label_valid"][60])
-        self.assertFalse(gap_result["feature_valid"][70])
+        self.assertTrue(empty_result["trade_feature_valid"][60])
+
 
 
 if __name__ == "__main__":

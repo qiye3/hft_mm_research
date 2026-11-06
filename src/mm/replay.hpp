@@ -14,9 +14,13 @@ namespace mm {
 // 在原生 Local 应用行情的前后接收通知，研究统计只读取本地可见状态。
 class ReplayEventSink {
 public:
+    // 【非核心】允许通过回调接口指针析构具体采样器。
     virtual ~ReplayEventSink() = default;
+    // 【非核心】声明事件应用前的通知接口，具体采样逻辑由实现类提供。
     virtual void before_event(const hbt::Event& event, const hbt::HashMapMarketDepth& depth) = 0;
+    // 【非核心】声明事件应用后的通知接口，参数盘口已包含当前事件。
     virtual void after_event(const hbt::Event& event, const hbt::HashMapMarketDepth& depth) = 0;
+    // 【非核心】声明行情结束通知，供实现类补齐剩余采样点。
     virtual void finish(const hbt::HashMapMarketDepth& depth) = 0;
 };
 
@@ -46,17 +50,17 @@ struct ReplayResult {
     std::size_t shards_released = 0; // 释放的分片数。
 };
 
-// 从配置文件取得观察参数，文件位置相对 config 的上一级解析。
+// 【非核心】从配置文件取得观察参数，文件位置相对 config 的上一级解析。
 ReplayConfig load_config(const std::filesystem::path& filename);
-// 返回用于检查 BBO、分类计数和深档升入前十档的确定性事件。
+// 【非核心】返回用于检查 BBO、分类计数和深档升入前十档的确定性事件。
 std::vector<hbt::Event> synthetic_events();
-// 根据 source 选择数据来源，返回完整原生回放后的观察结果。
+// 【核心逻辑32】根据 source 选择数据来源，返回完整原生回放后的观察结果。
 ReplayResult run_replay(const ReplayConfig& config, ReplayEventSink* sink = nullptr);
-// 接管内存分片进行双时钟回放，供合成测试检查路由顺序与缓存释放。
+// 【核心逻辑67】接管内存分片进行双时钟回放，供合成测试检查路由顺序与缓存释放。
 ReplayResult run_memory_replay(const ReplayConfig& config,
                                std::vector<std::vector<hbt::Event>> chunks,
                                ReplayEventSink* sink = nullptr);
-// 将回放汇总序列化为 JSON，分别报告逻辑事件吞吐和处理器 dispatch 吞吐。
+// 【非核心】将回放汇总序列化为 JSON，分别报告逻辑事件吞吐和处理器 dispatch 吞吐。
 void write_report(const ReplayConfig& config, const ReplayResult& result,
                   const std::filesystem::path& output);
 

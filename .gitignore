@@ -5,7 +5,11 @@
 /workspace/data/normalized/*
 /workspace/data/samples/*
 /workspace/data/research/
+/workspace/data/base/
+/workspace/data/features/
+/workspace/data/labels/
 /workspace/data/standard/
+*.egg-info/
 !/workspace/data/raw/.gitkeep
 !/workspace/data/normalized/.gitkeep
 !/workspace/data/samples/.gitkeep

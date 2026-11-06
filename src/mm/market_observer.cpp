@@ -12,7 +12,7 @@
 namespace mm {
 namespace {
 
-// 从完整单侧盘口中选出当前最优的 N 档，并转换为实际价格与数量。
+// 【核心逻辑39】从完整单侧盘口中选出当前最优的 N 档，并转换为实际价格与数量。
 std::size_t read_levels(const std::unordered_map<std::int64_t, double>& levels,
                         std::int64_t best_tick, double tick_size, bool is_bid,
                         std::size_t count, std::array<PriceLevel, 10>& output) {
@@ -39,7 +39,7 @@ std::size_t read_levels(const std::unordered_map<std::int64_t, double>& levels,
 
 } // namespace
 
-// 建立前五档或前十档观察器，设定本地快照提取的最短时间间隔。
+// 【核心逻辑31】建立前五档或前十档观察器，设定本地快照提取的最短时间间隔。
 MarketObserver::MarketObserver(std::size_t depth_levels, std::int64_t snapshot_interval_ns)
     : depth_levels_(depth_levels), snapshot_interval_ns_(snapshot_interval_ns) {
     /** 输入 depth_levels 只接受 5 或 10，snapshot_interval_ns 为非负纳秒数。
@@ -53,7 +53,7 @@ MarketObserver::MarketObserver(std::size_t depth_levels, std::int64_t snapshot_i
     }
 }
 
-// 在本地盘口更新后累计事件与价差统计，并按本地时钟触发快照采样。
+// 【核心逻辑43】在本地盘口更新后累计事件与价差统计，并按本地时钟触发快照采样。
 void MarketObserver::on_event(const hbt::Event& event, const hbt::HashMapMarketDepth& depth) {
     /** 输入 event 必须按 local_ts 非递减到达，depth 是应用该事件后的原生状态。
      * 输出体现为统计和可选的最新快照更新，未知 L2 类型或本地时间倒退会抛出异常。
@@ -94,7 +94,7 @@ void MarketObserver::on_event(const hbt::Event& event, const hbt::HashMapMarketD
     }
 }
 
-// 保存指定事件之后的双边 Top-N、Mid 和 Spread，供定期观察及最终输出使用。
+// 【核心逻辑38】保存指定事件之后的双边 Top-N、Mid 和 Spread，供定期观察及最终输出使用。
 void MarketObserver::capture(const hbt::Event& event, const hbt::HashMapMarketDepth& depth) {
     /** event 提供双时间戳，depth 提供当前完整盘口，输出保存在 latest_。
      * bid_count/ask_count 描述数组中的有效前缀，空簿的价格指标可为 NaN。
@@ -113,11 +113,11 @@ void MarketObserver::capture(const hbt::Event& event, const hbt::HashMapMarketDe
     ++statistics_.snapshots_observed;
 }
 
-// 返回逐事件累计统计的只读引用，供回放汇总和测量采样使用。
+// 【非核心】返回逐事件累计统计的只读引用，供回放汇总和测量采样使用。
 const EventStatistics& MarketObserver::statistics() const noexcept { return statistics_; }
-// 返回最近一次采集的盘口视图，有效价位数量由快照中的 count 字段给出。
+// 【非核心】返回最近一次采集的盘口视图，有效价位数量由快照中的 count 字段给出。
 const BookSnapshot& MarketObserver::latest_snapshot() const noexcept { return latest_; }
-// 返回已验证的目标观察档数，用于解释快照数组的有效容量。
+// 【非核心】返回已验证的目标观察档数，用于解释快照数组的有效容量。
 std::size_t MarketObserver::depth_levels() const noexcept { return depth_levels_; }
 
 } // namespace mm

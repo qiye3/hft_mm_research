@@ -34,6 +34,8 @@ if(BUILD_TESTING)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_convert_tardis.py $<TARGET_FILE:replay_probe>)
     add_test(NAME mm.research_dataset
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_research_dataset.py $<TARGET_FILE:extract_research>)
+    add_test(NAME mm.research_versions
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_research_versions.py)
     add_test(NAME mm.feature_examples
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_feature_examples.py)
     add_test(NAME mm.standard_data

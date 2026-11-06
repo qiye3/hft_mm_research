@@ -16,3 +16,13 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["research"]
+
+[tool.pyright]
+extraPaths = ["research"]
+venvPath = "."
+venv = ".venv"
+
+[tool.basedpyright]
+extraPaths = ["research"]
+venvPath = "."
+venv = ".venv"

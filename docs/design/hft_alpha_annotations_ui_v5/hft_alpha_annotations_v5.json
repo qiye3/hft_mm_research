@@ -14,10 +14,10 @@
       "id": "codex-v5-polars-polars-input",
       "target": "node:a1",
       "author": "Codex",
-      "status": "待办",
-      "body": "在 data/base.py 增加快照+同源 Trades 的 Polars 入口，按接收时间 backward 对齐 100ms 网格。沿用现有 C++ base.parquet 作为事件路径变量来源；对照已有七天基础字段后再使用新入口。",
+      "status": "已解决",
+      "body": "历史记录，当前实现已由market_v2统一标准链路替换。在 data/base.py 增加快照+同源 Trades 的 Polars 入口，按接收时间 backward 对齐 100ms 网格。沿用现有 C++ base.parquet 作为事件路径变量来源；对照已有七天基础字段后再使用新入口。 已实施。详见 research/mm_research 及30天配置；保留已通过的七天逐列对照和独立版本回归。",
       "created_at": "2026-11-05T07:44:22.762Z",
-      "updated_at": "2026-11-05T07:44:22.762Z"
+      "updated_at": "2026-11-06T07:25:39.584960+00:00"
     },
     {
       "id": "codex-v5-polars-event-feature-limit",
@@ -41,55 +41,55 @@
       "id": "codex-v5-polars-package-migration",
       "target": "node:a3",
       "author": "Codex",
-      "status": "待办",
-      "body": "先迁移现有脚本到研究包并保持现有结果一致。生产编排、X/y 加载与基础统计进入 data/dataset.py，基础源适配进入 data/base.py，质检进入 data/quality.py，因子进入 features/transform.py，标签进入 targets/midprice.py。命令脚本保留轻量入口，数据下载和转换工具继续使用现有 scripts。",
+      "status": "已解决",
+      "body": "先迁移现有脚本到研究包并保持现有结果一致。生产编排、X/y 加载与基础统计进入 data/dataset.py，基础源适配进入 data/base.py，质检进入 data/quality.py，因子进入 features/transform.py，标签进入 targets/midprice.py。命令脚本保留轻量入口，数据下载和转换工具继续使用现有 scripts。 已实施。详见 research/mm_research 及30天配置；保留已通过的七天逐列对照和独立版本回归。",
       "created_at": "2026-11-05T07:44:22.762Z",
-      "updated_at": "2026-11-05T07:44:22.762Z"
+      "updated_at": "2026-11-05T11:39:21.496534+00:00"
     },
     {
       "id": "codex-v5-polars-feature-label-versions",
       "target": "section:a3:输出",
       "author": "Codex",
-      "status": "待办",
-      "body": "保留按日期存储的基础变量。特征和标签分别保存于 features/<feature_version>/date=... 与 labels/<label_version>/horizon=.../date=...，使用独立有效标志。加载时按 symbol/date/timestamp_ns 一对一关联，并检查 base_version 和来源时钟一致。",
+      "status": "已解决",
+      "body": "保留按日期存储的基础变量。特征和标签分别保存于 features/<feature_version>/date=... 与 labels/<label_version>/horizon=.../date=...，使用独立有效标志。加载时按 symbol/date/timestamp_ns 一对一关联，并检查 base_version 和来源时钟一致。 已实施。详见 research/mm_research 及30天配置；保留已通过的七天逐列对照和独立版本回归。",
       "created_at": "2026-11-05T07:44:22.762Z",
-      "updated_at": "2026-11-05T07:44:22.762Z"
+      "updated_at": "2026-11-05T11:39:21.496534+00:00"
     },
     {
       "id": "codex-v5-polars-bps-targets",
       "target": "note:a3:处理:1",
       "author": "Codex",
-      "status": "待办",
-      "body": "主标签统一 bps，保留同 horizon 的 Ticks 和 USDT 辅助列。先对照当前 1s bps 与 USDT 标签，再扩展 100ms、500ms、5s；检查单位换算、精确未来时刻、缺口和日尾。现有基础数据可以复用。",
+      "status": "已解决",
+      "body": "主标签统一 bps，保留同 horizon 的 Ticks 和 USDT 辅助列。先对照当前 1s bps 与 USDT 标签，再扩展 100ms、500ms、5s；检查单位换算、精确未来时刻、缺口和日尾。现有基础数据可以复用。 已实施。详见 research/mm_research 及30天配置；保留已通过的七天逐列对照和独立版本回归。",
       "created_at": "2026-11-05T07:44:22.762Z",
-      "updated_at": "2026-11-05T07:44:22.762Z"
+      "updated_at": "2026-11-05T11:39:21.496534+00:00"
     },
     {
       "id": "codex-v5-polars-polars-factors",
-      "target": "file:python/mm_research/features/transform.py",
+      "target": "file:research/mm_research/features/transform.py",
       "author": "Codex",
-      "status": "待办",
-      "body": "从现有 build_research_table 提取候选特征计算，保留整数数量滚动累计以消除空窗口残差。以基础表为输入，特征工件不依赖某一个未来标签的有效性。",
+      "status": "已解决",
+      "body": "从现有 build_research_table 提取候选特征计算，保留整数数量滚动累计以消除空窗口残差。以基础表为输入，特征工件不依赖某一个未来标签的有效性。 已实施。详见 research/mm_research 及30天配置；保留已通过的七天逐列对照和独立版本回归。",
       "created_at": "2026-11-05T07:44:22.762Z",
-      "updated_at": "2026-11-05T07:44:22.762Z"
+      "updated_at": "2026-11-05T11:39:21.496534+00:00"
     },
     {
       "id": "codex-v5-polars-dataset-loader",
-      "target": "file:python/mm_research/data/dataset.py",
+      "target": "file:research/mm_research/data/dataset.py",
       "author": "Codex",
-      "status": "待办",
-      "body": "迁入现有生产编排、加载和基础统计。允许选择 feature_version、label_version、horizon 和主标签 bps；关联前核验一对一键及基础版本、时钟，不把未来列放入 X。",
+      "status": "已解决",
+      "body": "迁入现有生产编排、加载和基础统计。允许选择 feature_version、label_version、horizon 和主标签 bps；关联前核验一对一键及基础版本、时钟，不把未来列放入 X。 已实施。详见 research/mm_research 及30天配置；保留已通过的七天逐列对照和独立版本回归。",
       "created_at": "2026-11-05T07:44:22.762Z",
-      "updated_at": "2026-11-05T07:44:22.762Z"
+      "updated_at": "2026-11-05T11:39:21.496534+00:00"
     },
     {
       "id": "codex-v5-polars-cpp-parity",
       "target": "node:b2",
       "author": "Codex",
       "status": "待办",
-      "body": "模型冻结后从 Polars 定义移植入选特征，复用已有事件状态。包含成交跳号的首次可见时刻和缺口预热，避免离线质量规则与 C++ 回放不一致。",
+      "body": "历史记录，当前实现已由market_v2统一标准链路替换。模型冻结后从 Polars 定义移植入选特征，复用已有事件状态。包含成交跳号的首次可见时刻和缺口预热，避免离线质量规则与 C++ 回放不一致。",
       "created_at": "2026-11-05T07:44:22.762Z",
-      "updated_at": "2026-11-05T07:44:22.762Z"
+      "updated_at": "2026-11-06T07:25:39.584960+00:00"
     },
     {
       "id": "codex-v5-polars-prediction-bps",
@@ -108,6 +108,69 @@
       "body": "新增工具栏的收起右侧笔记/展开右侧笔记按钮。收起时流程图占满内容区，展开后恢复右侧详情；收起期间选择节点会更新详情，展开即可查看。按钮同步 aria-expanded 与面板 hidden 状态。",
       "created_at": "2026-11-05T09:46:48.392Z",
       "updated_at": "2026-11-05T09:46:48.392Z"
+    },
+    {
+      "id": "codex-package-migration-20261105",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "备注",
+      "body": "第一组迁移已完成。编排和旧表兼容进入 data/dataset.py，质检进入 data/quality.py，压缩读取进入 data/base.py，十九个特征进入 features/transform.py，多周期三单位标签进入 targets/midprice.py。七天旧研究表逐列逐值一致；原命令保留 CLI。特征/标签独立存储与快照入口继续实施。",
+      "created_at": "2026-11-05T10:25:42.733587+00:00",
+      "updated_at": "2026-11-05T10:25:42.733736+00:00"
+    },
+    {
+      "id": "codex-data-download-30d-20261105",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "已下载 2026-07-01 至 07-30 的三十天25档快照和同源逐笔成交，共60份原始文件，已有七天文件直接复用。本轮按快照研究路径准备数据，后续进行时序、缺口和特征标签检查。",
+      "created_at": "2026-11-05T10:25:42.733737+00:00",
+      "updated_at": "2026-11-05T10:25:42.733738+00:00"
+    },
+    {
+      "id": "codex-research-directory-20261105",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "按用户反馈，将研究源码目录从 python/mm_research 调整为 research/mm_research，明确业务用途。同步 pyproject 包发现配置、文件树、节点映射及已有文件批注；导入旧 python 路径的文件批注时自动映射到 research 路径。包导入名仍为 mm_research。",
+      "created_at": "2026-11-05T10:46:32.067298+00:00",
+      "updated_at": "2026-11-05T10:46:32.067298+00:00"
+    },
+    {
+      "id": "codex-independent-artifacts-complete-20261105",
+      "target": "section:a3:输出",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "历史记录，当前实现已由market_v2统一标准链路替换。独立特征、标签工件已经实施，默认 bps，同时保存 Ticks/USDT。支持100ms、500ms、1s、5s；--only features 与 --only labels 分别生成，按基础版本、时钟和唯一键关联。三十天有18,329,997条1s可用样本，详细证据在docs/reports/polars_30d_2026-07/report.md。",
+      "created_at": "2026-11-05T11:39:21.496534+00:00",
+      "updated_at": "2026-11-06T07:25:39.584960+00:00"
+    },
+    {
+      "id": "codex-snapshot-source-complete-20261105",
+      "target": "node:a1",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "Polars快照入口已完成。以接收时间向后对齐，按100ms汇总同源Trades，保留未知事件OFI为空，使用16个可提供特征。采用1s年龄门限保守剔除并叠加已有七天缺口记录，静默本身不证明断线。重叠七天公共有效盘口和成交均与C++一致；其余23天执行源字段与时序、数值、边界检查。",
+      "created_at": "2026-11-05T11:39:21.496534+00:00",
+      "updated_at": "2026-11-05T11:39:21.496534+00:00"
+    },
+    {
+      "id": "codex-source-data-dictionary-20261105",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "已补充外部项目文档 Projects/HFT_MM/Data/原始历史行情.md：在原有成交与25档快照之后，增加L2增量、标记/指数价格与资金费率、Ticker、OI、强平、HFT盘口/成交及ZIP归档说明，逐类列字段表与一行示例。核对了网盘目录和2026-08-01四类辅助Parquet、2026-07-12强平CSV；OI样本统计时间早于文件日期，按接收时间与统计时间共同检查。仅补充文档，未修改数据处理代码。",
+      "created_at": "2026-11-05T14:52:53.832602+00:00",
+      "updated_at": "2026-11-05T14:52:53.832602+00:00"
+    },
+    {
+      "id": "codex-storage-chain-answer-20261105",
+      "target": "node:a1",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "已在外部问题文档 Projects/HFT_MM/问题/20261105_问题.md 回答数据存储链路：快照与同源成交经Polars对齐100ms基础表，再独立生成特征和标签；补充NPZ/C++事件回放路径、基础表位置与16/19特征的OFI差异。保留问题原文，新增回答用【】标记。未修改数据处理代码。 补充：基础数据处理表新增模块与函数列，按实际调用填写data/base.py的读取、网格、对齐、成交汇总和质量标记函数，以及data/dataset.py的load_base_day()/write_artifact()落盘入口。",
+      "created_at": "2026-11-05T15:11:24.214682+00:00",
+      "updated_at": "2026-11-05T15:16:10.700492+00:00"
     },
     {
       "id": "codex-v5-20261106-feature-categories",
@@ -132,9 +195,9 @@
       "target": "file:research/mm_research/features/trade_events.py",
       "author": "Codex",
       "status": "已完成",
-      "body": "逐笔模块示例位于 features/trade_events.py。build_trade_event_features() 接收成交分桶和连续网格，构建净成交金额与成交强度，展示编号疑点切段和五秒预热。",
+      "body": "逐笔模块示例features/trade_events.py读取标准逐笔分桶，展示净成交金额与强度。普通成交编号空缺不影响窗口，只在真实异常区间切段，使用完整一秒预热。",
       "created_at": "2026-11-06T10:28:19+08:00",
-      "updated_at": "2026-11-06T10:28:19+08:00"
+      "updated_at": "2026-11-06T07:25:39.584960+00:00"
     },
     {
       "id": "codex-v5-20261106-common-expressions",
@@ -180,6 +243,174 @@
       "body": "按用户要求保留三个可直接参考的特征计算模块。Python 清理 main、参数解析、读写文件，C++ 清理 event_ofi.cpp 程序与构建目标。参考 snapshot.py、trade_events.py 和 order_flow.hpp 的输入、输出、特征公式与有效性定义新增模块。",
       "created_at": "2026-11-06T10:44:50+08:00",
       "updated_at": "2026-11-06T10:44:50+08:00"
+    },
+    {
+      "id": "codex-features-overview-20261106",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "已更新外部文档 Projects/HFT_MM/Features/Features总览.md，说明分类后的book/trades/returns/order_flow模块、transform组织入口和expressions公共运算。使用现有snapshot.py、trade_events.py及C++ order_flow.hpp示例补充输入、调用代码、结果、质量标记与正式版本接入步骤，并更新build_snapshot_grid基础层职责。明确C++示例处理L2盘口事件，独立示例字段进入正式表需接入列清单和新版本。主文档Features（1）（2）（3）补充在对话中提供。",
+      "created_at": "2026-11-06T02:53:19.561158+00:00",
+      "updated_at": "2026-11-06T02:53:19.561158+00:00"
+    },
+    {
+      "id": "codex-quality-document-20261106",
+      "target": "node:a1",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "已补充外部文档 Projects/HFT_MM/Data/数据Quality.md。按真实代码说明原始读取、盘口/成交检查、100ms对齐、区段与预热、标签、工件保存及加载的检查流程和质量字段；区分七天独立对照与30天自动工件检查。记录快照1秒年龄门限、成交跳号5秒预热、标签对流量完整性的依赖、参考覆盖与新版本独立验收衔接、异常值统计和历史规则等问题及完善方向。",
+      "created_at": "2026-11-06T03:02:04.152948+00:00",
+      "updated_at": "2026-11-06T03:02:04.152948+00:00"
+    },
+    {
+      "id": "codex-feature-catalog-20261106",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "已补充外部文档 Projects/HFT_MM/Features/Features构造表.md，按当前源码列出19个正式Polars特征及6个独立示例字段，逐项记录代码式计算、输入、模块函数、单位和窗口，并标明快照版本选择16列。C++表说明逐事件BBO OFI及100ms盘口/成交基础变量，补充质量区段、5秒预热和输入列清单口径。正式与示例字段及顺序已与源码常量核对。",
+      "created_at": "2026-11-06T04:45:58.756616+00:00",
+      "updated_at": "2026-11-06T04:45:58.756616+00:00"
+    },
+    {
+      "id": "codex-v5-20261106-trade-id-audit",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "三十天逐笔核实完成。172,138次跳号中171,426次在官方普通成交档案也无对应记录，712次含867,228条实际遗漏。Tardis转换会过滤NA、INSURANCE_FUND、ADL，8月1日带类型记录验证5,500条被过滤记录。统一跳号切段规则应后续按分类证据修正，当前产物保持其版本。",
+      "created_at": "2026-11-06T13:04:35+08:00",
+      "updated_at": "2026-11-06T13:04:35+08:00"
+    },
+    {
+      "id": "codex-v5-20261106-baidu-trade-recovery",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "已从网盘 BTC-Trades-23-26 下载并逐列验收三十天ZIP，与官方88,548,524条普通成交一致，找回CSV缺少的867,228条，全部价量、方向、时间一致。ZIP缺少本地接收时间，完整成交内容与现有接收时钟回放需分别处理。详见成交编号核实报告。",
+      "created_at": "2026-11-06T13:04:35+08:00",
+      "updated_at": "2026-11-06T13:04:35+08:00"
+    },
+    {
+      "id": "codex-v5-20261106-full-range-coverage-and-quality",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "已核对2025.10—2026.10完整396天来源清单。官方13个月成交档案可下载，网盘ZIP到7月、HFT到9月，十月成交需官方补充。网盘快照/L2到10月21日，末尾10天缺目录且已有日内盘口缺口。方案是分别管理内容完整性、接收时钟和盘口质量，按依赖置空、分窗口恢复，另行验证独立来源的盘口修复。详见全区间覆盖报告。",
+      "created_at": "2026-11-06T13:12:49+08:00",
+      "updated_at": "2026-11-06T13:12:49+08:00"
+    },
+    {
+      "id": "codex-v5-20261106-upstream-data-retention",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "market_v2每日两份Parquet已完成三十天生产。盘口保留原时点完整25档，逐笔直接来自官方普通成交ZIP。标准表只保存交易所时间，来源、行号、质量标签保存在行中，定义内嵌元数据。",
+      "created_at": "2026-11-06T13:25:32+08:00",
+      "updated_at": "2026-11-06T07:01:28.056758+00:00"
+    },
+    {
+      "id": "codex-v5-20261106-upstream-content-and-receipts",
+      "target": "node:a1",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "已统一研究链路至market_v2标准行情，按交易所时间加20ms固定延迟采样。30天快照平均延迟2.356ms、成交9.846ms，选择稍大的20ms。前日标准表接回跨午夜记录，原始接收时间只用于来源诊断。",
+      "created_at": "2026-11-06T13:25:32+08:00",
+      "updated_at": "2026-11-06T07:25:39.584960+00:00"
+    },
+    {
+      "id": "codex-v5-20261106-standard-data-production",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "market_v2标准层65,244,225条25档快照和88,548,524条普通成交。三十天新基础、16特征及四周期标签已生成，1s关联可用25,663,197行，约99.01%。旧代码分支、配置与缓存清理完毕，释放约9.01GB。",
+      "created_at": "2026-11-06T14:12:29+08:00",
+      "updated_at": "2026-11-06T07:25:39.584960+00:00"
+    },
+    {
+      "id": "codex-v5-20261106-data-processing-notes",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "步骤笔记、研究包指南、M2-A指南、README及HTML已同步唯一market_v2链路。说明20ms依据、跨日处理、独立盘口和成交质量、独立版本特征标签及当前命令。",
+      "created_at": "2026-11-06T14:22:31+08:00",
+      "updated_at": "2026-11-06T07:25:39.584960+00:00"
+    },
+    {
+      "id": "codex-v5-20261106-standard-only-migration",
+      "target": "node:a1",
+      "author": "Codex",
+      "status": "已完成",
+      "body": "清理旧研究路径和缓存。base/dataset/quality仅处理market_v2，删除两份旧配置及旧组合表/CSV研究分支，更新校验和统计入口、逐笔特征示例及相关测试。30天全量重建，7月1/14/30日独立参考校验通过。旧派生数据与运行缓存约9.01GB已删除，原始数据与独立L2回放输入保留。",
+      "created_at": "2026-11-06T07:25:39.584960+00:00",
+      "updated_at": "2026-11-06T07:25:39.584960+00:00"
+    },
+    {
+      "id": "codex-v5-20261106-simplify-research-helpers",
+      "target": "file:research/mm_research/data/dataset.py",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "精简辅助链路。指定日期的load_samples和research_read_lock直接使用日期列表，避免重复发现整个版本目录。build_trade_bins按Data质量标签确定成交有效性。标准行情复用只核对内嵌定义，返回日期及reused=True；新生产仍返回行数和质量统计。快照质量标注列为核心逻辑67。相关标准化、分组研究及特征测试通过。",
+      "created_at": "2026-11-06T10:29:13Z",
+      "updated_at": "2026-11-06T10:29:13Z",
+      "deleted": false
+    },
+    {
+      "id": "codex-v5-20261106-simplify-trading-helpers",
+      "target": "file:src/mm/market_maker.cpp",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "精简重复检查。策略数值约束由run_baseline统一校验，load_trading_config负责读取，直接构造MarketMaker要求调用方先校验。on_decision返回本次订单预留量供checkpoint复用，仓位风险在checkpoint集中检查。账本保留回报批次后和finish最终核对，移除决策点重复对账。配置拒绝、报价、在途撤单及PnL相关用例通过。",
+      "created_at": "2026-11-06T10:29:13Z",
+      "updated_at": "2026-11-06T10:29:13Z",
+      "deleted": false
+    },
+    {
+      "id": "codex-v5-20261106-core-execution-order",
+      "target": "node:a2",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "核心逻辑改为全项目按运行链路首次调用顺序编号。1—8为下载与Data标准化，9—25为Features基础组、衍生组、Targets及X/y读取，26—29为C++回放事件准备，30—44为C++研究回放与采样，45—63为做市实验、委托、成交账本及分析，64—67为独立特征模块示例和合成回放分支。编号是各入口的阅读顺序，共享函数和循环继续沿用同一编号，C++声明与实现共用编号。当前annotate_snapshot_records编号为6，替代上次批注中的67。",
+      "created_at": "2026-11-06T10:43:17Z",
+      "updated_at": "2026-11-06T10:43:17Z",
+      "deleted": false
+    },
+    {
+      "id": "codex-v5-20261106-project-agent-rules",
+      "target": "node:a2",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "项目根目录新增AGENTS.md，作为后续Agent自动读取的项目约定。汇总沟通及Git授权规则、C++与Polars分工、官方成交和25档快照的标准链路、base特征组与独立标签、核心逻辑统一编号、精简校验与禁止兜底、最小相关测试，以及文档和架构批注维护要求。用户新的长期约定继续更新该文件。",
+      "created_at": "2026-11-06T10:45:05Z",
+      "updated_at": "2026-11-06T10:45:05Z",
+      "deleted": false
+    },
+    {
+      "id": "codex-v5-20261106-compact-data-layout",
+      "target": "file:research/mm_research/data/dataset.py",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "目录改为日期文件名。标准行情为standard/market_v2/snapshots或trades/YYYY-MM-DD.parquet，特征为features/market_groups_v2/YYYY-MM-DD.parquet，标签为labels/market_mid_groups_v2/horizon=周期/YYYY-MM-DD.parquet。生产、前日读取、样本加载、独立校验、配置和项目指南已同步。现有60份标准行情、30份特征、120份标签已移动并删除空日期目录。三十天生产入口复用通过，跨日样本读取及真实单日独立校验通过。",
+      "created_at": "2026-11-06T11:26:54Z",
+      "updated_at": "2026-11-06T11:26:54Z",
+      "deleted": false
+    },
+    {
+      "id": "codex-v5-20261106-compact-publication-lock",
+      "target": "file:research/mm_research/data/standard.py",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "扁平目录共用版本目录锁。同一版本内的写入串行；标准盘口和成交在锁内发布，移动失败时撤回本次已发布文件。特征单文件增量更新继续使用临时文件和原子替换，标签与特征读取共用对应版本锁。双文件发布失败重试、并发特征组更新和跨午夜读取通过相关测试。",
+      "created_at": "2026-11-06T11:26:54Z",
+      "updated_at": "2026-11-06T11:26:54Z",
+      "deleted": false
+    },
+    {
+      "id": "codex-doc-library-current-layout-20261106",
+      "target": "node:a2",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "按最新数据组织同步外部文档库、README、研究指南、存储说明和历史报告版本提示。标准文件为standard/版本/{snapshots,trades}/日期.parquet，base和衍生组共同保存在features/版本/日期.parquet，标签位于labels/版本/horizon=周期/日期.parquet。更新四组独立质量、增量复用、示例与当前接口。主文档补充在对话中给出。",
+      "created_at": "2026-11-06T11:38:54.497335+00:00",
+      "updated_at": "2026-11-06T11:38:54.497335+00:00"
     }
   ]
 }

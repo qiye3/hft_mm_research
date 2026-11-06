@@ -6,10 +6,12 @@ add_return_features 输入连续网格和质量区段，输出三个过去周期
 
 import polars as pl
 
+GROUP_VERSION = "v1"
+
 RETURN_FEATURE_COLUMNS = ["return_100ms_bps", "return_1s_bps", "return_5s_bps"]
 
 
-# 在质量区段内部使用当前与过去的中间价计算收益。
+# 【核心逻辑21】在连续盘口区段内计算100ms、1秒和5秒历史中间价收益。
 def add_return_features(table: pl.DataFrame) -> pl.DataFrame:
     """输入含 mid_price、segment_id 的有序 100ms 表，返回新增历史收益的表。
 

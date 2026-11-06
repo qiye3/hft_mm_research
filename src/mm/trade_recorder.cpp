@@ -13,7 +13,7 @@
 namespace mm {
 namespace {
 
-// 用绝对误差核对账本字段，出现非有限值或超差时报告具体字段。
+// 【非核心】用绝对误差核对账本字段，出现非有限值或超差时报告具体字段。
 void check_close(double actual, double expected, const char* field) {
     /** 输入 actual 为待核对数值，expected 为独立计算结果，field 用于错误定位。
      * 正常返回表示两值误差不超过 1e-7，失败时抛出 runtime_error。
@@ -23,7 +23,7 @@ void check_close(double actual, double expected, const char* field) {
     }
 }
 
-// 打开结果文件并设置足以用于跨语言账本核对的浮点输出精度。
+// 【非核心】打开结果文件并设置足以用于跨语言账本核对的浮点输出精度。
 std::ofstream csv_file(const std::filesystem::path& filename) {
     /** 输入为已有父目录内的文件名，输出可移动的文件流，失败时抛出异常。
      * 17 位有效数字用于保留 double 的往返精度，CSV 与 JSON 输出共用此约定。
@@ -38,7 +38,7 @@ std::ofstream csv_file(const std::filesystem::path& filename) {
 
 } // namespace
 
-// 把框架状态映射成订单流水中约定的稳定文本值。
+// 【非核心】把框架状态映射成订单流水中约定的稳定文本值。
 std::string order_status(hbt::Status status) {
     /** 输入为框架订单状态或请求状态，输出供 Python 分析器识别的字符串。
      * 未知枚举值抛出异常，防止导出无法解释的生命周期记录。
@@ -56,7 +56,7 @@ std::string order_status(hbt::Status status) {
     }
 }
 
-// 为一组全新实验建立订单、成交和权益三份逐笔输出文件。
+// 【非核心】为一组全新实验建立订单、成交和权益三份逐笔输出文件。
 TradeRecorder::TradeRecorder(const TradingConfig& config)
     : config_(config), peak_equity_(config.initial_capital) {
     /** 输入 config 提供输出目录、初始资金和费率，构造后各文件已写入列名。
@@ -74,7 +74,7 @@ TradeRecorder::TradeRecorder(const TradingConfig& config)
     equity_ << "local_timestamp_ns,mid,position,balance,fees,inventory_value,realized_gross,unrealized,net_pnl,equity,reserved_buy,reserved_sell,running_max_drawdown\n";
 }
 
-// 把本地操作或原始订单回报写为一行生命周期记录。
+// 【非核心】把本地操作或原始订单回报写为一行生命周期记录。
 void TradeRecorder::write_order(const std::string& kind, const hbt::Order<>& order, std::int64_t timestamp) {
     /** kind 区分请求与响应，order 提供当时的原生字段，timestamp 是本地记录时刻。
      * 输出至 orders.csv，回报的 exchange_timestamp 保留交易所处理时刻。
@@ -86,7 +86,7 @@ void TradeRecorder::write_order(const std::string& kind, const hbt::Order<>& ord
             << ',' << order.exec_price() << ',' << order.exec_qty << ',' << order.maker << '\n';
 }
 
-// 在原生请求提交成功后记录下单或撤单动作，并累计请求次数。
+// 【核心逻辑56】在原生请求提交成功后记录下单或撤单动作，并累计请求次数。
 void TradeRecorder::action(const std::string& kind, const hbt::Order<>& order, std::int64_t local_timestamp) {
     /** 输入 kind 取 submit 或 cancel_request，order 为框架请求后的订单视图。
      * 输出为请求计数与订单流水，实际接受或撤销结果由 response 接口记录。
@@ -101,12 +101,15 @@ void TradeRecorder::action(const std::string& kind, const hbt::Order<>& order, s
     write_order(kind, order, local_timestamp);
 }
 
-// 依据一笔新增成交更新独立账本，写出成交后的成本、库存和收益。
+// 【核心逻辑62】依据一笔新增成交更新独立账本，写出成交后的成本、库存和收益。
 void TradeRecorder::apply_fill(const hbt::Order<>& order, std::int64_t timestamp, double mid) {
     /** 输入 order.exec_qty 是本次回报新增成交量，timestamp 为接收时刻，mid 为可见标记价格。
      * 输出为独立账本、fills.csv 和成交时刻权益记录，数量为 BTC，收益为 USDT。
      * 采用平均成本法处理加仓与平仓，翻向时以本笔成交价建立剩余仓位成本。
      */
+    if (!std::isfinite(mid)) {
+        throw std::runtime_error("cannot record a fill without a current finite mid-price");
+    }
     const double quantity = order.exec_qty;
     const double price = order.exec_price();
     const double signed_quantity = hbt::side_sign(order.side) * quantity;
@@ -151,11 +154,11 @@ void TradeRecorder::apply_fill(const hbt::Order<>& order, std::int64_t timestamp
     record_equity(timestamp, mid, std::nullopt, std::nullopt);
 }
 
-// 区分生命周期确认与真实成交，只对有效成交回报增加经济账本。
+// 【核心逻辑61】区分生命周期确认与真实成交，只对有效成交回报增加经济账本。
 void TradeRecorder::response(const hbt::Order<>& order, std::int64_t local_timestamp, double mid) {
     /** 输入为队列中保存的原始回报、本地实际接收时间及当前标记价格。
      * 每条回报都会导出，拒绝请求只计拒绝次数，成交状态且新增量为正才调用 apply_fill。
-     * 此分支约定与引擎适配层的旧拒绝回报规范化共同保证单次成交只计账一次。
+     * 接入层已经拒绝状态异常的回报，此处按当前回报语义记录单次成交。
      */
     write_order("response", order, local_timestamp);
     if (order.req == hbt::Status::Rejected) {
@@ -173,7 +176,7 @@ void TradeRecorder::response(const hbt::Order<>& order, std::int64_t local_times
     }
 }
 
-// 将原生仓位、现金、费用和成交统计逐项与独立账本核对。
+// 【非核心】将原生仓位、现金、费用和成交统计逐项与独立账本核对。
 void TradeRecorder::reconcile(const hbt::StateValues& state) const {
     /** 输入为同一批回报处理结束后的 StateValues，正常返回表示账本一致。
      * 持仓或成交数抵消无法代表逐笔正确，因而同时核对成交量和成交额。
@@ -189,7 +192,7 @@ void TradeRecorder::reconcile(const hbt::StateValues& state) const {
     }
 }
 
-// 在指定本地时刻盯市，并更新观察点上的权益峰值和金额回撤。
+// 【核心逻辑59】在指定本地时刻盯市，并更新观察点上的权益峰值和金额回撤。
 void TradeRecorder::record_equity(std::int64_t timestamp, double mid, std::optional<double> reserved_buy,
                                    std::optional<double> reserved_sell) {
     /** 输入 mid 必须有限，reserved_buy/sell 在决策点为真实剩余风险量，成交点可为空。
@@ -220,13 +223,12 @@ void TradeRecorder::record_equity(std::int64_t timestamp, double mid, std::optio
     equity_ << ',' << summary_.max_drawdown << '\n';
 }
 
-// 在决策点同时核对账本与最坏单侧成交风险，再记录完整权益观察值。
+// 【核心逻辑58】在决策点核对最坏单侧成交风险，并记录完整权益观察值。
 void TradeRecorder::checkpoint(std::int64_t timestamp, double mid, const hbt::StateValues& state,
                                double reserved_buy, double reserved_sell) {
     /** 输入为同一时刻的原生账户状态、标记价格和买卖侧预留 BTC 数量。
      * 输出一个带风险预留字段的权益点，任一方向可能突破净仓位上限时抛出异常。
      */
-    reconcile(state);
     if (state.position + reserved_buy > config_.max_position + 1e-10 ||
         state.position - reserved_sell < -config_.max_position - 1e-10) {
         throw std::runtime_error("outstanding order exposure exceeds inventory limit");
@@ -234,12 +236,10 @@ void TradeRecorder::checkpoint(std::int64_t timestamp, double mid, const hbt::St
     record_equity(timestamp, mid, reserved_buy, reserved_sell);
 }
 
-// 统计适配层识别出的带旧成交字段的拒绝回报，便于复核兼容分支触发情况。
-void TradeRecorder::normalized_rejection() { ++summary_.normalized_rejections; }
-// 返回当前累积汇总的只读视图，引用随记录器存活。
+// 【非核心】返回当前累积汇总的只读视图，引用随记录器存活。
 const TradingSummary& TradeRecorder::summary() const noexcept { return summary_; }
 
-// 在引擎排空后完成最终对账，保存汇总并确认逐笔文件写入成功。
+// 【非核心】在引擎排空后完成最终对账，保存汇总并确认逐笔文件写入成功。
 void TradeRecorder::finish(const hbt::StateValues& state, double mid, std::uint64_t local_events,
                            std::uint64_t exchange_events, double elapsed_seconds) {
     /** 输入 state 为最终原生状态，mid 为最终标记，事件数按两个处理器分别统计。
@@ -260,7 +260,7 @@ void TradeRecorder::finish(const hbt::StateValues& state, double mid, std::uint6
     }
 }
 
-// 将策略参数与已核对的最终交易指标写入可独立读取的 JSON 汇总。
+// 【非核心】将策略参数与已核对的最终交易指标写入可独立读取的 JSON 汇总。
 void TradeRecorder::write_summary() {
     /** 输入来自 config_ 和 summary_，输出位于本组实验目录中的 summary.json。
      * final_working_orders=0 由 run_baseline 收尾校验提供前提，资金费口径写入报告字段。
@@ -281,7 +281,6 @@ void TradeRecorder::write_summary() {
            << ",\n\"cancellations\":" << totals.cancellations << ",\n\"expired\":" << totals.expired
            << ",\n\"rejected\":" << totals.rejected << ",\n\"fills\":" << totals.fills
            << ",\n\"partial_fills\":" << totals.partial_fills
-           << ",\n\"normalized_rejections\":" << totals.normalized_rejections
            << ",\n\"position\":" << totals.position << ",\n\"balance\":" << totals.balance
            << ",\n\"fees\":" << totals.fees << ",\n\"volume\":" << totals.volume
            << ",\n\"turnover\":" << totals.turnover << ",\n\"average_cost\":" << totals.average_cost

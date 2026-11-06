@@ -1,17 +1,19 @@
 """按日生产仅含盘口与逐笔的标准行情 Parquet，供研究模块直接读取。
 
 run_standard_production 使用配置顺序处理日期，build_standard_day 在临时目录完成两份产物后发布。
-来源、单位、核验范围与输入身份写入 Parquet 元数据，统计只返回给调用方。
+来源、单位、核验范围与输入身份写入 Parquet 元数据，新生产返回统计，已有产物返回复用状态。
 """
 
+from contextlib import ExitStack, contextmanager
+import fcntl
 import json
 import os
 from pathlib import Path
 import tempfile
 
 import polars as pl
-import yaml
 
+from mm_research.config import load_pipeline_config
 from mm_research.data.orderbook import annotate_snapshot_records
 from mm_research.data.sources import load_official_trades, scan_snapshot_source
 from mm_research.data.trades import prepare_official_trades
@@ -21,7 +23,7 @@ SCHEMA_VERSION = 2
 
 
 # ==================== 单日与多日生产 ====================
-# 使用已有原始文件，逐日发布标准盘口与逐笔两份 Parquet。
+# 【核心逻辑3】按配置逐日生产并发布标准盘口和普通逐笔Parquet。
 def run_standard_production(config_path: Path) -> list[dict]:
     """输入 YAML 配置，返回各日期的产物统计并打印进度。
 
@@ -29,9 +31,7 @@ def run_standard_production(config_path: Path) -> list[dict]:
     数据版本不可覆盖，不一致的输入或配置要求使用新的版本。
     """
     root = Path(__file__).resolve().parents[3]
-    config = yaml.safe_load(config_path.read_text())
-    if config.get("stage") != "data_standardize":
-        raise ValueError("此入口需要Data标准化配置，请使用config/data_standardize_30d.yaml")
+    config = load_pipeline_config(config_path, "data_standardize")
     summaries = []
     for date in config["dates"]:
         summary = build_standard_day(root, config, str(date))
@@ -40,17 +40,20 @@ def run_standard_production(config_path: Path) -> list[dict]:
     return summaries
 
 
-# 在完整生成并检查两份行情后发布日期目录，失败时保留原产物。
+# 【核心逻辑4】连接快照整理与官方成交整理，完整生成两份单日标准行情。
 def build_standard_day(root: Path, config: dict, date: str) -> dict:
-    """输入项目位置、上游配置与 UTC 日期，返回标准行情行数和标签统计。
+    """输入项目位置、上游配置与 UTC 日期，新生产返回行数和标签统计。
 
     盘口保持源文件全部行与二十五档，成交直接使用官方日档。
     两份表只保存交易所时间，固定行情延迟由后续回放配置。
-    临时产物使用目标目录所在文件系统，发布前验证结构；日期目录中只保存两份 Parquet。
+    临时产物使用目标目录所在文件系统，发布后分别位于snapshots/日期.parquet和trades/日期.parquet。
+    已有同定义产物只读取元数据，返回日期与reused=True。
     """
     if config["tick_size"] <= 0 or config["lot_size"] <= 0 or config["snapshot_silence_ns"] <= 0:
         raise ValueError("价格、数量步长和盘口静默门限必须为正")
     sources = resolve_standard_sources(root, config, date)
+
+    # 定义元数据
     definition = {
         "schema_version": SCHEMA_VERSION,
         "version": config["version"],
@@ -70,56 +73,69 @@ def build_standard_day(root: Path, config: dict, date: str) -> dict:
         "snapshot_gap_clock": "original source received timestamp, used only for quality diagnostics",
         "conflict_policy": "keep selected source row and tag content_conflict",
     }
-    destination = root / config["output_root"] / config["version"] / f"date={date}"
-    if destination.exists():
-        for kind in ["snapshots", "trades"]:
-            filename = destination / f"{kind}.parquet"
-            if not filename.exists() or read_standard_metadata(filename)["definition"] != definition:
-                raise ValueError(f"已有标准数据不完整或定义不同，请使用新版本 {destination}")
-        return summarize_standard_day(destination)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=f".{date}.", dir=destination.parent) as temporary:
-        staging = Path(temporary)
-        snapshot = sources["snapshots"]
-        snapshots = annotate_snapshot_records(
-            scan_snapshot_source(root / snapshot["path"], snapshot["id"]),
-            config["snapshot_silence_ns"], definition["confirmed_snapshot_gaps"],
-        )
-        snapshots.drop("received_timestamp_ns").sink_parquet(
-            staging / "snapshots.parquet", compression="zstd", compression_level=3,
-            row_group_size=100_000, maintain_order=True, engine="streaming",
-            metadata={METADATA_KEY: json.dumps({
-                "kind": "snapshots", "partition_clock": "source snapshot file day",
-                "replay_order": "exchange timestamp, source row",
-                "sort_order": "original source row", "definition": definition,
-            }, ensure_ascii=False, sort_keys=True)},
-        )
-        trade_source = sources["trades"]
-        trades = prepare_official_trades(
-            load_official_trades(
-                root / trade_source["path"], trade_source["id"],
-                config["tick_size"], config["lot_size"],
-            ), date,
-        )
-        trades.write_parquet(
-            staging / "trades.parquet", compression="zstd", compression_level=3, row_group_size=100_000,
-            metadata={METADATA_KEY: json.dumps({
-                "kind": "trades", "partition_clock": "exchange trade UTC day",
-                "sort_order": "exchange timestamp, trade ID, source row",
-                "definition": definition,
-            }, ensure_ascii=False, sort_keys=True)},
-        )
-        summary = summarize_standard_day(staging)
-        if summary["snapshot_rows"] == 0 or summary["trade_rows"] == 0:
-            raise ValueError(f"标准行情缺少盘口或成交记录 {date}")
-        # 目标目录在两份文件就绪后才出现，重试不会复用半份产物。
-        staging.rename(destination)
-    summary["date"] = date
-    return summary
+    destination = root / config["output_root"] / config["version"]
+    with partition_lock(destination):
+        files = {kind: destination / kind / f"{date}.parquet" for kind in ["snapshots", "trades"]}
+        if any(filename.exists() for filename in files.values()):
+            for filename in files.values():
+                if not filename.exists() or read_standard_metadata(filename)["definition"] != definition:
+                    raise ValueError(f"已有标准数据不完整或定义不同，请检查 {destination} 中的 {date}")
+            return {"date": date, "reused": True}
+
+        # 临时目录生成标准盘口和逐笔行情
+        with tempfile.TemporaryDirectory(prefix=f".{date}.", dir=destination) as temporary:
+            staging = Path(temporary)
+
+            # 生成标准盘口行情
+            snapshot = sources["snapshots"]
+            snapshots = annotate_snapshot_records(
+                scan_snapshot_source(root / snapshot["path"], snapshot["id"]),
+                config["snapshot_silence_ns"], definition["confirmed_snapshot_gaps"],
+            )
+            snapshots.drop("received_timestamp_ns").sink_parquet(
+                staging / "snapshots.parquet", compression="zstd", compression_level=3,
+                row_group_size=100_000, maintain_order=True, engine="streaming",
+                metadata={METADATA_KEY: json.dumps({
+                    "kind": "snapshots", "partition_clock": "source snapshot file day",
+                    "replay_order": "exchange timestamp, source row",
+                    "sort_order": "original source row", "definition": definition,
+                }, ensure_ascii=False, sort_keys=True)},
+            )
+
+            # 生成普通逐笔行情
+            trade_source = sources["trades"]
+            trades = prepare_official_trades(
+                load_official_trades(
+                    root / trade_source["path"], trade_source["id"],
+                    config["tick_size"], config["lot_size"],
+                ), date,
+            )
+            trades.write_parquet(
+                staging / "trades.parquet", compression="zstd", compression_level=3, row_group_size=100_000,
+                metadata={METADATA_KEY: json.dumps({
+                    "kind": "trades", "partition_clock": "exchange trade UTC day",
+                    "sort_order": "exchange timestamp, trade ID, source row",
+                    "definition": definition,
+                }, ensure_ascii=False, sort_keys=True)},
+            )
+
+            # 检查生成结果
+            summary = summarize_standard_day(staging / "snapshots.parquet", staging / "trades.parquet")
+            if summary["snapshot_rows"] == 0 or summary["trade_rows"] == 0:
+                raise ValueError(f"标准行情缺少盘口或成交记录 {date}")
+            # 两份文件在版本锁内发布，任一次移动失败时撤回本次已发布的文件。
+            with ExitStack() as publication:
+                for kind, filename in files.items():
+                    filename.parent.mkdir(parents=True, exist_ok=True)
+                    (staging / f"{kind}.parquet").replace(filename)
+                    publication.callback(filename.unlink)
+                publication.pop_all()
+        summary["date"] = date
+        return summary
 
 
 # ==================== 单一来源定位 ====================
-# 每日各使用一份完整快照和官方成交文件，元数据保留原始位置。
+# 【非核心】定位每日两份原始输入，记录文件位置与状态以核对缓存。
 def resolve_standard_sources(root: Path, config: dict, date: str) -> dict:
     """输入配置与日期，返回两份必要源文件的位置、大小和修改时刻。
 
@@ -139,20 +155,18 @@ def resolve_standard_sources(root: Path, config: dict, date: str) -> dict:
 
 
 # ==================== 元数据和逐日检查 ====================
-# 从 Parquet 页脚读取来源和格式定义，供复用与直接读取时核对。
+# 【非核心】读取标准Parquet的来源与格式定义，供产物复用时核对。
 def read_standard_metadata(filename: Path) -> dict:
     """输入标准 Parquet 文件，返回该文件内嵌的 kind、时钟和来源定义。"""
     return json.loads(pl.read_parquet_metadata(filename)[METADATA_KEY])
 
 
-# 只读取必要列统计产物，保留问题数量而不再另存明细表。
-def summarize_standard_day(folder: Path) -> dict:
-    """输入含两份标准 Parquet 的日期目录，返回行数和质量标签统计。
+# 【非核心】检查25档字段并汇总记录数量和质量标签。
+def summarize_standard_day(snapshots: Path, trades: Path) -> dict:
+    """输入当日盘口和成交Parquet文件，返回行数和质量标签统计。
 
     全部二十五档通过列结构核对，统计扫描仅投影时间与标签，控制内存。
     """
-    snapshots = folder / "snapshots.parquet"
-    trades = folder / "trades.parquet"
     names = pl.read_parquet_schema(snapshots).names()
     for level in range(1, 26):
         for side in ["bid", "ask"]:
@@ -172,3 +186,16 @@ def summarize_standard_day(folder: Path) -> dict:
     ).collect().to_dicts()[0]
     date = read_standard_metadata(trades)["definition"]["date"]
     return {"date": date, **snapshot_stats, **trade_stats}
+
+
+# 【非核心】锁定版本目录，防止并发发布或更新互相覆盖文件。
+@contextmanager
+def partition_lock(folder: Path):
+    """输入数据版本目录，在上下文内独占读写，退出时释放目录描述符。"""
+    folder.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(folder, os.O_RDONLY)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(descriptor)

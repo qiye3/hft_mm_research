@@ -6,13 +6,15 @@ add_book_features 输出价差 Tick、分层数量失衡、深度与微价格偏
 
 import polars as pl
 
+GROUP_VERSION = "v1"
+
 BOOK_FEATURE_COLUMNS = [
     "spread_ticks", "imbalance_1", "imbalance_5", "imbalance_10",
     "bid_depth_10", "ask_depth_10", "microprice_minus_mid",
 ]
 
 
-# 从当前盘口计算价差、分层深度与微价格偏移。
+# 【核心逻辑17】从当前盘口计算价差Tick、分层深度、数量失衡与微价格偏移。
 def add_book_features(table: pl.DataFrame, tick_size: float) -> pl.DataFrame:
     """输入前十档价格数量、中间价和价差及 Tick Size，返回新增盘口特征的表。
 
