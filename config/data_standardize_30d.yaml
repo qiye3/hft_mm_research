@@ -1,0 +1,52 @@
+# 所属阶段为Data标准化，读取原始压缩行情，输出每日两份标准Parquet。
+# 执行命令 .venv/bin/python scripts/build_standard_data.py config/data_standardize_30d.yaml
+# 输入是下方snapshots与trades指向的本地文件，此入口只处理已下载数据。
+# 输出为output_root/version/date=YYYY-MM-DD/{snapshots,trades}.parquet。
+stage: data_standardize
+
+# 标准行情输出版本与根目录。
+version: market_v2
+output_root: workspace/data/standard
+# 本次标准化的UTC日期列表。
+dates:
+  - '2026-07-01'
+  - '2026-07-02'
+  - '2026-07-03'
+  - '2026-07-04'
+  - '2026-07-05'
+  - '2026-07-06'
+  - '2026-07-07'
+  - '2026-07-08'
+  - '2026-07-09'
+  - '2026-07-10'
+  - '2026-07-11'
+  - '2026-07-12'
+  - '2026-07-13'
+  - '2026-07-14'
+  - '2026-07-15'
+  - '2026-07-16'
+  - '2026-07-17'
+  - '2026-07-18'
+  - '2026-07-19'
+  - '2026-07-20'
+  - '2026-07-21'
+  - '2026-07-22'
+  - '2026-07-23'
+  - '2026-07-24'
+  - '2026-07-25'
+  - '2026-07-26'
+  - '2026-07-27'
+  - '2026-07-28'
+  - '2026-07-29'
+  - '2026-07-30'
+# 原始输入文件，程序逐日替换{date}。
+snapshots: workspace/data/raw/baidu_{date}/snapshot25.csv.zst
+trades: workspace/data/raw/binance_public/date={date}/BTCUSDT-trades-{date}.zip
+# 字段检查参数，价格单位USDT/BTC，数量单位BTC。
+tick_size: 0.1
+lot_size: 0.001
+snapshot_silence_ns: 1000000000
+# 来源为已核实的同源L2/快照中断，单位为原采集源接收纳秒。
+confirmed_snapshot_gaps:
+  '2026-07-14':
+    - [1784032207706019000, 1784033546201383000]
