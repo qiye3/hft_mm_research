@@ -8,7 +8,7 @@
 
 namespace mm {
 
-// 【核心逻辑30】建立固定采样网格与输出列，浮点数保留可往返的十进制精度。
+// 【核心逻辑38】建立固定采样网格与输出列，浮点数保留可往返的十进制精度。
 ResearchSampler::ResearchSampler(const std::filesystem::path& output, std::int64_t start,
                                  std::int64_t end, std::int64_t interval,
                                  std::int64_t max_book_age, std::size_t depth_levels)
@@ -31,7 +31,7 @@ ResearchSampler::ResearchSampler(const std::filesystem::path& output, std::int64
     output_ << '\n';
 }
 
-// 【核心逻辑36】在下一条事件应用前补齐更早的网格点，同时间戳的全部事件均归入右端点。
+// 【核心逻辑44】在下一条事件应用前补齐更早的网格点，同时间戳的全部事件均归入右端点。
 void ResearchSampler::before_event(const hbt::Event& event, const hbt::HashMapMarketDepth& depth) {
     /** 输入为尚未应用的事件和旧盘口，输出为严格早于 event.local_ts 的样本。
      * 原生调度器保留同时间戳顺序，因此跨分片也不会提前写出半批快照。
@@ -45,7 +45,7 @@ void ResearchSampler::before_event(const hbt::Event& event, const hbt::HashMapMa
     }
 }
 
-// 【核心逻辑41】将快照恢复或行情中断标为新的研究区段，滚动窗口随后重新预热。
+// 【核心逻辑49】将快照恢复或行情中断标为新的研究区段，滚动窗口随后重新预热。
 void ResearchSampler::reset_segment(std::int64_t timestamp) {
     /** timestamp 是中断或恢复的本地时刻，输出为新 segment 与失效区间标记。
      * 本区间仍保留事件计数，但 OFI 与成交累计不跨区段合并。
@@ -60,7 +60,7 @@ void ResearchSampler::reset_segment(std::int64_t timestamp) {
     sell_notional_ = 0;
 }
 
-// 【核心逻辑40】从原生更新后的最优价位计算 OFI，快照恢复和无效 BBO 不产生订单流。
+// 【核心逻辑48】从原生更新后的最优价位计算 OFI，快照恢复和无效 BBO 不产生订单流。
 void ResearchSampler::after_event(const hbt::Event& event, const hbt::HashMapMarketDepth& depth) {
     /** 输入为已应用的本地事件，输出更新当前区间统计及最后可见双时间戳。
      * OFI 使用逐价位事件的买卖一价格比较定义，单位 BTC，正值表示买方压力。
@@ -116,7 +116,7 @@ void ResearchSampler::after_event(const hbt::Event& event, const hbt::HashMapMar
     previous_bbo_valid_ = valid_bbo;
 }
 
-// 【核心逻辑37】保存完整网格行，缺档价格和数量使用 NaN，空窗成交量保留为零。
+// 【核心逻辑45】保存完整网格行，缺档价格和数量使用 NaN，空窗成交量保留为零。
 void ResearchSampler::write_sample(const hbt::HashMapMarketDepth& depth, bool covered) {
     /** 输入为当前原生订单簿和源流覆盖标记，输出一行及清空区间统计。
      * 盘口超过 max_book_age 后无效，流量恢复需经过一个完整有效采样区间。
@@ -156,7 +156,7 @@ void ResearchSampler::write_sample(const hbt::HashMapMarketDepth& depth, bool co
     next_sample_ += interval_;
 }
 
-// 【核心逻辑44】补齐日末网格，源流结束之后的点保留为无效样本。
+// 【核心逻辑52】补齐日末网格，源流结束之后的点保留为无效样本。
 void ResearchSampler::finish(const hbt::HashMapMarketDepth& depth) {
     /** 输入为回放最终盘口，输出剩余 [next_sample, end) 的样本。
      * 文件末尾若恰好停在快照内，无法确认快照完整，保持无效。

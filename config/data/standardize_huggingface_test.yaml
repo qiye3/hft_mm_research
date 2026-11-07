@@ -1,0 +1,16 @@
+# 所属阶段为Data标准化，验证Hugging Face的20档快照和官方普通成交。
+# 执行入口 .venv/bin/python scripts/build_standard_data.py config/data/standardize_huggingface_test.yaml
+# 输入是已下载的两个测试日原始Parquet与官方成交ZIP。
+# 输出是standard/cryptolake20_test_v1/{snapshots,trades}/YYYY-MM-DD.parquet。
+stage: data_standardize
+version: cryptolake20_test_v1
+output_root: workspace/data/standard
+dates: ['2025-05-09', '2025-10-01']
+snapshots: workspace/data/raw/huggingface/cryptolake_btc/book_{date}.parquet
+snapshot_format: cryptolake_parquet
+snapshot_depth: 20
+trades: workspace/data/raw/binance_public/date={date}/BTCUSDT-trades-{date}.zip
+tick_size: 0.1
+lot_size: 0.001
+snapshot_silence_ns: 1000000000
+confirmed_snapshot_gaps: {}

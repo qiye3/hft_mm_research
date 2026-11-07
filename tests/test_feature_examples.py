@@ -8,7 +8,7 @@ import unittest
 import polars as pl
 from polars.testing import assert_frame_equal
 
-from mm_research.features.expressions import normalized_imbalance, rolling_sum_in_segment
+from mm_research.features.expressions import normalized_imbalance
 from mm_research.features.snapshot import SNAPSHOT_EXAMPLE_COLUMNS, add_snapshot_notional_features
 from mm_research.features.trade_events import build_trade_event_features
 
@@ -47,29 +47,29 @@ class FeatureExampleTests(unittest.TestCase):
         self.assertEqual(table["trade_intensity_1s"][52], 3.0)
         self.assertEqual(table["trade_net_notional_100ms"][52], -5.0)
         self.assertEqual(table["trade_intensity_1s"][62], 0.0)
-        self.assertFalse(table["trade_feature_valid"][9])
+        self.assertTrue(table["trade_feature_valid"][9])
         self.assertTrue(table["trade_feature_valid"][10])
         self.assertFalse(table["trade_feature_valid"][70])
-        self.assertFalse(table["trade_feature_valid"][79])
+        self.assertTrue(table["trade_feature_valid"][79])
         self.assertTrue(table["trade_feature_valid"][80])
-        self.assertIsNone(table["trade_net_notional_1s"][70])
+        self.assertEqual(table["trade_net_notional_1s"][70], 0)
         prefix = build_trade_event_features(bins.head(2), grid.head(60))
         assert_frame_equal(prefix, table.head(60), check_exact=True)
 
-    # 【非核心】公共运算区分未知值与零成交，整数窗口不跨质量区段。
+    # 【非核心】公共运算区分未知值与零成交，整数窗口按最少有效观测累计。
     def test_shared_expression_boundaries(self):
-        """输入零量、缺失量及两个区段，检查空窗约定与窗口重新预热。"""
+        """输入零量和缺失量，检查空窗约定与连续滚动累计。"""
         table = pl.DataFrame({
             "buy": [0.0, None, 0.002, 0.002],
             "sell": [0.0, 0.001, 0.001, 0.001],
             "segment_id": [0, 0, 1, 1],
         }).with_columns(
             normalized_imbalance(pl.col("buy"), pl.col("sell"), empty_value=0.0).alias("imbalance"),
-            rolling_sum_in_segment(pl.col("buy"), 2, quantity_step=0.001).alias("volume"),
+            ((pl.col("buy") / 0.001).round().cast(pl.Int64).rolling_sum(2, min_samples=1) * 0.001).alias("volume"),
         )
         self.assertEqual(table["imbalance"][0], 0.0)
         self.assertIsNone(table["imbalance"][1])
-        self.assertIsNone(table["volume"][2])
+        self.assertEqual(table["volume"][2], 0.002)
         self.assertEqual(table["volume"][3], 0.004)
 
 if __name__ == "__main__":

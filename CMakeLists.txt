@@ -13,6 +13,7 @@ add_library(mm_observer src/mm/market_observer.cpp src/mm/replay.cpp)
 target_include_directories(mm_observer PUBLIC src)
 target_link_libraries(mm_observer PUBLIC hbt::hbt hbt::io)
 target_compile_options(mm_observer PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(mm_observer PRIVATE MM_PROJECT_ROOT="${CMAKE_SOURCE_DIR}")
 add_executable(replay_probe src/apps/replay_probe.cpp)
 target_link_libraries(replay_probe PRIVATE mm_observer)
 add_executable(benchmark_replay tests/benchmarks/benchmark_replay.cpp)
@@ -40,12 +41,19 @@ if(BUILD_TESTING)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_feature_examples.py)
     add_test(NAME mm.standard_data
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_standard_data.py)
+    add_test(NAME mm.storage
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_storage.py)
+    add_test(NAME mm.factors
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_factors.py)
+    add_test(NAME mm.evaluation
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_evaluation.py)
 endif()
 
 add_library(mm_strategy src/mm/market_maker.cpp src/mm/trade_recorder.cpp)
 target_include_directories(mm_strategy PUBLIC src)
 target_link_libraries(mm_strategy PUBLIC hbt::hbt hbt::io)
 target_compile_options(mm_strategy PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(mm_strategy PRIVATE MM_PROJECT_ROOT="${CMAKE_SOURCE_DIR}")
 add_executable(baseline_mm src/apps/baseline_mm.cpp)
 target_link_libraries(baseline_mm PRIVATE mm_strategy)
 if(BUILD_TESTING)

@@ -1,3 +1,4 @@
+# 配置路径相对项目根目录。
 # 当前步长为研究参数，将由转换器逐行验证；历史官方合约规则尚未取得。
 source: workspace/data/normalized/BTCUSDT_2025-02-01/manifest.json
 date: 2025-02-01

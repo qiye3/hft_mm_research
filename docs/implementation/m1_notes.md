@@ -24,7 +24,7 @@ EventReaderCache → Backtest::elapse
 | `src/mm/trade_recorder.hpp`、`src/mm/trade_recorder.cpp` | `TradeRecorder::response/reconcile/checkpoint/finish`；记录逐笔流水、平均成本法已实现/未实现收益，与原生 StateValues 对账 |
 | `src/mm/detail/trading_engine.hpp` | 使用原生 `OrderBus`、`Local`、`PartialFillExchange`、`ConstantLatency` 和 `RiskAdverseQueueModel`；RecordingLocal 是公开 LocalProcessor 接口的转发适配，不重新实现订单生命周期 |
 | `src/apps/baseline_mm.cpp` | CLI 入口，调用 `run_baseline` |
-| `config/baseline_mm.yaml` | 报价半宽、每单数量、库存上限、手续费、延迟、更新模式、停止报价时间 |
+| `config/strategy/baseline_mm.yaml` | 报价半宽、每单数量、库存上限、手续费、延迟、更新模式、停止报价时间 |
 | `tests/test_market_maker.cpp` | 原生引擎驱动的成交、费用、部分成交、撤单竞态与敞口回归测试 |
 | `scripts/analyze_baseline.py` | 串行运行 A/B/C 实验、从 CSV 独立对账、计算本地接收时刻后 1 秒 markout |
 

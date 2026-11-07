@@ -1,0 +1,54 @@
+# 所属阶段为Evaluation，读取因子与独立标签。
+# 执行命令 .venv/bin/python scripts/evaluate_factors.py config/evaluation/gen001.yaml
+# 输入 factor_root/factor_version/因子名.parquet及label_root/label_version/horizon=周期/日期.parquet。
+# 输出output目录中的汇总Parquet、PNG与report.html，收益单位bps。
+stage: evaluation
+factor_root: workspace/data/factors
+factor_version: gen001_v1
+label_root: workspace/data/labels
+label_version: market_mid_columns_v1
+dates:
+- '2026-07-01'
+- '2026-07-02'
+- '2026-07-03'
+- '2026-07-04'
+- '2026-07-05'
+- '2026-07-06'
+- '2026-07-07'
+- '2026-07-08'
+- '2026-07-09'
+- '2026-07-10'
+- '2026-07-11'
+- '2026-07-12'
+- '2026-07-13'
+- '2026-07-14'
+- '2026-07-15'
+- '2026-07-16'
+- '2026-07-17'
+- '2026-07-18'
+- '2026-07-19'
+- '2026-07-20'
+- '2026-07-21'
+- '2026-07-22'
+- '2026-07-23'
+- '2026-07-24'
+- '2026-07-25'
+- '2026-07-26'
+- '2026-07-27'
+- '2026-07-28'
+- '2026-07-29'
+- '2026-07-30'
+factors:
+- book_obi_l1_mean_diff_10_50
+- book_obi_l5_mean_diff_10_50
+- book_obi_l10_mean_diff_10_50
+- trade_aggr_imb_100ms_mean_diff_10_50
+- trade_aggr_imb_1s_mean_diff_10_50
+- cross_trade_book_gap_mean_diff_10_50
+horizons_ns:
+- 100000000
+- 500000000
+- 1000000000
+- 5000000000
+groups: 5
+output: workspace/results/evaluation/gen001_v1

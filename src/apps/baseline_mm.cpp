@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
      */
     try {
         if (argc != 2) {
-            throw std::invalid_argument("usage: baseline_mm config/baseline_mm.yaml");
+            throw std::invalid_argument("usage: baseline_mm config/strategy/baseline_mm.yaml");
         }
         mm::run_baseline(mm::load_trading_config(argv[1]));
         return 0;

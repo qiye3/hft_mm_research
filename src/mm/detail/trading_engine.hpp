@@ -27,12 +27,12 @@ using ResponseQueue = std::deque<std::pair<hbt::Order<>, std::int64_t>>;
 // 在原生 Local 更新状态的边界增加行情计数与逐条回报记录。
 class RecordingLocal final : public hbt::LocalProcessor {
 public:
-    // 【核心逻辑49】接管原生 Local，并关联它消费的共享响应队列和会话级记录器。
+    // 【核心逻辑57】接管原生 Local，并关联它消费的共享响应队列和会话级记录器。
     RecordingLocal(std::unique_ptr<Local> local, std::shared_ptr<ResponseQueue> responses,
                     TradeRecorder& recorder)
         : local_(std::move(local)), responses_(std::move(responses)), recorder_(recorder) {}
 
-    // 【核心逻辑51】先让本地处理器应用一条行情，再保存当时可见的中间价。
+    // 【核心逻辑59】先让本地处理器应用一条行情，再保存当时可见的中间价。
     void process(const hbt::Event& event) override {
         /** 输入为调度器按 local_ts 交付的事件，输出为原生盘口更新和本地事件计数。
          * 当前盘口无效时保留非有限值，后续成交和最终盯市必须明确失败。
@@ -42,7 +42,7 @@ public:
         last_mid = mid;
         ++event_count;
     }
-    // 【核心逻辑60】在当前接收时刻保存全部原始回报，并在原生批次处理后进行账本核对。
+    // 【核心逻辑68】在当前接收时刻保存全部原始回报，并在原生批次处理后进行账本核对。
     bool process_recv_order(std::int64_t timestamp, std::optional<hbt::OrderId> order_id) override {
         /** 输入 timestamp 为队首响应的本地接收时刻，order_id 可指定等待的委托。
          * 返回原生 Local 是否收到了目标订单响应，供 Backtest 的等待语义使用。
@@ -178,7 +178,7 @@ struct TradingEngine {
     RecordingLocal* local;
     CountingExchange* exchange;
 
-    // 【核心逻辑48】把原生处理器、共享请求响应队列和行情缓存注册到同一回测会话。
+    // 【核心逻辑56】把原生处理器、共享请求响应队列和行情缓存注册到同一回测会话。
     TradingEngine(const TradingConfig& config, TradeRecorder& recorder,
                   std::shared_ptr<hbt::EventReaderCache> reader) {
         /** config 提供步长、费率和固定延迟，recorder 必须比本会话存活更久。

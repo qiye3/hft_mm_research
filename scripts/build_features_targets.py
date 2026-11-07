@@ -10,7 +10,7 @@ from mm_research.data.dataset import run_dataset_production
 def main() -> None:
     """输入配置路径和重建标志，执行按日数据生产并返回进程状态。"""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("config", type=Path, help="Features/Targets配置，例如config/features_targets_30d.yaml")
+    parser.add_argument("config", type=Path, help="Features/Targets配置，例如config/features/build_30d.yaml")
     parser.add_argument("--rebuild", action="store_true")
     parser.add_argument(
         "--only", choices=["all", "features", "labels"], default="all",

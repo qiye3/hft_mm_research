@@ -426,7 +426,7 @@
     {
       "target": "node:a1",
       "kind": "node",
-      "label": "A1 · 标准行情与base组采样"
+      "label": "A1 · 标准行情与100ms基础变量"
     },
     {
       "target": "section:a1:输入",
@@ -503,7 +503,7 @@
     {
       "target": "node:a2",
       "kind": "node",
-      "label": "A2 · 基础列与特征组共同保存"
+      "label": "A2 · 全日期单变量Features"
     },
     {
       "target": "section:a2:输入",
@@ -586,7 +586,7 @@
     {
       "target": "node:a3",
       "kind": "node",
-      "label": "A3 · 独立标签与按组读取"
+      "label": "A3 · 独立标签与按列读取"
     },
     {
       "target": "section:a3:输入",
@@ -675,7 +675,7 @@
     {
       "target": "node:a4",
       "kind": "node",
-      "label": "A4 · 单因子 Alpha 研究"
+      "label": "A4 · Factors与Evaluation · Gen001"
     },
     {
       "target": "section:a4:输入",
@@ -1497,7 +1497,7 @@
       "target": "note:a3:处理:5",
       "kind": "note",
       "label": "独立标签与按组读取 / 处理 / 第6条",
-      "text": "snapshot.py和trade_events.py保留快照与成交示例，后者使用完整一秒窗口。"
+      "text": "snapshot.py和trade_events.py提供特征开发示例。函数已经实现，登记GROUPS并配置选用后进入正式产物；当前示例字段用于说明开发写法。"
     },
     {
       "target": "note:a3:处理:6",
@@ -1978,6 +1978,96 @@
       "target": "file:workspace/data/standard/",
       "kind": "file",
       "label": "workspace/data/standard/"
+    },
+    {
+      "target": "file:research/mm_research/factors/gen001.py",
+      "kind": "file",
+      "label": "research/mm_research/factors/gen001.py"
+    },
+    {
+      "target": "file:research/mm_research/factors/dataset.py",
+      "kind": "file",
+      "label": "research/mm_research/factors/dataset.py"
+    },
+    {
+      "target": "file:research/mm_research/evaluation/dataset.py",
+      "kind": "file",
+      "label": "research/mm_research/evaluation/dataset.py"
+    },
+    {
+      "target": "file:research/mm_research/evaluation/metrics.py",
+      "kind": "file",
+      "label": "research/mm_research/evaluation/metrics.py"
+    },
+    {
+      "target": "file:research/mm_research/evaluation/report.py",
+      "kind": "file",
+      "label": "research/mm_research/evaluation/report.py"
+    },
+    {
+      "target": "file:scripts/build_factors.py",
+      "kind": "file",
+      "label": "scripts/build_factors.py"
+    },
+    {
+      "target": "file:scripts/evaluate_factors.py",
+      "kind": "file",
+      "label": "scripts/evaluate_factors.py"
+    },
+    {
+      "target": "file:config/factors/gen001.yaml",
+      "kind": "file",
+      "label": "config/factors/gen001.yaml"
+    },
+    {
+      "target": "file:config/evaluation/gen001.yaml",
+      "kind": "file",
+      "label": "config/evaluation/gen001.yaml"
+    },
+    {
+      "target": "file:tests/test_factors.py",
+      "kind": "file",
+      "label": "tests/test_factors.py"
+    },
+    {
+      "target": "file:tests/test_evaluation.py",
+      "kind": "file",
+      "label": "tests/test_evaluation.py"
+    },
+    {
+      "target": "file:tests/test_storage.py",
+      "kind": "file",
+      "label": "tests/test_storage.py"
+    },
+    {
+      "target": "file:research/mm_research/data/storage.py",
+      "kind": "file",
+      "label": "research/mm_research/data/storage.py"
+    },
+    {
+      "target": "file:config/data/standardize_30d.yaml",
+      "kind": "file",
+      "label": "config/data/standardize_30d.yaml"
+    },
+    {
+      "target": "file:config/features/build_30d.yaml",
+      "kind": "file",
+      "label": "config/features/build_30d.yaml"
+    },
+    {
+      "target": "file:config/replay/synthetic.yaml",
+      "kind": "file",
+      "label": "config/replay/synthetic.yaml"
+    },
+    {
+      "target": "file:config/replay/btcusdt.yaml",
+      "kind": "file",
+      "label": "config/replay/btcusdt.yaml"
+    },
+    {
+      "target": "file:config/strategy/baseline_mm.yaml",
+      "kind": "file",
+      "label": "config/strategy/baseline_mm.yaml"
     }
   ]
 }

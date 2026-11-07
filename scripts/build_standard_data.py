@@ -12,7 +12,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "config", type=Path,
-        help="Data标准化配置，例如config/data_standardize_30d.yaml",
+        help="Data标准化配置，例如config/data/standardize_30d.yaml",
     )
     arguments = parser.parse_args()
     run_standard_production(arguments.config)

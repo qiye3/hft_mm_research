@@ -61,7 +61,7 @@ def validate_grid(price: float, quantity: float, tick_size: float, lot_size: flo
         raise ValueError(f"数量不符合 lot_size：{quantity}")
 
 
-# 【核心逻辑28】将一个压缩源文件校验并追加为标准记录，同时保存原始数据的对照统计。
+# 【核心逻辑36】将一个压缩源文件校验并追加为标准记录，同时保存原始数据的对照统计。
 def append_source(filename: Path, kind: str, output, tick_size: float, lot_size: float,
                   chunk_rows: int) -> dict:
     """读取完整 Tardis 源流，为后续双侧路由准备无路由标志的事件。
@@ -193,7 +193,7 @@ def validate_day(sources: list[dict], date: str) -> None:
 
 
 # ==================== 双时钟路由与分片落盘 ====================
-# 【核心逻辑29】为交易所与本地分别生成可见事件，并按可见时间稳定排序写出 NPZ。
+# 【核心逻辑37】为交易所与本地分别生成可见事件，并按可见时间稳定排序写出 NPZ。
 def write_routed_shards(events: np.ndarray, destination: Path, shard_rows: int) -> list[dict]:
     """生成两个处理器各自有序的标准事件分片。
 
@@ -243,7 +243,7 @@ def write_routed_shards(events: np.ndarray, destination: Path, shard_rows: int) 
 
 
 # ==================== 单日转换编排与命令行入口 ====================
-# 【核心逻辑27】编排单日全深度行情转换，生成可被原生 C++ reader 直接消费的清单。
+# 【核心逻辑35】编排单日全深度行情转换，生成可被原生 C++ reader 直接消费的清单。
 def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: float = 0.1,
             lot_size: float = 0.001, shard_rows: int = 250_000, full_day: bool = True) -> dict:
     """完成从两个原始压缩文件到标准事件和转换清单的离线准备。

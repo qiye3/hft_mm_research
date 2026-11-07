@@ -1,5 +1,5 @@
 # 所属阶段为Data标准化，读取原始压缩行情，输出每日两份标准Parquet。
-# 执行命令 .venv/bin/python scripts/build_standard_data.py config/data_standardize_30d.yaml
+# 执行命令 .venv/bin/python scripts/build_standard_data.py config/data/standardize_30d.yaml
 # 输入是下方snapshots与trades指向的本地文件，此入口只处理已下载数据。
 # 输出为output_root/version/{snapshots,trades}/YYYY-MM-DD.parquet。
 stage: data_standardize
@@ -41,6 +41,9 @@ dates:
   - '2026-07-30'
 # 原始输入文件，程序逐日替换{date}。
 snapshots: workspace/data/raw/baidu_{date}/snapshot25.csv.zst
+# 原始盘口格式与实际档数，另支持cryptolake_parquet的20档快照。
+snapshot_format: tardis_csv
+snapshot_depth: 25
 trades: workspace/data/raw/binance_public/date={date}/BTCUSDT-trades-{date}.zip
 # 字段检查参数，价格单位USDT/BTC，数量单位BTC。
 tick_size: 0.1
