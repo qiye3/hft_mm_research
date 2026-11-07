@@ -1,0 +1,3 @@
+-r requirements.txt
+polars>=1.25,<2
+# pyarrow is optional: Polars can read Parquet without pandas/pyarrow conversion.

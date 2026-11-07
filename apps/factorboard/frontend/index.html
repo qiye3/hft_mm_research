@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f6f7f8">
+  <title>FactorBoard · BTCUSDT Research</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/research.css">
+</head>
+<body class="library-board">
+<div id="workspace" class="workspace">
+  <header class="appbar">
+    <button type="button" class="appbrand" data-home aria-label="展示全部因子的首页"><span class="brand-icon">ƒ</span><strong>FactorBoard</strong><span class="appbar-sep"></span><span>BTCUSDT Perpetual</span></button>
+    <nav class="workspace-nav" id="workspace-nav" aria-label="工作区选项卡"></nav>
+    <div class="app-meta"><span>100ms</span><span>Forward Mid · 1s</span><span class="demo-mark">连接中</span></div>
+  </header>
+  <details class="evaluation-options"><summary>评估设置：范围、分组与交易成本</summary><section id="controls" class="board-controls" aria-label="评估设置"></section></details>
+  <div class="appgrid">
+    <aside class="folders" id="folders" aria-label="因子资料库分类"></aside>
+    <section class="records" id="records" aria-label="因子列表"></section>
+    <main class="detail" id="detail" aria-label="研究详情"></main>
+  </div>
+</div>
+<dialog id="factor-picker" class="factor-picker" aria-labelledby="picker-title">
+ <div class="picker-head"><div><h2 id="picker-title">选择对比因子</h2><p>不限制数量 · 可按名称、Gen 或分类查找</p></div><button type="button" id="picker-close" class="picker-close" aria-label="关闭筛选">×</button></div>
+ <div class="picker-controls"><input id="picker-search" type="search" autocomplete="off" placeholder="搜索因子名 / Gen / 分类…" aria-label="筛选因子名称"><select id="picker-type" aria-label="因子类型"><option value="all">全部类型</option><option value="factors">Factors</option><option value="features">Features</option></select><select id="picker-gen" aria-label="Gen 批次"><option value="all">全部 Gen</option><option value="Gen001">Gen001</option><option value="Gen002">Gen002</option><option value="Gen003">Gen003</option><option value="Gen004">Gen004</option><option value="Gen005">Gen005</option><option value="Gen006">Gen006</option><option value="Gen007">Gen007</option><option value="Gen008">Gen008</option><option value="FEATURES">Features</option></select></div>
+ <div class="picker-selected-row"><span>已选择 <b id="picker-counter">0 项</b></span><div id="picker-selected" class="picker-selected"></div></div>
+ <div class="picker-result-heading"><span>筛选结果</span><span id="picker-result-count"></span><span class="picker-ic-label">IC 1s</span></div>
+ <div id="picker-results" class="picker-results" role="group" aria-label="搜索结果"></div>
+ <div class="picker-footer"><button type="button" id="picker-cancel" class="small-btn">取消</button><button type="button" id="picker-apply" class="picker-primary">应用对比</button></div>
+</dialog>
+<dialog id="register-factor" class="register-factor" aria-label="登记新的 Factor">
+ <div class="register-head"><strong>登记 Factor</strong><button type="button" data-register-close class="small-btn">关闭 ×</button></div>
+ <form>
+  <label>因子名称<input required name="id" placeholder="book_obi_l5_mean_10" pattern="[a-z][a-z0-9_]{2,140}" /></label>
+  <div class="register-fields"><label>Gen<input required name="gen" value="Gen001" /></label><label>分类<select name="category"><option value="book">book</option><option value="trade">trade</option><option value="cross">cross</option><option value="returns">returns</option><option value="ofi">ofi</option></select></label></div>
+  <label>输入列名（逗号分隔）<input required name="base_columns" placeholder="imbalance_5" /></label>
+  <div class="register-fields"><label>里层算子<select name="base_op"><option value="identity">identity</option><option value="difference">difference</option><option value="ratio">ratio</option></select></label><label>外层算子<select name="operation"><option value="mean">mean</option><option value="mean_diff">mean_diff</option><option value="identity">identity</option></select></label></div>
+  <div class="register-fields"><label>短窗口（100ms 点数）<input name="short_window" type="number" min="1" value="10" /></label><label>长窗口（仅 mean_diff）<input name="long_window" type="number" min="2" placeholder="50" /></label></div>
+  <label>经济含义<input name="desc" placeholder="描述希望检验的市场机制" /></label>
+  <div class="register-footer"><button class="picker-primary" type="submit">登记因子</button></div>
+ </form>
+</dialog>
+<div id="message" class="toast" role="status" aria-live="polite"></div>
+<script src="js/research_states.js"></script>
+<script src="js/data.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/research_charts.js"></script>
+<script src="js/evaluation.js"></script>
+<script src="js/library_actions.js"></script>
+<script src="js/library_filters.js"></script>
+<script src="js/research_notes.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
