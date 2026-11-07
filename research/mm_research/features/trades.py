@@ -1,6 +1,6 @@
 """现有研究版本的主动成交特征。
 
-add_trade_features 接收连续 100ms 买卖量与质量区段，增加历史成交量及成交失衡。
+trade_expressions在完整100ms序列上构造累计成交量及失衡，缺失值由min_samples处理。
 数量按 Lot 整数累计，build_trade_bins 从标准逐笔Parquet计算基础成交分桶。
 """
 
@@ -11,9 +11,9 @@ import polars as pl
 
 from mm_research.data.sources import DAY_NS, scan_standard_history
 
-from mm_research.features.expressions import normalized_imbalance, rolling_sum_in_segment
+from mm_research.features.expressions import normalized_imbalance
 
-GROUP_VERSION = "v1"
+GROUP_VERSION = "v2"
 
 TRADE_FEATURE_COLUMNS = [
     "buy_volume_1s", "sell_volume_1s", "buy_volume_5s", "sell_volume_5s",
@@ -22,7 +22,7 @@ TRADE_FEATURE_COLUMNS = [
 
 
 # ==================== 标准逐笔的基础特征计算 ====================
-# 【核心逻辑15】按模拟可见时刻汇总100ms成交笔数、主动买卖量和金额。
+# 【核心逻辑16】按模拟可见时刻汇总100ms成交笔数、主动买卖量和金额。
 def build_trade_bins(folder: Path, date: str, interval_ns: int,
                      lot_size: float, market_data_latency_ns: int) -> pl.DataFrame:
     """输入标准版本目录与日期与延迟参数，返回数量、金额、笔数和区间质量。
@@ -62,24 +62,25 @@ def build_trade_bins(folder: Path, date: str, interval_ns: int,
 
 
 # ==================== 衍生成交特征 ====================
-# 【核心逻辑18】累计1秒与5秒主动买卖量，计算对应窗口的成交失衡。
-def add_trade_features(table: pl.DataFrame, lot_size: float) -> pl.DataFrame:
-    """输入连续网格与数量步长，返回源字段和成交特征。
+# 【核心逻辑20】构造跨午夜且忽略缺失观测的成交窗口表达式。
+def trade_expressions(lot_size: float, min_samples: dict[str, int]) -> dict[str, pl.Expr]:
+    """输入Lot步长与各窗口最少样本数，返回成交量和失衡表达式。
 
-    完整无成交窗口失衡为零，未预热或未知窗口为空，数量单位 BTC。
-    用于现有数据生产及独立类别研究。
+    以整数Lot累计有效成交量，零成交窗口为零，观测不足时为空，不按完整窗口外推数量。
     """
-    expressions = []
+    expressions = {}
+    windows = {}
     for suffix, samples in [("1s", 10), ("5s", 50)]:
+        windows[suffix] = {}
         for source in ["buy_volume", "sell_volume"]:
-            expressions.append(
-                rolling_sum_in_segment(pl.col(source), samples, quantity_step=lot_size).alias(f"{source}_{suffix}")
-            )
-    table = table.with_columns(expressions)
-    return table.with_columns([
-        normalized_imbalance(pl.col(buy), pl.col(sell), empty_value=0.0).alias(f"trade_imbalance_{suffix}")
-        for suffix, buy, sell in [
-            ("100ms", "buy_volume", "sell_volume"),
-            ("1s", "buy_volume_1s", "sell_volume_1s"),
-        ]
-    ])
+            lots = (pl.col(source) / lot_size).round().cast(pl.Int64)
+            volume = lots.rolling_sum(samples, min_samples=min_samples[suffix]) * lot_size
+            expressions[f"{source}_{suffix}"] = volume
+            windows[suffix][source] = volume
+    expressions["trade_imbalance_100ms"] = normalized_imbalance(
+        pl.col("buy_volume"), pl.col("sell_volume"), empty_value=0.0,
+    )
+    expressions["trade_imbalance_1s"] = normalized_imbalance(
+        windows["1s"]["buy_volume"], windows["1s"]["sell_volume"], empty_value=0.0,
+    )
+    return expressions

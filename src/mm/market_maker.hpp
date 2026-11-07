@@ -14,7 +14,7 @@ struct QuoteTicks {
     std::int64_t ask;
 };
 
-// 【核心逻辑53】输入有效 BBO 档位与正半宽，返回向外取整的双边目标档位。
+// 【核心逻辑61】输入有效 BBO 档位与正半宽，返回向外取整的双边目标档位。
 QuoteTicks fixed_quotes(std::int64_t best_bid, std::int64_t best_ask, std::int64_t half_width);
 // 【非核心】从平铺 YAML 读取策略参数，数值约束由回测入口统一检查。
 TradingConfig load_trading_config(const std::filesystem::path& filename);
@@ -27,15 +27,15 @@ void validate_trading_config(const TradingConfig& config);
  */
 class MarketMaker {
 public:
-    // 【核心逻辑50】关联已由调用方校验的策略配置与交易记录器。
+    // 【核心逻辑58】关联已由调用方校验的策略配置与交易记录器。
     MarketMaker(const TradingConfig& config, TradeRecorder& recorder);
-    // 【核心逻辑52】执行双边报价决策，并返回本次决策后的买卖预留数量。
+    // 【核心逻辑60】执行双边报价决策，并返回本次决策后的买卖预留数量。
     std::pair<double, double> on_decision(hbt::Backtest& backtest, bool stop = false);
-    // 【核心逻辑57】返回买卖方向未终结订单的剩余 BTC 数量，包含新单与撤单在途。
+    // 【核心逻辑65】返回买卖方向未终结订单的剩余 BTC 数量，包含新单与撤单在途。
     [[nodiscard]] std::pair<double, double> reservations(const hbt::Backtest& backtest) const;
 
 private:
-    // 【核心逻辑54】使用原生订单视图决定单侧动作，已有风险订单终结后才补入替代单。
+    // 【核心逻辑62】使用原生订单视图决定单侧动作，已有风险订单终结后才补入替代单。
     void quote_side(hbt::Backtest& backtest, hbt::Side side, std::int64_t target_tick, bool stop);
     TradingConfig config_;
     TradeRecorder& recorder_;
@@ -44,10 +44,10 @@ private:
     QuoteTicks targets_{};
 };
 
-// 【核心逻辑47】使用指定共享分片缓存运行完整做市链路，供内存夹具和文件回测共用。
+// 【核心逻辑55】使用指定共享分片缓存运行完整做市链路，供内存夹具和文件回测共用。
 TradingSummary run_baseline(const TradingConfig& config,
                             std::shared_ptr<hbt::EventReaderCache> reader);
-// 【核心逻辑46】从 config.source 清单创建原生 reader，并返回已核对的交易汇总。
+// 【核心逻辑54】从 config.source 清单创建原生 reader，并返回已核对的交易汇总。
 TradingSummary run_baseline(const TradingConfig& config);
 
 } // namespace mm

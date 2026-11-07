@@ -4,10 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
-import polars as pl
-
 from mm_research.config import load_pipeline_config
-from mm_research.data.dataset import input_definition, read_artifact_metadata
+from mm_research.data.storage import file_locks, scan_series
 from mm_research.features.base import BASE_COLUMNS, KEY_COLUMNS
 from mm_research.features.validation import validate_feature_intermediates
 
@@ -16,17 +14,17 @@ from mm_research.features.validation import validate_feature_intermediates
 def main() -> None:
     """输入研究配置、日期和报告路径，比较标准行情与基础采样。"""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("config", type=Path, help="Features/Targets配置，例如config/features_targets_30d.yaml")
+    parser.add_argument("config", type=Path, help="Features/Targets配置，例如config/features/build_30d.yaml")
     parser.add_argument("date")
     parser.add_argument("output", type=Path)
     arguments = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     config = load_pipeline_config(arguments.config, "features_targets")
-    filename = root / config["feature_root"] / config["feature_version"] / f"{arguments.date}.parquet"
-    metadata = read_artifact_metadata(filename)
-    if metadata["input_definition"] != input_definition(config):
-        raise ValueError("校验配置与特征文件的基础定义不同")
-    base = pl.read_parquet(filename, columns=[*KEY_COLUMNS, *BASE_COLUMNS])
+    folder = root / config["feature_root"] / config["feature_version"]
+    columns = [column for column in BASE_COLUMNS if column not in KEY_COLUMNS]
+    with file_locks([folder / f"{name}.parquet" for name in columns], shared=True):
+        scan, _ = scan_series(folder, columns, [arguments.date])
+        base = scan.collect(engine="streaming")
     standard = root / config["standard_root"] / config["standard_version"]
     report = validate_feature_intermediates(
         base, standard, arguments.date, config["market_data_latency_ns"], config["interval_ns"],

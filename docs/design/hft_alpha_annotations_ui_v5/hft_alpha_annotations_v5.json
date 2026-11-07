@@ -411,6 +411,45 @@
       "body": "按最新数据组织同步外部文档库、README、研究指南、存储说明和历史报告版本提示。标准文件为standard/版本/{snapshots,trades}/日期.parquet，base和衍生组共同保存在features/版本/日期.parquet，标签位于labels/版本/horizon=周期/日期.parquet。更新四组独立质量、增量复用、示例与当前接口。主文档补充在对话中给出。",
       "created_at": "2026-11-06T11:38:54.497335+00:00",
       "updated_at": "2026-11-06T11:38:54.497335+00:00"
+    },
+    {
+      "id": "codex-feature-table-implementation-20261106",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "Features构造表统一按特征组与业务类型组织，在表内增加计算实现列，分别注明Python/Polars与C++。事件OFI逐次计算及100ms累计由C++提供，1s/5s窗口公式在Polars模块。将独立示例改称特征开发示例，说明函数已实现、当前未登记GROUPS，正式接入需要注册组并配置选用。同步Features总览的示例用途说明。",
+      "created_at": "2026-11-06T12:26:47.019202+00:00",
+      "updated_at": "2026-11-06T12:26:47.019202+00:00"
+    },
+    {
+      "id": "codex-v5-20261106-gen001-complete",
+      "target": "node:a4",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "已实施当前方案。配置按阶段分目录；Features和Factors按变量保存全日期Parquet，质量异常设null，窗口通过min_samples处理，取消特征分段重置。Gen001六因子与evaluation已完成三十天验证，报告位于workspace/results/evaluation/gen001_v1/report.html。使用六个Polars线程，Gen001约9.03秒、峰值RSS约2.73GB；六个盘口/成交/背离因子的原始方向均保留。窗口10/50，最少有效8/40。核心编号按调用顺序更新至1—75。",
+      "created_at": "2026-11-06T15:24:59Z",
+      "updated_at": "2026-11-06T15:24:59Z",
+      "deleted": false
+    },
+    {
+      "id": "codex-v5-20261107-huggingface-snapshot-source",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "HF的20档Parquet已接入scan_snapshot_source和现有Data发布入口。配置显式声明snapshot_format/snapshot_depth，支持tardis_csv/25与cryptolake_parquet/20，核心编号沿用3—8。测试配置为config/data/standardize_huggingface_test.yaml。5月9日与10月1日均已生成标准快照和官方成交，80列价量及原始交易所时间逐行一致，100ms基础采样与1s标签已验证。产物为standard/cryptolake20_test_v1。当前market_v2主版本继续使用25档网盘快照。",
+      "created_at": "2026-11-06T16:06:36.747270+00:00",
+      "updated_at": "2026-11-06T16:24:44.290709+00:00",
+      "deleted": false
+    },
+    {
+      "id": "codex-v5-20261107-huggingface-cross-source-trial",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "备注",
+      "body": "已用免费来源交叉核对2025-10-01。Tardis与HF有10,648个共同唯一事件毫秒时刻，20档价量全部一致。HF有537个超过1秒的内部间隔，最长93.616秒，另有25.361秒日尾未覆盖。显式补入19,590条Tardis真实快照后，无效100ms盘口样本从6,416降至0，来源与原质量标签保留。试验脚本、统计和独立快照位于workspace/results/data_inspection/huggingface_adaptation，未接入自动合并。另下载CryptoHFTData两个小时L2，内部序号连续、长缺口中有1,808批更新，但缺初始化快照，尚未验证其完整盘口重建。Tardis免费覆盖每月1日。详情见数据来源文档。",
+      "created_at": "2026-11-06T16:24:44.290709+00:00",
+      "updated_at": "2026-11-06T16:24:44.290709+00:00",
+      "deleted": false
     }
   ]
 }

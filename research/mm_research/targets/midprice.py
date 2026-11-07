@@ -19,7 +19,7 @@ def horizon_name(horizon_ns: int) -> str:
     return f"{horizon_ns // 1_000_000}ms"
 
 
-# 【核心逻辑23】按精确未来Mid构造bps、Ticks和USDT标签，隔离跨日与盘口中断。
+# 【核心逻辑24】按精确未来Mid构造bps、Ticks和USDT标签，隔离跨日与盘口中断。
 def build_midprice_labels(base: pl.DataFrame, tick_size: float, interval_ns: int,
                           horizon_ns: int = 1_000_000_000) -> pl.DataFrame:
     """输入单日基础表、价格步长、采样间隔及预测周期，返回键、标签和有效标志。

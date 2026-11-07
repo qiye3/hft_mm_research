@@ -1,12 +1,15 @@
 # 上游 Data 层设计
 
-更新日期为2026-11-06。当前使用 `market_v2`，成交直接来自 Binance 官方 USD-M 日档，盘口来自网盘原始25档快照。
+更新日期为2026-11-07。七月主数据使用 `market_v2`，成交直接来自Binance官方USD-M日档，盘口来自网盘原始25档快照。
+
+Hugging Face的20档快照已接入同一Data生产入口，两个实测日期输出到独立的 `cryptolake20_test_v1`。来源实际有2025-05-09—2026-06-02的379份日Parquet，约32.51GB，适用于前10档特征研究。覆盖缺日、单日质量、下载和Polars读取方式，以及交叉来源补充试验统一记录在 [数据来源与使用说明](../implementation/data_requirements.md#hugging-face-的-btcusdt-永续20档快照)。
 
 ## 数据链路
 
 ```text
 Binance 官方成交 ZIP → 读取CSV、统一字段、重复与质量检查 → trades/日期.parquet
 网盘25档快照 CSV.zst → 流式读取、保留25档、盘口质量检查 → snapshots/日期.parquet
+Hugging Face 20档Parquet → 映射字段、保留20档、盘口质量检查 → 独立版本的snapshots/日期.parquet
 ```
 
 每个日期保存两份Parquet，分别位于 `workspace/data/standard/market_v2/snapshots/YYYY-MM-DD.parquet` 和 `trades/YYYY-MM-DD.parquet`。来源、行号和质量标签保存在记录中，输入文件身份、单位、时钟和配置定义写入Parquet元数据。原始压缩文件保留供追溯。
@@ -17,33 +20,35 @@ Binance 官方成交 ZIP → 读取CSV、统一字段、重复与质量检查 �
 
 官方成交按交易所时间、编号、源行号排序。`is_buyer_maker=true` 对应主动卖出，false对应主动买入。普通成交口径的编号跳跃直接保留。重复编号保留源文件第一条并标记，内容冲突另加 `content_conflict`，异常字段和越日记录保留原值并标记。
 
-盘口保留全部原始记录、源顺序和双侧25档。快照日期分区对应源文件日期，读取时可按交易所时间与源行号稳定排序。原始接收时间只在生产期间用于源时钟和缺口检查，检查后移除。确认与怀疑中断分别标记在恢复行，实际盘口缺失继续按质量规则处理。
+盘口保留全部原始记录、源顺序和来源实际提供的双侧20或25档。快照日期分区对应源文件日期，读取时按交易所时间与源行号稳定排序。原始接收时间只在生产期间用于源时钟和缺口检查，检查后移除。确认与怀疑中断分别标记在恢复行，实际盘口缺失继续按质量规则处理。
 
 ## 代码与配置
 
 | 文件 | 职责 |
 | --- | --- |
-| `data/sources.py` | 读取官方ZIP和25档快照，统一字段 |
+| `data/sources.py` | 读取官方ZIP、25档CSV和20档Parquet，统一字段 |
 | `data/trades.py` | 官方成交去重、冲突和越日标签、排序 |
 | `data/orderbook.py` | 保留完整盘口并标注来源质量 |
 | `data/standard.py` | 配置编排、元数据、缓存定义及完整发布 |
 | `data/quality.py` | 公共标签表达式 |
-| `tests/test_standard_data.py` | 字段转换、异常保留、25档和发布边界 |
+| `tests/test_standard_data.py` | 字段转换、异常保留、20/25档和发布边界 |
 
-上述 `data/` 位于 `research/mm_research/data/`。生产配置为 `config/data_standardize_30d.yaml`，路径相对项目根目录。
+上述 `data/` 位于 `research/mm_research/data/`。生产配置为 `config/data/standardize_30d.yaml`，路径相对项目根目录。
+
+Data配置必须声明 `snapshot_format` 和 `snapshot_depth`，组合分别为 `tardis_csv/25` 与 `cryptolake_parquet/20`。Hugging Face适配测试配置为 `config/data/standardize_huggingface_test.yaml`，直接复用 `scripts/build_standard_data.py`。
 
 ```python
 from pathlib import Path
 from mm_research.data.standard import run_standard_production
 
-summaries = run_standard_production(Path("config/data_standardize_30d.yaml"))
+summaries = run_standard_production(Path("config/data/standardize_30d.yaml"))
 ```
 
-相同定义可复用，输入或规则改变需使用新版本。两份文件在临时目录生成并检查后，在版本锁内发布，移动失败时撤回本次已发布文件。
+相同定义可复用，输入或规则改变需使用新版本。两份文件在临时目录生成并检查后，持有同日两份文件的独占锁发布，移动失败时撤回本次已发布文件。
 
 ## 与现有研究流程的衔接
 
-研究入口读取market_v2标准数据。100ms基础列属于base组，和衍生组共同保存到 `features/market_groups_v2/日期.parquet`，标签保存到 `labels/market_mid_groups_v2/horizon=周期/日期.parquet`。固定延迟为20ms，跨日读取前日标准表以接回延迟到达记录。
+研究入口读取market_v2标准数据。100ms基础列属于base组，和衍生组共同保存到 `features/market_columns_v1/特征名.parquet`，标签保存到 `labels/market_mid_columns_v1/horizon=周期/日期.parquet`。固定延迟为20ms，跨日读取前日标准表以接回延迟到达记录。
 
 当前Features分为base、book、trades、returns四组，组版本和质量标记内嵌每日特征Parquet。研究读取按所选组及标签的有效性筛选。
 

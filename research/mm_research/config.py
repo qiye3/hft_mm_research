@@ -8,12 +8,21 @@ PIPELINE_FIELDS = {
     "data_standardize": {
         "stage", "version", "output_root", "dates", "snapshots", "trades",
         "tick_size", "lot_size", "snapshot_silence_ns", "confirmed_snapshot_gaps",
+        "snapshot_format", "snapshot_depth",
     },
     "features_targets": {
         "stage", "standard_root", "standard_version", "dates", "feature_groups",
         "feature_root", "feature_version", "label_root", "label_version",
         "market_data_latency_ns", "interval_ns", "tick_size", "lot_size",
-        "max_book_age_ns", "horizons_ns",
+        "max_book_age_ns", "horizons_ns", "rolling_min_samples",
+    },
+    "factors": {
+        "stage", "feature_root", "feature_version", "factor_root", "factor_version",
+        "dates", "factors", "short_window", "long_window", "short_min_samples", "long_min_samples",
+    },
+    "evaluation": {
+        "stage", "factor_root", "factor_version", "label_root", "label_version", "dates",
+        "factors", "horizons_ns", "groups", "output",
     },
 }
 
@@ -42,7 +51,9 @@ def load_pipeline_config(filename: Path, stage: str) -> dict:
     if not isinstance(config, dict):
         raise ValueError("YAML配置必须是键值映射")
     if config.get("stage") != stage:
-        owner = "Data标准化" if stage == "data_standardize" else "Features/Targets"
+        owners = {"data_standardize": "Data标准化", "features_targets": "Features/Targets",
+                  "factors": "Factors", "evaluation": "Evaluation"}
+        owner = owners[stage]
         raise ValueError(f"此入口需要{owner}配置")
     required = PIPELINE_FIELDS[stage]
     missing = required - config.keys()

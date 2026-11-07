@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
      */
     try {
         if (argc != 2) {
-            throw std::invalid_argument("usage: benchmark_replay config/replay_btcusdt.yaml");
+            throw std::invalid_argument("usage: benchmark_replay config/replay/btcusdt.yaml");
         }
 #ifdef NDEBUG
         const auto config = mm::load_config(argv[1]);

@@ -17,7 +17,7 @@ SNAPSHOT_EXAMPLE_COLUMNS = ["snapshot_bid_notional_10", "snapshot_ask_notional_1
 
 
 # ==================== 标准快照的基础特征计算 ====================
-# 【核心逻辑12】按固定延迟对齐最近可见快照，计算Mid、Spread和盘口连续区段。
+# 【核心逻辑13】按固定延迟对齐最近可见快照，计算Mid、Spread和盘口连续区段。
 def build_snapshot_grid(folder: Path, date: str, interval_ns: int,
                         max_snapshot_age_ns: int, market_data_latency_ns: int) -> pl.DataFrame:
     """输入标准版本目录与日期和时间参数，返回前十档盘口网格。
@@ -62,7 +62,7 @@ def build_snapshot_grid(folder: Path, date: str, interval_ns: int,
 
 
 # ==================== 快照特征模块示例 ====================
-# 【核心逻辑64】计算前十档双侧挂单金额及金额失衡，作为快照特征示例。
+# 【核心逻辑72】计算前十档双侧挂单金额及金额失衡，作为快照特征示例。
 def add_snapshot_notional_features(table: pl.DataFrame) -> pl.DataFrame:
     """输入包含十档价格数量及 book_valid 的网格，返回新增示例特征的表。
 

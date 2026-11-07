@@ -1,3 +1,4 @@
+# 配置路径相对项目根目录。
 # M0 使用上游示例行情，加上深度升档边界用例。路径相对项目根目录。
 source: synthetic
 date: synthetic

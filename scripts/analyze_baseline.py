@@ -221,7 +221,7 @@ def audit_equity(directory: Path, summary: dict) -> tuple[np.ndarray, np.ndarray
 
 
 # ==================== 完整日验收与成交质量分析 ====================
-# 【核心逻辑63】核对完整日的一组实验，再按成交量加权计算本地回报后一秒的收益标记。
+# 【核心逻辑71】核对完整日的一组实验，再按成交量加权计算本地回报后一秒的收益标记。
 def analyze_run(directory: Path, manifest: dict) -> dict:
     """为一组已完成的 C++ 回测补充独立核对和短期成交质量统计。
 
@@ -264,13 +264,13 @@ def analyze_run(directory: Path, manifest: dict) -> dict:
 
 
 # ==================== 实验编排与研究报告输出 ====================
-# 【核心逻辑45】逐组生成独立配置、运行同一 C++ 策略入口，并在每组成功后保存核对结果。
+# 【核心逻辑53】逐组生成独立配置、运行同一 C++ 策略入口，并在每组成功后保存核对结果。
 def run_experiments(output_root: Path) -> list[dict]:
     """串行执行 CASES 中定义的七组单日机制实验。
 
     输入
         output_root 为实验输出根目录，每个案例的子目录必须尚未存在。
-        默认参数来自项目 config/baseline_mm.yaml，可执行文件来自 Release 构建目录。
+        默认参数来自项目 config/strategy/baseline_mm.yaml，可执行文件来自 Release 构建目录。
     输出
         返回按 CASES 顺序排列的分析结果，并持续写入 output_root/analysis.json。
         每组生成的绝对位置配置保存在 output_root/configs 目录。
@@ -278,7 +278,7 @@ def run_experiments(output_root: Path) -> list[dict]:
         统一数据、费率和延迟，仅按各案例覆盖指定因素。C++ 失败或 CSV 核对失败时停止，
         已完成组的配置、逐笔文件及进度结果可用于定位异常和复核。
     """
-    base = yaml.safe_load((ROOT / "config/baseline_mm.yaml").read_text())
+    base = yaml.safe_load((ROOT / "config/strategy/baseline_mm.yaml").read_text())
     manifest = json.loads((ROOT / base["source"]).read_text())
     configuration_directory = output_root / "configs"
     configuration_directory.mkdir(parents=True, exist_ok=True)
@@ -379,7 +379,7 @@ def write_report(results: list[dict], destination: Path) -> None:
         "",
         "## 复现",
         "",
-        "在项目根目录执行 `.venv/bin/python scripts/analyze_baseline.py --run-experiments`。每个实验子目录必须不存在，以避免覆盖一次实验；可用 --output-root 指定新目录。已有输出可用 `--analyze-existing workspace/results/m1/BTCUSDT_2025-02-01` 重新核对，完整参数见 config/baseline_mm.yaml 与脚本 CASES。C++ 入口为 src/apps/baseline_mm.cpp。",
+        "在项目根目录执行 `.venv/bin/python scripts/analyze_baseline.py --run-experiments`。每个实验子目录必须不存在，以避免覆盖一次实验；可用 --output-root 指定新目录。已有输出可用 `--analyze-existing workspace/results/m1/BTCUSDT_2025-02-01` 重新核对，完整参数见 config/strategy/baseline_mm.yaml 与脚本 CASES。C++ 入口为 src/apps/baseline_mm.cpp。",
         "",
         "原始逐笔文件保存在 workspace/results/m1/BTCUSDT_2025-02-01/<实验>/{orders.csv,fills.csv,equity.csv,summary.json}，不纳入 Git。完整聚合指标保存在实验输出根目录的 analysis.json，报告目录保存方法说明与结果解读。",
         "",
@@ -406,7 +406,7 @@ def main() -> None:
     if arguments.run_experiments:
         results = run_experiments(arguments.output_root.resolve())
     else:
-        base = yaml.safe_load((ROOT / "config/baseline_mm.yaml").read_text())
+        base = yaml.safe_load((ROOT / "config/strategy/baseline_mm.yaml").read_text())
         manifest = json.loads((ROOT / base["source"]).read_text())
         results = [analyze_run(arguments.analyze_existing / name, manifest) for name in CASES]
         (arguments.analyze_existing / "analysis.json").write_text(

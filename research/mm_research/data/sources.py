@@ -1,4 +1,4 @@
-"""读取官方成交 ZIP 与网盘二十五档快照，供标准行情生产使用。
+"""读取官方成交ZIP、Tardis格式25档CSV及Crypto Lake的20档Parquet。
 
 load_official_trades 统一官方逐笔字段，scan_snapshot_source 流式映射完整盘口。
 标准行情使用交易所时间，快照原始接收时间仅供来源质量检查，写入前移除。
@@ -25,17 +25,36 @@ TRADE_COLUMNS = [
 ]
 
 
-# 【核心逻辑5】读取原始快照，将完整25档及时间字段转换为标准结构。
-def scan_snapshot_source(filename: Path, source: str) -> pl.LazyFrame:
-    """输入快照 CSV 和来源标识，返回流式二十五档表。
+# 【核心逻辑5】按明确来源格式读取全部快照档位，映射到统一价量与纳秒时间字段。
+def scan_snapshot_source(filename: Path, source: str, source_format: str, depth: int) -> pl.LazyFrame:
+    """输入快照文件、来源、声明格式与档数，返回标准字段的流式表。
 
-    时间从微秒转为纳秒，原始接收时间在标注来源缺口后移除。
+    Tardis CSV微秒转纳秒，Crypto Lake Parquet原生纳秒保持原值。
     source_row 从第一条数据记录的1开始计数，同时间戳的连续状态保持源顺序。
+    保留原始档数与行序，原始接收时间在标注来源缺口后移除。
     """
+    if source_format == "cryptolake_parquet" and depth == 20:
+        metadata = pl.read_parquet_metadata(filename)
+        if metadata["exchange"] != "BINANCE_FUTURES" or metadata["symbol"] != "BTC-USDT-PERP":
+            raise ValueError("Crypto Lake快照必须属于Binance BTCUSDT永续")
+        levels = [
+            pl.col(f"{side}_{level}_{raw_field}").alias(f"{side}_{field}_{level + 1}")
+            for level in range(depth)
+            for side in ["bid", "ask"]
+            for raw_field, field in [("price", "price"), ("size", "quantity")]
+        ]
+        return pl.scan_parquet(filename).with_row_index("source_row", offset=1).select(
+            pl.lit("binance-futures").alias("exchange"), pl.lit("BTCUSDT").alias("symbol"),
+            pl.col("timestamp").alias("exchange_timestamp_ns"),
+            pl.col("receipt_timestamp").alias("received_timestamp_ns"),
+            *levels, pl.lit(source).cast(pl.Categorical).alias("source"), "source_row",
+        )
+    if source_format != "tardis_csv" or depth != 25:
+        raise ValueError("盘口格式与档数必须为tardis_csv/25或cryptolake_parquet/20")
     schema = {"timestamp": pl.Int64, "local_timestamp": pl.Int64}
 
     levels = []
-    for level in range(25):
+    for level in range(depth):
         for raw_side, side in [("bids", "bid"), ("asks", "ask")]:
             for raw_field, field in [("price", "price"), ("amount", "quantity")]:
                 raw = f"{raw_side}[{level}].{raw_field}"
@@ -107,7 +126,7 @@ def open_market_csv(filename: Path):
     raise ValueError(f"不支持的压缩行情格式 {filename.name}")
 
 
-# 【核心逻辑13】合并本日与已有前日标准行情，按事件时间稳定排序。
+# 【核心逻辑14】合并本日与已有前日标准行情，按事件时间稳定排序。
 def scan_standard_history(folder: Path, kind: str, date: str) -> pl.LazyFrame:
     """输入标准版本目录、表类型与日期，返回按交易所时间和源行号排序的行情。
 

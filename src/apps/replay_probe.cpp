@@ -6,15 +6,15 @@
 
 // 【非核心】从可选配置启动观察回放，并将结果写入配置指定的 JSON 文件。
 int main(int argc, char** argv) {
-    /** argv 可提供一个配置文件，省略时使用 config/replay.yaml。
+    /** argv 可提供一个配置文件，省略时使用 config/replay/synthetic.yaml。
      * 成功输出观察报告并返回 0，参数或回放错误写到标准错误并返回 1。
      */
     try {
         if (argc > 2) {
-            throw std::invalid_argument("usage: replay_probe [config/replay.yaml]");
+            throw std::invalid_argument("usage: replay_probe [config/replay/synthetic.yaml]");
         }
         // 读取参数
-        const auto config = mm::load_config(argc == 2 ? argv[1] : "config/replay.yaml");
+        const auto config = mm::load_config(argc == 2 ? argv[1] : "config/replay/synthetic.yaml");
         // 运行行情回放
         const auto result = mm::run_replay(config);
         // 写入报告

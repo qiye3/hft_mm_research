@@ -50,14 +50,15 @@ def validate_standard_books(base: pl.DataFrame, book_files: list[Path],
     sample_indices = samples[available]
     expected = book_values[latest[available]]
     actual = base.select(fields).to_numpy()[sample_indices]
-    if not np.allclose(actual, expected, atol=1e-10, rtol=0, equal_nan=True):
-        raise ValueError("独立盘口采样值不一致")
     expected_valid = np.isfinite(expected).all(axis=1) & (expected > 0).all(axis=1)
     expected_valid &= expected[:, 0] < expected[:, 2]
     for level in range(9):
         expected_valid &= expected[:, level * 4] > expected[:, (level + 1) * 4]
         expected_valid &= expected[:, level * 4 + 2] < expected[:, (level + 1) * 4 + 2]
     expected_valid &= grid[sample_indices] - times[latest[available]] <= max_book_age_ns
+    expected[~expected_valid] = np.nan
+    if not np.allclose(actual, expected, atol=1e-10, rtol=0, equal_nan=True):
+        raise ValueError("独立盘口采样值不一致")
     if not np.array_equal(base["book_valid"].to_numpy()[sample_indices], expected_valid):
         raise ValueError("独立盘口有效性不一致")
     if base["book_valid"].to_numpy()[samples[~available]].any():
@@ -75,8 +76,6 @@ def validate_standard_trades(base: pl.DataFrame, trade_files: list[Path],
     indices = (available_times - grid[0] + interval_ns - 1) // interval_ns
     within = (indices >= 0) & (indices < base.height)
     counts = np.bincount(indices[within], minlength=base.height)
-    if not np.array_equal(counts, base["trade_count"].to_numpy()):
-        raise ValueError("独立逐网格成交计数不一致")
     valid = trades.select(
         (pl.col("price").is_finite() & (pl.col("price") > 0)
          & pl.col("quantity").is_finite() & (pl.col("quantity") > 0)
@@ -85,15 +84,27 @@ def validate_standard_trades(base: pl.DataFrame, trade_files: list[Path],
              pl.element().is_in(["content_conflict", "off_tick", "off_lot", "missing_trade_id"])
          ).list.any()).fill_null(False)
     ).to_series().to_numpy()
+    invalid_counts = np.bincount(indices[within & ~valid], minlength=base.height)
+    flow_valid = invalid_counts == 0
+    if len(trade_files) == 1:
+        flow_valid &= grid >= grid[0] + latency_ns + interval_ns
+    if not np.array_equal(flow_valid, base["flow_valid"].to_numpy()):
+        raise ValueError("独立成交窗口质量不一致")
+    expected_counts = counts.astype(float)
+    expected_counts[~flow_valid] = np.nan
+    if not np.allclose(expected_counts, base["trade_count"].to_numpy(), equal_nan=True):
+        raise ValueError("独立逐网格成交计数不一致")
     quantity = trades["quantity"].to_numpy()
     price = trades["price"].to_numpy()
     for side in ["buy", "sell"]:
         chosen = within & valid & (trades["side"].to_numpy() == side)
         lots = np.rint(quantity[chosen] / lot_size)
         volume = np.bincount(indices[chosen], weights=lots, minlength=base.height) * lot_size
-        notional = np.bincount(indices[chosen], weights=price[chosen] * quantity[chosen], minlength=base.height)
-        if not np.allclose(volume, base[f"{side}_volume"].to_numpy(), atol=1e-10, rtol=0):
+        notional = np.bincount(indices[chosen], weights=price[chosen] * quantity[chosen], minlength=base.height).astype(float)
+        volume[~flow_valid] = np.nan
+        notional[~flow_valid] = np.nan
+        if not np.allclose(volume, base[f"{side}_volume"].to_numpy(), atol=1e-10, rtol=0, equal_nan=True):
             raise ValueError("独立成交数量不一致")
-        if not np.allclose(notional, base[f"{side}_notional"].to_numpy(), atol=1e-6, rtol=1e-12):
+        if not np.allclose(notional, base[f"{side}_notional"].to_numpy(), atol=1e-6, rtol=1e-12, equal_nan=True):
             raise ValueError("独立成交金额不一致")
     return int(counts.sum())

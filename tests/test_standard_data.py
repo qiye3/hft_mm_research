@@ -16,7 +16,7 @@ import zstandard
 
 from mm_research.config import load_pipeline_config
 
-from mm_research.data.sources import load_official_trades
+from mm_research.data.sources import load_official_trades, scan_snapshot_source
 from mm_research.data.standard import build_standard_day, read_standard_metadata, run_standard_production
 from mm_research.data.trades import prepare_official_trades
 
@@ -76,7 +76,7 @@ class StandardDataTests(unittest.TestCase):
     # 【非核心】历史字段、重复键和缺失项均应中止配置读取。
     def test_strict_pipeline_config(self):
         """直接读取当前配置契约，拒绝隐式默认或覆盖。"""
-        source = Path(__file__).resolve().parents[1] / "config/data_standardize_30d.yaml"
+        source = Path(__file__).resolve().parents[1] / "config/data/standardize_30d.yaml"
         content = source.read_text()
         with tempfile.TemporaryDirectory() as directory:
             filename = Path(directory) / "config.yaml"
@@ -140,6 +140,7 @@ class StandardDataTests(unittest.TestCase):
                 "version": "test", "output_root": "standard", "snapshots": "snapshots.zst",
                 "trades": "trades.zip", "tick_size": 0.1, "lot_size": 0.001,
                 "snapshot_silence_ns": 1_000_000_000, "confirmed_snapshot_gaps": {},
+                "snapshot_format": "tardis_csv", "snapshot_depth": 25,
             }
             original_replace = Path.replace
 
@@ -168,6 +169,7 @@ class StandardDataTests(unittest.TestCase):
                 "snapshots": "raw/{date}/snapshots.zst", "trades": "raw/{date}/trades.zip",
                 "tick_size": 0.1, "lot_size": 0.001, "snapshot_silence_ns": 1_000_000_000,
                 "confirmed_snapshot_gaps": {DATE: [[(START_US + 100_000) * 1000, (START_US + 1_500_000) * 1000]]},
+                "snapshot_format": "tardis_csv", "snapshot_depth": 25,
             }
             summary = build_standard_day(root, config, DATE)
             folder = root / "standard/market_v2"
@@ -199,7 +201,56 @@ class StandardDataTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 build_standard_day(root, config | {"version": "failed"}, DATE)
             self.assertFalse((root / f"standard/failed/snapshots/{DATE}.parquet").exists())
-            self.assertEqual(list((root / "standard/failed").iterdir()), [])
+            self.assertEqual(list((root / "standard/failed").rglob("*.parquet")), [])
+
+    # 【非核心】通过公开生产入口检查20档来源，禁止伪造其余五档或改变时间单位。
+    def test_cryptolake_standard_publication(self):
+        """转换带原生纳秒与源元数据的Parquet，逐列核对价量、行序和深度。"""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = make_snapshots().select(
+                (pl.col("timestamp") * 1000).alias("timestamp"),
+                (pl.col("local_timestamp") * 1000).alias("receipt_timestamp"),
+                *[
+                    pl.col(f"{raw_side}[{level}].{raw_field}").alias(f"{side}_{level}_{field}")
+                    for level in range(20)
+                    for raw_side, side in [("bids", "bid"), ("asks", "ask")]
+                    for raw_field, field in [("price", "price"), ("amount", "size")]
+                ],
+            )
+            metadata = {"exchange": "BINANCE_FUTURES", "symbol": "BTC-USDT-PERP"}
+            source.write_parquet(root / "book.parquet", metadata=metadata)
+            write_official_archive(root / "trades.zip", [1], [START_US // 1000 + 1])
+            config = {
+                "version": "cryptolake20", "output_root": "standard",
+                "snapshots": "book.parquet", "trades": "trades.zip",
+                "snapshot_format": "cryptolake_parquet", "snapshot_depth": 20,
+                "tick_size": 0.1, "lot_size": 0.001,
+                "snapshot_silence_ns": 1_000_000_000, "confirmed_snapshot_gaps": {},
+            }
+            summary = build_standard_day(root, config, DATE)
+            filename = root / "standard/cryptolake20/snapshots" / f"{DATE}.parquet"
+            result = pl.read_parquet(filename)
+            self.assertEqual(summary["snapshot_rows"], source.height)
+            self.assertEqual(result["source_row"].to_list(), [1, 2, 3, 4])
+            self.assertEqual(result["exchange_timestamp_ns"].to_list(), source["timestamp"].to_list())
+            self.assertEqual(read_standard_metadata(filename)["definition"]["snapshot_depth"], 20)
+            self.assertNotIn("bid_price_21", result.columns)
+            for level in range(20):
+                for side in ["bid", "ask"]:
+                    self.assertEqual(
+                        result[f"{side}_price_{level + 1}"].to_list(),
+                        source[f"{side}_{level}_price"].to_list(),
+                    )
+                    self.assertEqual(
+                        result[f"{side}_quantity_{level + 1}"].to_list(),
+                        source[f"{side}_{level}_size"].to_list(),
+                    )
+            with self.assertRaisesRegex(ValueError, "格式与档数"):
+                scan_snapshot_source(root / "book.parquet", "test", "cryptolake_parquet", 25)
+            source.write_parquet(root / "wrong.parquet", metadata=metadata | {"exchange": "BINANCE"})
+            with self.assertRaisesRegex(ValueError, "BTCUSDT永续"):
+                scan_snapshot_source(root / "wrong.parquet", "test", "cryptolake_parquet", 20)
 
 
 if __name__ == "__main__":

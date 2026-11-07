@@ -1,10 +1,12 @@
-# 2026-11-06 — 研究数据的组织、下载、处理与详细概况
+# 研究数据的组织、下载、处理与详细概况
+
+更新日期为2026-11-07。Hugging Face 盘口来源与使用方式见第五节。
 
 ## 当前生产入口
 
 当前Data输入为Binance官方普通成交ZIP与网盘25档快照。标准数据保存到`workspace/data/standard/market_v2/{snapshots,trades}/YYYY-MM-DD.parquet`。
 
-Features使用交易所时间加20ms作为模拟可见时刻。base、book、trades、returns四组共同保存到`features/market_groups_v2/YYYY-MM-DD.parquet`，标签保存到`labels/market_mid_groups_v2/horizon=周期/YYYY-MM-DD.parquet`。组版本、来源与有效行数内嵌Parquet元数据。
+Features使用交易所时间加20ms作为模拟可见时刻。base、book、trades、returns四组按特征列保存到`features/market_columns_v1/特征名.parquet`，每份文件包含全部日期。标签保存到`labels/market_mid_columns_v1/horizon=周期/YYYY-MM-DD.parquet`。版本与来源定义内嵌Parquet元数据。
 
 下文网盘内容与整日C++验证保留对应检查日期，当前可执行生产命令见第六节。
 
@@ -97,8 +99,8 @@ workspace/data/
 ├── standard/market_v2/
 │   ├── snapshots/YYYY-MM-DD.parquet
 │   └── trades/YYYY-MM-DD.parquet
-├── features/market_groups_v2/YYYY-MM-DD.parquet
-├── labels/market_mid_groups_v2/horizon=1s/YYYY-MM-DD.parquet
+├── features/market_columns_v1/特征名.parquet
+├── labels/market_mid_columns_v1/horizon=1s/YYYY-MM-DD.parquet
 └── normalized/    C++事件回放的NPZ缓存
 ```
 
@@ -127,7 +129,7 @@ workspace/
 
 原始文件按来源和日期隔离，下载时避免两个同名 `BTCUSDT.csv.zst` 相互覆盖。来源清单记录网盘原路径、文件大小、下载后位置和耗时。标准事件清单记录格式、时间单位、步长、分类数量、分片和最终盘口。
 
-当前研究表按版本和日期文件组织，标签另按预测周期分目录，记录价格定义和生成版本。模型输出、预测与交易记录用独立实验编号归档，关联数据版本、参数和 Git 提交。数据和结果保存在当前被忽略的目录中，`docs` 保存说明与报告。
+标准行情按版本和日期文件组织，特征按变量保存全日期文件，标签按预测周期和日期保存，记录价格定义和生成版本。模型输出、预测与交易记录用独立实验编号归档，关联数据版本、参数和 Git 提交。数据和结果保存在当前被忽略的目录中，`docs` 保存说明与报告。
 
 云端第一批只预取 7—30 天。标准化和特征生成完成后复用结果，历史原始档案继续保留来源。云端过期缓存清理前确认可从原始档案重建，并保留必要的清单与实验记录。
 
@@ -154,6 +156,123 @@ workspace/
 
 云服务器和容器可按指南使用文件传输工具或 SSH/SFTP。容器也可以在确认网盘访问和下载吞吐后直接拉取数据。集群的计算节点没有外网，应先将数据和依赖送到允许的存储目录，再提交计算作业。云端开机下载的等待时间也属于运行时长，下载与实验分批安排更容易控制费用。 [服务器配置与费用](server_recommendation.md)
 
+### Hugging Face 的 BTCUSDT 永续20档快照
+
+#### 来源与实际覆盖
+
+公开数据集 `delmiron27/cryptolake-binance-futures-btc` 提供从 Crypto Lake 采集后上传的 Binance USDT 本位 BTC 永续行情。盘口流名为 `book`，每条记录包含双侧20档完整快照，文件按日期保存为 Snappy 压缩 Parquet，可直接下载和使用 Polars 读取。该来源适用于前10档盘口特征研究。[数据集与文件目录](https://huggingface.co/datasets/delmiron27/cryptolake-binance-futures-btc)
+
+2026-11-07 检查了实际盘口文件目录，结果如下。这里的日期范围以 `raw/book/` 为准。
+
+| 项目 | 核查结果 |
+| --- | --- |
+| 合约目录 | `exchange=BINANCE_FUTURES/symbol=BTC-USDT-PERP/` |
+| 实际日期范围 | 2025-05-09—2026-06-02 |
+| 文件数量 | 379个日期，每日一份 `1.snappy.parquet` |
+| 总文件大小 | 32,507,238,204字节，约32.51GB |
+| 缺少的日期 | 2026-02-05，以及2026年5月8、11、12、15、20、21、22、27、28、29日 |
+| 与目标研究区间的关系 | 包含2025年10月至2026年6月2日的部分日期，2026年7—10月没有盘口文件 |
+| 许可 | 数据集标注 `other`，批量采用或再分发前需向上传者确认具体授权 |
+
+日期目录只说明有文件。盘中连续性目前只检查了下一节的单日样本，其余日期使用前还需检查。
+
+#### 已下载样本及质量
+
+本地样本为 `workspace/data/raw/huggingface/cryptolake_btc/book_2025-05-09.parquet`，大小110,820,030字节，共804,364条快照。
+
+| 检查项 | 结果 |
+| --- | --- |
+| 盘口价量与档位顺序 | 双侧20档价量有效，档位顺序正确，没有买卖盘口交叉或锁定 |
+| 交易所时间范围 | UTC 2025-05-08 23:59:59.969 至2025-05-09 23:59:59.868，显示精度为毫秒 |
+| 相邻快照间隔 | 原顺序下中位数约102ms，p99约206ms |
+| 时间倒序 | 交易所时间和接收时间各35处，交易所时间最大回退约103ms |
+| 排序后的采样间断 | 17处间隔超过1秒，最长约2.853秒 |
+| 源质量声明 | Parquet元数据标注 `contains_gaps=Yes` |
+
+首条记录的交易所时间落在前一天。标准表保留边界记录及源文件日期，Features按实际交易所时间读取，前日状态也可参与日初盘口采样。盘口序号用于来源诊断，快照间序号增加本身不能证明丢失记录。
+
+#### 下载和直接读取
+
+下面的命令在项目根目录执行，下载已经检查过的单日样本。其余日期先在数据集文件目录确认存在，再替换URL中的 `dt%3D2025-05-09` 和本地文件日期。
+
+```sh
+mkdir -p workspace/data/raw/huggingface/cryptolake_btc
+curl --fail --location --retry 2 \
+  'https://huggingface.co/datasets/delmiron27/cryptolake-binance-futures-btc/resolve/main/raw/book/exchange%3DBINANCE_FUTURES/symbol%3DBTC-USDT-PERP/dt%3D2025-05-09/1.snappy.parquet' \
+  --output workspace/data/raw/huggingface/cryptolake_btc/book_2025-05-09.parquet
+```
+
+无需解压。使用项目Python环境可以直接读取，下面仅查看买一卖一及时间字段。
+
+```python
+import polars as pl
+
+snapshots = pl.scan_parquet(
+    "workspace/data/raw/huggingface/cryptolake_btc/book_2025-05-09.parquet"
+)
+preview = snapshots.select(
+    "timestamp", "receipt_timestamp", "sequence_number",
+    "bid_0_price", "bid_0_size", "ask_0_price", "ask_0_size",
+).head(5).collect()
+print(preview)
+```
+
+文件元数据包含合约、交易所和日期。样本的 `timestamp`、`receipt_timestamp` 均为UTC Unix纳秒，分别表示交易所时间和采集接收时间。`bid_0`、`ask_0` 是第一档，最大索引19对应第二十档，价格单位为USDT/BTC，数量单位为BTC。
+
+#### 接入标准上游的方式
+
+Hugging Face快照已经接入现有Data生产入口。配置 `config/data/standardize_huggingface_test.yaml` 属于Data阶段，输入是已下载的HF原始Parquet和同日官方成交ZIP，输出是 `workspace/data/standard/cryptolake20_test_v1/{snapshots,trades}/YYYY-MM-DD.parquet`。该测试配置包含2025-05-09与2025-10-01。七月主版本 `market_v2` 继续使用网盘25档CSV。
+
+```sh
+.venv/bin/python scripts/build_standard_data.py config/data/standardize_huggingface_test.yaml
+```
+
+实际处理顺序如下。
+
+1. `research/mm_research/data/sources.py` 中的 `scan_snapshot_source()` 根据配置读取HF快照。`snapshot_format: cryptolake_parquet` 配合 `snapshot_depth: 20`，网盘CSV使用 `tardis_csv` 与25。HF读取分支核对源元数据中的交易所与合约，统一为 `binance-futures` 和 `BTCUSDT`，保留来源标识及原始行号。
+2. 映射字段。`timestamp` 对应 `exchange_timestamp_ns`，无需乘倍数。`receipt_timestamp` 仅用于采集诊断。`bid_0_price`、`bid_0_size` 对应 `bid_price_1`、`bid_quantity_1`，卖侧同理，依次映射全部20档。
+3. `data/orderbook.py` 按声明的实际深度检查全部价量与档位顺序。20档标准表只保存来源实际提供的20档，两种来源使用独立的标准数据版本。
+4. 对采集接收时间倒序和盘口异常附加逐记录质量标签。标准表保留原始行序和事件时间，研究读取按交易所时间与原始行号稳定排序。采样间断沿用现有盘口时效规则，异常研究值置空，滚动计算通过Polars的 `min_samples` 处理。
+5. `data/standard.py` 通过同一发布流程生成两份标准表。元数据声明 `snapshot_depth: 20`，同版本的成交表继续来自Binance官方普通成交。Features读取前10档，沿用交易所时间加20ms的可见时刻规则。
+
+这条路径直接使用源快照，不需要先重建盘口。20档快照可支持当前前10档盘口研究；逐事件挂撤单分析与C++执行仿真需要另外取得相应的完整增量盘口流。
+
+#### 适配结果与跨来源补充试验
+
+2026-11-07完成两个真实交易日的转换，源快照全部80列价量和交易所时间与标准表逐行一致。标准表经过现有100ms基础采样与1s标签计算，并通过独立数组参考计算核对盘口与成交分桶。
+
+| 日期 | 标准快照行数 | 官方普通成交行数 | 原始来源下无效100ms盘口样本 |
+| --- | ---: | ---: | ---: |
+| 2025-05-09 | 804,364 | 3,180,781 | 76 |
+| 2025-10-01 | 784,167 | 3,495,797 | 6,416 |
+
+跨来源核验选择2025-10-01，Tardis每月1日的25档快照可免费下载。下载地址为 `https://datasets.tardis.dev/v1/binance-futures/book_snapshot_25/2025/10/01/BTCUSDT.csv.gz`，本地保存到 `workspace/data/raw/tardis_reference/book25_2025-10-01.csv.gz`。共有1,496,667条快照。[Tardis免费样本说明](https://docs.tardis.dev/downloadable-csv-files/overview)
+
+两种快照有10,648个可直接匹配的唯一事件毫秒时刻，双侧20档价量全部一致，比较的绝对误差门限为1e-9。HF样本纳秒整数相对毫秒网格存在最多192ns偏差，核验键取最近毫秒，转换产物仍保存原始时间。只有这些共同事件时刻做了直接价量对照。
+
+补充试验显式选择HF交易所时间中大于1秒的537个内部间隔，以及日首尾未覆盖区间，将其中真实存在的Tardis快照加入独立试验表。每条新增记录保留Tardis来源与源行号，保留原来源质量标签；参考快照采用与HF相同的前20档。
+
+| 项目 | 实测结果 |
+| --- | --- |
+| HF最长内部间隔 | UTC 01:10:11.140—01:11:44.756，93.616秒 |
+| 该区间内Tardis快照 | 1,661条 |
+| HF日尾未覆盖 | 最后时刻为23:59:34.639，距次日零点约25.361秒 |
+| 补入的参考快照 | 共19,590条，包含日尾470条 |
+| 补充后快照总量 | 803,757条 |
+| 无效100ms盘口样本 | 从6,416降至0，时效门限为1秒、固定可见延迟20ms |
+
+无效网格降至0表示本次100ms盘口采样均满足现有有效性规则。补充后仍保留原来源间断标签，未来标签继续遵守现有连续性规则。试验产物位于 `workspace/results/data_inspection/huggingface_adaptation/cross_source_trial/snapshots/2025-10-01.parquet`，跨来源合并尚未加入常规Data生产配置。
+
+另外实测了CryptoHFTData的同日00时与01时免费L2文件。两小时分别有3,791,517条和3,898,443条价位更新，所查小时内部更新编号均连续。01时在上述93.616秒间隔中有1,808批更新，但两份文件均无初始化快照。重建需要另取完整起始状态，HF的20档快照不足以初始化完整增量盘口。下载地址使用 `https://api.cryptohftdata.com/download?file=binance_futures/2025-10-01/01/BTCUSDT_orderbook.parquet`。本次响应内容外层还有Zstandard压缩，解压后才是Parquet。[CryptoHFTData格式和获取方式](https://www.cryptohftdata.com/datasets/binance-orderbook-data)
+
+Tardis免费样本覆盖每月1日，其他日期需要相应权限。CryptoHFTData可继续调查完整起始快照及更多小时文件。其他镜像需核对是否与已有来源同源，盘口缺失区间应依靠另一个真实盘口来源补充。
+
+核验统计保存到 `workspace/results/data_inspection/huggingface_adaptation/conversion.json` 与 `cross_sources.json`。跨来源试验可在原始文件准备完成后复现。
+
+```sh
+.venv/bin/python workspace/results/data_inspection/huggingface_adaptation/check_cross_sources.py
+```
+
 ### 补齐其他历史资料
 
 Tardis 可提供连续日期的 `incremental_book_L2`、`trades` 和 `derivative_ticker`，每月 1 日有免费历史 CSV 样本。元数据接口提供部分历史规则变更，需要核对字段完整性。 [行情下载说明](https://docs.tardis.dev/downloadable-csv-files) · [元数据说明](https://docs.tardis.dev/api/instruments-metadata-api)
@@ -165,11 +284,11 @@ Tardis 可提供连续日期的 `incremental_book_L2`、`trades` 和 `derivative
 在项目根目录执行Data与Features两个阶段。
 
 ```sh
-.venv/bin/python scripts/build_standard_data.py config/data_standardize_30d.yaml
-.venv/bin/python scripts/build_features_targets.py config/features_targets_30d.yaml
+.venv/bin/python scripts/build_standard_data.py config/data/standardize_30d.yaml
+.venv/bin/python scripts/build_features_targets.py config/features/build_30d.yaml
 .venv/bin/python scripts/validate_research_dataset.py \
-  config/features_targets_30d.yaml 2026-07-14 \
-  workspace/results/m2_standard/market_groups_v2/validation_2026-07-14.json
+  config/features/build_30d.yaml 2026-07-14 \
+  workspace/results/standard_data/market_v2/validation_2026-07-14.json
 ```
 
 Data配置引用本地已下载原件。当前官方成交日档位于`workspace/data/raw/binance_public/date=YYYY-MM-DD/BTCUSDT-trades-YYYY-MM-DD.zip`，快照位于`workspace/data/raw/baidu_YYYY-MM-DD/snapshot25.csv.zst`。

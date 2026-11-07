@@ -4,8 +4,7 @@ run_standard_production 使用配置顺序处理日期，build_standard_day 在�
 来源、单位、核验范围与输入身份写入 Parquet 元数据，新生产返回统计，已有产物返回复用状态。
 """
 
-from contextlib import ExitStack, contextmanager
-import fcntl
+from contextlib import ExitStack
 import json
 import os
 from pathlib import Path
@@ -17,6 +16,7 @@ from mm_research.config import load_pipeline_config
 from mm_research.data.orderbook import annotate_snapshot_records
 from mm_research.data.sources import load_official_trades, scan_snapshot_source
 from mm_research.data.trades import prepare_official_trades
+from mm_research.data.storage import file_locks
 
 METADATA_KEY = "mm_standard"
 SCHEMA_VERSION = 2
@@ -44,13 +44,17 @@ def run_standard_production(config_path: Path) -> list[dict]:
 def build_standard_day(root: Path, config: dict, date: str) -> dict:
     """输入项目位置、上游配置与 UTC 日期，新生产返回行数和标签统计。
 
-    盘口保持源文件全部行与二十五档，成交直接使用官方日档。
+    盘口保持源文件全部行与实际20或25档，成交直接使用官方日档。
     两份表只保存交易所时间，固定行情延迟由后续回放配置。
     临时产物使用目标目录所在文件系统，发布后分别位于snapshots/日期.parquet和trades/日期.parquet。
     已有同定义产物只读取元数据，返回日期与reused=True。
     """
     if config["tick_size"] <= 0 or config["lot_size"] <= 0 or config["snapshot_silence_ns"] <= 0:
         raise ValueError("价格、数量步长和盘口静默门限必须为正")
+    if (config["snapshot_format"], config["snapshot_depth"]) not in {
+        ("tardis_csv", 25), ("cryptolake_parquet", 20),
+    }:
+        raise ValueError("盘口格式与档数必须为tardis_csv/25或cryptolake_parquet/20")
     sources = resolve_standard_sources(root, config, date)
 
     # 定义元数据
@@ -61,7 +65,7 @@ def build_standard_day(root: Path, config: dict, date: str) -> dict:
         "timestamp_unit": "UTC Unix ns",
         "price_unit": "USDT/BTC",
         "quantity_unit": "BTC",
-        "snapshot_depth": 25,
+        "snapshot_depth": config["snapshot_depth"],
         "snapshot_silence_ns": config["snapshot_silence_ns"],
         "confirmed_snapshot_gaps": config["confirmed_snapshot_gaps"].get(date, []),
         "tick_size": config["tick_size"],
@@ -74,8 +78,8 @@ def build_standard_day(root: Path, config: dict, date: str) -> dict:
         "conflict_policy": "keep selected source row and tag content_conflict",
     }
     destination = root / config["output_root"] / config["version"]
-    with partition_lock(destination):
-        files = {kind: destination / kind / f"{date}.parquet" for kind in ["snapshots", "trades"]}
+    files = {kind: destination / kind / f"{date}.parquet" for kind in ["snapshots", "trades"]}
+    with file_locks(list(files.values())):
         if any(filename.exists() for filename in files.values()):
             for filename in files.values():
                 if not filename.exists() or read_standard_metadata(filename)["definition"] != definition:
@@ -89,8 +93,11 @@ def build_standard_day(root: Path, config: dict, date: str) -> dict:
             # 生成标准盘口行情
             snapshot = sources["snapshots"]
             snapshots = annotate_snapshot_records(
-                scan_snapshot_source(root / snapshot["path"], snapshot["id"]),
-                config["snapshot_silence_ns"], definition["confirmed_snapshot_gaps"],
+                scan_snapshot_source(
+                    root / snapshot["path"], snapshot["id"],
+                    config["snapshot_format"], config["snapshot_depth"],
+                ),
+                config["snapshot_silence_ns"], definition["confirmed_snapshot_gaps"], config["snapshot_depth"],
             )
             snapshots.drop("received_timestamp_ns").sink_parquet(
                 staging / "snapshots.parquet", compression="zstd", compression_level=3,
@@ -123,7 +130,7 @@ def build_standard_day(root: Path, config: dict, date: str) -> dict:
             summary = summarize_standard_day(staging / "snapshots.parquet", staging / "trades.parquet")
             if summary["snapshot_rows"] == 0 or summary["trade_rows"] == 0:
                 raise ValueError(f"标准行情缺少盘口或成交记录 {date}")
-            # 两份文件在版本锁内发布，任一次移动失败时撤回本次已发布的文件。
+            # 持有同日两份文件的独占锁，移动失败时撤回本次已发布的文件。
             with ExitStack() as publication:
                 for kind, filename in files.items():
                     filename.parent.mkdir(parents=True, exist_ok=True)
@@ -161,18 +168,19 @@ def read_standard_metadata(filename: Path) -> dict:
     return json.loads(pl.read_parquet_metadata(filename)[METADATA_KEY])
 
 
-# 【非核心】检查25档字段并汇总记录数量和质量标签。
+# 【非核心】按元数据声明的实际深度检查字段，并汇总记录数量和质量标签。
 def summarize_standard_day(snapshots: Path, trades: Path) -> dict:
     """输入当日盘口和成交Parquet文件，返回行数和质量标签统计。
 
-    全部二十五档通过列结构核对，统计扫描仅投影时间与标签，控制内存。
+    来源实际档数通过列结构核对，统计扫描仅投影时间与标签，控制内存。
     """
     names = pl.read_parquet_schema(snapshots).names()
-    for level in range(1, 26):
+    depth = read_standard_metadata(snapshots)["definition"]["snapshot_depth"]
+    for level in range(1, depth + 1):
         for side in ["bid", "ask"]:
             for field in ["price", "quantity"]:
                 if f"{side}_{field}_{level}" not in names:
-                    raise ValueError("标准盘口缺少二十五档字段")
+                    raise ValueError(f"标准盘口缺少声明的{depth}档字段")
     snapshot_stats = pl.scan_parquet(snapshots).select(
         pl.len().alias("snapshot_rows"),
         pl.col("quality_flags").list.contains("gap_before_confirmed").sum().alias("confirmed_snapshot_gaps"),
@@ -186,16 +194,3 @@ def summarize_standard_day(snapshots: Path, trades: Path) -> dict:
     ).collect().to_dicts()[0]
     date = read_standard_metadata(trades)["definition"]["date"]
     return {"date": date, **snapshot_stats, **trade_stats}
-
-
-# 【非核心】锁定版本目录，防止并发发布或更新互相覆盖文件。
-@contextmanager
-def partition_lock(folder: Path):
-    """输入数据版本目录，在上下文内独占读写，退出时释放目录描述符。"""
-    folder.mkdir(parents=True, exist_ok=True)
-    descriptor = os.open(folder, os.O_RDONLY)
-    try:
-        fcntl.flock(descriptor, fcntl.LOCK_EX)
-        yield
-    finally:
-        os.close(descriptor)

@@ -31,7 +31,7 @@ cmake --build workspace/build/release --parallel 4
 
 ```sh
 ctest --test-dir workspace/build/release --output-on-failure
-./workspace/build/release/replay_probe config/replay.yaml
+./workspace/build/release/replay_probe config/replay/synthetic.yaml
 ```
 
 合成回放报告输出至 `workspace/results/synthetic/replay.json`。
@@ -54,11 +54,11 @@ python scripts/convert_tardis.py \
 ### 4. 运行回放与做市实验
 
 ```sh
-./workspace/build/release/replay_probe config/replay_btcusdt.yaml
-./workspace/build/release/baseline_mm config/baseline_mm.yaml
+./workspace/build/release/replay_probe config/replay/btcusdt.yaml
+./workspace/build/release/baseline_mm config/strategy/baseline_mm.yaml
 ```
 
-策略参数位于 `config/baseline_mm.yaml`，默认输出至 `workspace/results/m1/BTCUSDT_2025-02-01/A_width20`。输出目录已存在时，请修改配置中的 output。
+策略参数位于 `config/strategy/baseline_mm.yaml`，默认输出至 `workspace/results/m1/BTCUSDT_2025-02-01/A_width20`。输出目录已存在时，请修改配置中的 output。
 
 运行完整的 A/B/C 实验可指定一组新输出目录。
 
@@ -81,19 +81,28 @@ python scripts/analyze_baseline.py --analyze-existing workspace/results/m1/BTCUS
 已准备2026-07-01至07-30的market_v2标准行情。研究采样使用统一20ms固定行情延迟，生产独立特征与标签。
 
 ```sh
-python scripts/build_standard_data.py config/data_standardize_30d.yaml
-python scripts/build_features_targets.py config/features_targets_30d.yaml
-python scripts/summarize_research_dataset.py workspace/data/features/market_groups_v2 \
-  workspace/results/m2_standard/market_groups_v2/statistics_30d.json \
-  --labels workspace/data/labels/market_mid_groups_v2/horizon=1s
+python scripts/build_standard_data.py config/data/standardize_30d.yaml
+python scripts/build_features_targets.py config/features/build_30d.yaml
+python scripts/summarize_research_dataset.py workspace/data/features/market_columns_v1 \
+  workspace/results/m2_standard/market_columns_v1/statistics_30d.json \
+  --labels workspace/data/labels/market_mid_columns_v1/horizon=1s
 ```
 
-Data 使用 `config/data_standardize_30d.yaml`，Features/Targets 使用 `config/features_targets_30d.yaml`。标准数据按 `standard/版本/{snapshots,trades}/日期.parquet` 保存，特征按 `features/版本/日期.parquet` 保存，标签按 `labels/版本/horizon=周期/日期.parquet` 保存。来源、字段、版本和 X、y 读取见 [研究包指南](docs/implementation/research_package.md)。
+Data 使用 `config/data/standardize_30d.yaml`，Features/Targets 使用 `config/features/build_30d.yaml`。标准数据按 `standard/版本/{snapshots,trades}/日期.parquet` 保存，特征按 `features/版本/特征名.parquet` 保存，标签按 `labels/版本/horizon=周期/日期.parquet` 保存。来源、字段、版本和 X、y 读取见 [研究包指南](docs/implementation/research_package.md)。
+
+### 6. 生成与评估Gen001
+
+```sh
+POLARS_MAX_THREADS=6 python scripts/build_factors.py config/factors/gen001.yaml
+POLARS_MAX_THREADS=6 python scripts/evaluate_factors.py config/evaluation/gen001.yaml
+```
+
+每个Feature和Factor各保存全部日期。窗口跨午夜连续计算，缺失值通过min_samples处理。评估报告位于 `workspace/results/evaluation/gen001_v1/report.html`。
 
 ## 项目结构
 
 M2-A 数据准备、生成和读取见 [研究数据集指南](docs/implementation/m2_a_dataset.md)。
-当前分组研究结果位于 `workspace/results/m2_standard/market_groups_v2/`。
+当前分组研究结果位于 `workspace/results/m2_standard/market_columns_v1/`。
 
 ```text
 hft_mm_research/
@@ -101,7 +110,7 @@ hft_mm_research/
 │   ├── apps/     回放与做市命令行入口
 │   └── mm/       模块头文件与实现，detail/ 保存内部接入代码
 ├── research/     Python/Polars 研究包 mm_research
-├── config/       回放与策略参数
+├── config/       按阶段组织的数据、研究、回放与策略参数
 ├── scripts/      下载、转换、校验与实验分析
 ├── tests/        单元测试、集成测试与 benchmarks
 ├── third_party/  固定版本的回测引擎
