@@ -450,6 +450,96 @@
       "created_at": "2026-11-06T16:24:44.290709+00:00",
       "updated_at": "2026-11-06T16:24:44.290709+00:00",
       "deleted": false
+    },
+    {
+      "id": "codex-server-531d-production",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "服务器531天链路已完成：2025-05-09—2026-10-21，1062份标准文件、73份全日期Features（每份458784000行）、2124份四周期标签。全部日期和行数核对通过；四个边界日期完成独立盘口、全天成交及标签数值验收，正式load_xy可读取。Features耗时1:30:24、峰值24.62GiB，标签16:00.54。详见docs/reports/server_migration_2026-11-07/report.md，运行计划和验收JSON保留于workspace/results/server_migration。迁移修复尚未提交。",
+      "created_at": "2026-11-07T04:29:19.890866+00:00",
+      "updated_at": "2026-11-07T11:32:08.303027+00:00"
+    },
+    {
+      "id": "codex-streaming-series-join",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "scan_series沿用正式单变量文件按完整时间网格有序且唯一的约束，声明timestamp_ns已排序，以流式归并连接多列，取消导致全量内存关联的重复1:1校验。保留时间键对齐与共同dataset核对；新增缺失键、跨日期筛选和流式执行计划回归。迁移验收同时补齐test_research_versions测试样本的盘口格式与档数配置。",
+      "created_at": "2026-11-07T04:29:19.890866+00:00",
+      "updated_at": "2026-11-07T04:29:19.890866+00:00"
+    },
+    {
+      "id": "codex-netdisk-compression-formats",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "386份快照已全部下载并核对文件头：365份Zstandard，21份真实XZ（2026-08-15—09-04），其中10份Zstandard误用xz后缀（2026-10-12—10-21）。download_baidu通过显式source_extension定位来源；scan_snapshot_source依据确定的XZ文件头调用LZMA单日读取，Zstandard继续原生流式读取。真实XZ和误命名Zstandard均已通过实际日期标准化，回归覆盖全部情况。",
+      "created_at": "2026-11-07T04:40:25.594820+00:00",
+      "updated_at": "2026-11-07T05:07:39.810398+00:00"
+    },
+    {
+      "id": "codex-official-trade-mirror-delivery",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "备注",
+      "body": "用户授权使用核对正确的网盘官方成交ZIP镜像。镜像只改变传输渠道，每份新档案与Binance官方CHECKSUM核对后才发布到raw/binance_public，Data仍读取单份官方普通成交。449个镜像日期中15份字节校验不一致，已明确排除（2025-08-24、09-01—09-14），这15天及2026-08-01—10-21共97天采用官方直连；176份新镜像已核对一致。运行选择和验收结果在workspace/results/server_migration中保存。",
+      "created_at": "2026-11-07T06:44:46.639820+00:00",
+      "updated_at": "2026-11-07T06:44:46.639820+00:00"
+    },
+    {
+      "id": "codex-mixed-depth-history",
+      "target": "node:a1",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "531天生产在2025-10-01跨来源读取时发现20档/25档整表schema不同。scan_standard_history增加显式columns参数，每份文件先投影所需字段再连接；快照Features仅读取前10档与时间质量字段，标准文件保留完整来源深度。跨午夜延迟对齐回归已通过。 独立NumPy参考读取器也逐文件选列，边界测试同时覆盖正式采样与独立验收。",
+      "created_at": "2026-11-07T09:41:24.933737+00:00",
+      "updated_at": "2026-11-07T09:44:24.093354+00:00"
+    },
+    {
+      "id": "codex-overnight-factors-models",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "备注",
+      "body": "此轮100ms因子生产已按用户新目标停止，完成结果保留。最新实施以codex-one-second-research为准。",
+      "created_at": "2026-11-07T11:45:48.945638+00:00",
+      "updated_at": "2026-11-07T13:21:52.031603+00:00"
+    },
+    {
+      "id": "codex-one-second-research",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "待办",
+      "body": "1s新契约及代码已实施，七天试跑已完成标签、300因子、评价和线性模型。独立验收定位Gen010异常来自大小单Features关联未保留时间顺序，正在修复六列物理行序并重算该组。源列值和时间键保留，生产关联明确maintain_order=left，增加倒序成交回归。项目指南已更新独立Targets入口、秒级窗口、跨日质量及模型分期。全局核心逻辑1—123，Git暂不提交。",
+      "created_at": "2026-11-07T13:21:52.031603+00:00",
+      "updated_at": "2026-11-07T13:48:39.045830+00:00"
+    },
+    {
+      "id": "codex-night-factor-model-supervisor",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "待办",
+      "body": "服务器常驻脚本已启动并通过普通失败、超额分配和限额GPU训练验证。新增Gen011—020共360、Gen021—029共324、Gen031—037共252因子，Gen030/038/039/040等待外部数据。因子及评价按组、模型按实验隔离，硬分配上限+可回收缓存识别+动态准入。已支持原子追加队列；Gen037按完整UTC秒形成内层后在秒级窗口滚动。模型支持七类架构、五周期，按验证选择并冻结整秒测试。全局核心编号1—187。Git待用户指令。 全日864001条Python/C++对照已通过，预测最大误差3.33e-16bps。校验器成交量改用正式Features相同的整数Lot求和，消除浮点空窗残差；追加回放报告恢复和全量独立审计任务，原失败记录保留。",
+      "created_at": "2026-11-07T15:47:52.455806+00:00",
+      "updated_at": "2026-11-07T16:57:11.810873+00:00"
+    },
+    {
+      "id": "codex-factor-memory-recovery",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "待办",
+      "body": "11组因子补算采用分块独立进程释放分配器。Gen014/021携带上一原始位置、事件或方向起点和120秒尾部，取消531天一次性物化，跨日状态及滚动定义保持一致。Gen020逐日读取隔离到独立进程，保留20日原始基准。两组因子并行、每组4线程，评价独立运行；分配上限24GiB并保留全局内存准入。新增跨日、来源切换和长状态分块对照。核心编号保持1—187。 Gen034另确认嵌套熵表达式重复展开，已改为252个滚动计数共享物化、整秒点运算；独立NumPy配对计数一致，单日峰值约1.5GiB。已完成840因子的分组覆盖率、训练期选候选及五周期测试汇总，报告见docs/reports/factor_review_2026-11-08/report.md。 Gen022共享九个盘口墙状态，7天真实块与原结果逐列一致，计算CPU时间约减少83%。Gen025/034把有界事前输入缩至300秒，Gen034完整日与原结果完全一致。已完成Gen014/021真实跨块、来源切换和缺失日期独立状态核对。补算队列最多三组并行，评价四个单线程进程，完成后复用既有流式验收逐行检查396份新产物。",
+      "created_at": "2026-11-08T02:31:25.756276+00:00",
+      "updated_at": "2026-11-08T04:25:44.598700+00:00"
+    },
+    {
+      "id": "codex-candidate-selection-20261108",
+      "target": "node:a4",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "完成1秒目标候选筛选与相关性分析。冻结876个已完成评测，训练及验证门槛通过362个，54个代表计算全部388个训练日及92个验证日。逐对有限样本Pearson用于0.85阈值去重，优先保留15个、覆盖8组，19个高相关归并，20个列为备选。Spearman按54列全池共同样本做日等权对照。25k成本因子条件性缺失已与其余组合分离处理。0.70方案保留15个、覆盖10组，与默认重合9个。报告见docs/reports/candidate_selection_2026-11-08/report.md，复现脚本及明细见workspace/results/candidate_selection_2026-11-08/。提交Git待用户指令。",
+      "created_at": "2026-11-08T03:56:06.550425+00:00",
+      "updated_at": "2026-11-08T03:56:06.550425+00:00"
     }
   ]
 }

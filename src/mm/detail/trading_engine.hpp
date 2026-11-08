@@ -7,6 +7,7 @@
  */
 
 #include <limits>
+#include <cmath>
 #include <deque>
 #include <memory>
 #include <stdexcept>
@@ -27,12 +28,12 @@ using ResponseQueue = std::deque<std::pair<hbt::Order<>, std::int64_t>>;
 // 在原生 Local 更新状态的边界增加行情计数与逐条回报记录。
 class RecordingLocal final : public hbt::LocalProcessor {
 public:
-    // 【核心逻辑57】接管原生 Local，并关联它消费的共享响应队列和会话级记录器。
+    // 【核心逻辑166】接管原生 Local，并关联它消费的共享响应队列和会话级记录器。
     RecordingLocal(std::unique_ptr<Local> local, std::shared_ptr<ResponseQueue> responses,
-                    TradeRecorder& recorder)
-        : local_(std::move(local)), responses_(std::move(responses)), recorder_(recorder) {}
+                    TradeRecorder& recorder, bool capture_market = false)
+        : local_(std::move(local)), responses_(std::move(responses)), recorder_(recorder), capture_market_(capture_market) {}
 
-    // 【核心逻辑59】先让本地处理器应用一条行情，再保存当时可见的中间价。
+    // 【核心逻辑168】先让本地处理器应用一条行情，再保存当时可见的中间价。
     void process(const hbt::Event& event) override {
         /** 输入为调度器按 local_ts 交付的事件，输出为原生盘口更新和本地事件计数。
          * 当前盘口无效时保留非有限值，后续成交和最终盯市必须明确失败。
@@ -41,8 +42,21 @@ public:
         const double mid = (local_->best_bid() + local_->best_ask()) * 0.5;
         last_mid = mid;
         ++event_count;
+        if (capture_market_) {
+            const auto kind = event.ev & 0xffU;
+            if (kind == hbt::TRADE_EVENT) {
+                const auto lots = static_cast<std::int64_t>(std::llround(event.qty / local_->lot_size()));
+                if ((event.ev & hbt::BUY_EVENT) != 0) {
+                    buy_lots += lots;
+                } else {
+                    sell_lots += lots;
+                }
+            } else {
+                last_book_timestamp_ns = event.local_ts;
+            }
+        }
     }
-    // 【核心逻辑68】在当前接收时刻保存全部原始回报，并在原生批次处理后进行账本核对。
+    // 【核心逻辑179】在当前接收时刻保存全部原始回报，并在原生批次处理后进行账本核对。
     bool process_recv_order(std::int64_t timestamp, std::optional<hbt::OrderId> order_id) override {
         /** 输入 timestamp 为队首响应的本地接收时刻，order_id 可指定等待的委托。
          * 返回原生 Local 是否收到了目标订单响应，供 Backtest 的等待语义使用。
@@ -128,6 +142,12 @@ public:
     // 【非核心】读取原生合约配置的数量步长。
     double lot_size() const noexcept override { return local_->lot_size(); }
 
+    // 【非核心】通过公开接口读取原生深度，模型层只观察已有订单簿。
+    Depth& depth() { return local_->depth(); }
+
+    std::int64_t buy_lots = 0;
+    std::int64_t sell_lots = 0;
+    std::int64_t last_book_timestamp_ns = 0;
     std::uint64_t event_count = 0;
     double last_mid = std::numeric_limits<double>::quiet_NaN();
 
@@ -135,6 +155,7 @@ private:
     std::unique_ptr<Local> local_;
     std::shared_ptr<ResponseQueue> responses_;
     TradeRecorder& recorder_;
+    bool capture_market_;
 };
 
 // 在原生交易所处理器外围统计实际交付事件，供单日完整性检查使用。
@@ -178,9 +199,9 @@ struct TradingEngine {
     RecordingLocal* local;
     CountingExchange* exchange;
 
-    // 【核心逻辑56】把原生处理器、共享请求响应队列和行情缓存注册到同一回测会话。
+    // 【核心逻辑165】把原生处理器、共享请求响应队列和行情缓存注册到同一回测会话。
     TradingEngine(const TradingConfig& config, TradeRecorder& recorder,
-                  std::shared_ptr<hbt::EventReaderCache> reader) {
+                  std::shared_ptr<hbt::EventReaderCache> reader, bool capture_market = false) {
         /** config 提供步长、费率和固定延迟，recorder 必须比本会话存活更久。
          * reader 由 Local 和 Exchange 共同消费，输出为可通过 backtest 推进的会话。
          * 两个 OrderBus 的副本共享底层队列，RecordingLocal 通过公开 shared 接口观测响应。
@@ -194,7 +215,7 @@ struct TradingEngine {
         auto native_exchange = std::make_unique<Exchange>(Depth{config.tick_size, config.lot_size},
             hbt::State<Asset, Fees, Queue::OrderState>{Asset{1.0}, Fees{hbt::CommonFees{config.maker_fee, config.taker_fee}}},
             Queue{}, hbt::ExchToLocal<Latency>{requests, responses, latency});
-        auto recording_local = std::make_unique<RecordingLocal>(std::move(native_local), responses.shared(), recorder);
+        auto recording_local = std::make_unique<RecordingLocal>(std::move(native_local), responses.shared(), recorder, capture_market);
         auto counting_exchange = std::make_unique<CountingExchange>(std::move(native_exchange));
         local = recording_local.get();
         exchange = counting_exchange.get();

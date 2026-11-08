@@ -1,57 +1,62 @@
-"""从本地可见中间价独立生成多预测周期标签，主单位为 bps。
-
-build_midprice_labels 输出 bps、Ticks、USDT 三种等价目标和独立有效标志。
-标签只读取基础行情与质量区段，特征定义或预热长度的变化不会改变标签工件。
-"""
+"""从完整100ms研究时钟生成可跨日的精确未来Mid标签。"""
 
 import polars as pl
 
-DAY_NS = 86_400_000_000_000
 
-
-# 【非核心】把预测周期转换为100ms、1s等字段和目录后缀。
+# 【非核心】把纳秒预测周期转换为字段和目录中的时间后缀。
 def horizon_name(horizon_ns: int) -> str:
-    """输入正的整毫秒周期，返回 100ms、500ms、1s 等标签字段后缀。"""
+    """只接受正整数毫秒，秒级研究周期使用1s、10s等后缀。"""
     if horizon_ns <= 0 or horizon_ns % 1_000_000:
-        raise ValueError("预测周期必须是正的整毫秒")
+        raise ValueError("预测周期必须是正整数毫秒")
     if horizon_ns % 1_000_000_000 == 0:
         return f"{horizon_ns // 1_000_000_000}s"
     return f"{horizon_ns // 1_000_000}ms"
 
 
-# 【核心逻辑24】按精确未来Mid构造bps、Ticks和USDT标签，隔离跨日与盘口中断。
-def build_midprice_labels(base: pl.DataFrame, tick_size: float, interval_ns: int,
-                          horizon_ns: int = 1_000_000_000) -> pl.DataFrame:
-    """输入单日基础表、价格步长、采样间隔及预测周期，返回键、标签和有效标志。
+# 【核心逻辑36】把逐日区段转换为可跨午夜的连续性标记，复用五周期质量前缀。
+def prepare_label_context(base: pl.DataFrame, interval_ns: int, gap_markers: list[int],
+                          source_markers: list[int]) -> pl.DataFrame:
+    """日内使用已有区段变化，午夜由标准行情接续标记决定；所有质量检查保留100ms分辨率。"""
+    same_day = pl.col("date") == pl.col("date").shift(1)
+    segment_change = (pl.col("book_segment_id") != pl.col("book_segment_id").shift(1)) & same_day
+    time_gap = pl.col("timestamp_ns").diff() != interval_ns
+    valid_mid = pl.col("mid_price").is_finite() & (pl.col("mid_price") > 0)
+    bad = ~(pl.col("book_valid") & valid_mid).fill_null(False)
+    table = base.with_columns(
+        bad.cast(pl.Int64).alias("_bad"),
+        (segment_change.fill_null(False) | time_gap.fill_null(False)
+         | pl.col("timestamp_ns").is_in(gap_markers)).cast(pl.Int64).alias("_gap"),
+        pl.col("timestamp_ns").is_in(source_markers).cast(pl.Int64).alias("_source"),
+    )
+    return table.with_columns(
+        pl.col("_bad").cum_sum().alias("_bad_prefix"),
+        pl.col("_gap").cum_sum().alias("_gap_prefix"),
+        pl.col("_source").cum_sum().alias("_source_prefix"),
+    )
 
-    未来时刻必须恰好为 t+h，区间内盘口有效，且没有跨过质量区段。
-    y_bps 为简单价格收益乘 10000，y_ticks 以当前 Tick Size 换算，y_usdt 为价格差。
-    """
-    suffix = horizon_name(horizon_ns)
+
+# 【核心逻辑37】从共享前缀核对整个预测区间，构造三单位标签及独立失效原因。
+def build_midprice_labels(base: pl.DataFrame, tick_size: float, interval_ns: int,
+                          horizon_ns: int) -> pl.DataFrame:
+    """未来必须精确为t+h，质量覆盖[t,t+h]，缺口及来源切换按(t,t+h]计入。"""
     if interval_ns <= 0 or horizon_ns % interval_ns or tick_size <= 0:
-        raise ValueError("预测周期必须是采样间隔的整数倍，Tick Size 须为正")
-    table = base
+        raise ValueError("周期必须整除基础网格，Tick Size须为正")
     steps = horizon_ns // interval_ns
+    suffix = horizon_name(horizon_ns)
     future_mid = pl.col("mid_price").shift(-steps)
     future_timestamp = pl.col("timestamp_ns").shift(-steps)
-    future_segment = pl.col("book_segment_id").shift(-steps)
-    valid_mid = pl.col("mid_price").is_not_null() & pl.col("mid_price").is_finite() & (pl.col("mid_price") > 0)
-    valid_points = (pl.col("book_valid").cast(pl.Boolean) & valid_mid).cast(pl.Int32)
-    horizon_valid = valid_points.rolling_sum(steps + 1).shift(-steps)
-    label_valid = (
-        (future_timestamp == pl.col("timestamp_ns") + horizon_ns)
-        & (future_timestamp // DAY_NS == pl.col("timestamp_ns") // DAY_NS)
-        & (future_segment == pl.col("book_segment_id"))
-        & (horizon_valid == steps + 1)
-    ).fill_null(False)
+    available = (future_timestamp == pl.col("timestamp_ns") + horizon_ns).fill_null(False)
+    invalid_book = (pl.col("_bad_prefix").shift(-steps) - pl.col("_bad_prefix") + pl.col("_bad") > 0).fill_null(False)
+    invalid_gap = (pl.col("_gap_prefix").shift(-steps) > pl.col("_gap_prefix")).fill_null(False)
+    invalid_source = (pl.col("_source_prefix").shift(-steps) > pl.col("_source_prefix")).fill_null(False)
+    valid = available & ~invalid_book & ~invalid_gap & ~invalid_source
     difference = future_mid - pl.col("mid_price")
-    keys = [column for column in ["symbol", "date", "timestamp_ns"] if column in table.columns]
-    return table.select(
-        *keys,
-        label_valid.alias("label_valid"),
-        pl.when(label_valid).then((future_mid / pl.col("mid_price") - 1) * 10000)
-        .otherwise(None).alias(f"y_mid_{suffix}_bps"),
-        pl.when(label_valid).then(difference / tick_size).otherwise(None).alias(f"y_mid_{suffix}_ticks"),
-        pl.when(label_valid).then(difference).otherwise(None).alias(f"y_mid_{suffix}_usdt"),
-        pl.when(label_valid).then(future_timestamp).otherwise(None).alias("label_end_timestamp_ns"),
+    return base.select(
+        "symbol", "date", "timestamp_ns", valid.alias("label_valid"),
+        pl.when(valid).then((future_mid / pl.col("mid_price") - 1) * 10000).otherwise(None).alias(f"y_mid_{suffix}_bps"),
+        pl.when(valid).then(difference / tick_size).otherwise(None).alias(f"y_mid_{suffix}_ticks"),
+        pl.when(valid).then(difference).otherwise(None).alias(f"y_mid_{suffix}_usdt"),
+        pl.when(valid).then(future_timestamp).otherwise(None).alias("label_end_timestamp_ns"),
+        (~available).alias("invalid_future"), invalid_book.alias("invalid_book"),
+        invalid_gap.alias("invalid_gap"), invalid_source.alias("invalid_source"),
     )

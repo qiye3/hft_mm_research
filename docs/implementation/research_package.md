@@ -1,117 +1,101 @@
-# 2026-11-06 — Features、Factors 与 Evaluation 阅读和运行指南
+# 高频研究链路阅读和运行指南
 
-研究对象为Binance Futures BTCUSDT永续合约。当前使用2026年7月1—30日标准行情，每日864,000个100ms网格，共25,920,000行。
+研究对象为 Binance Futures BTCUSDT 永续合约。当前服务器研究区间为 2025-05-09 至 2026-10-21，共 531 天。研究时钟采用交易所时间加 20ms。Features 每 100ms 一行，Factors 与 Labels 每个 UTC 整秒一行。
 
 ## 数据如何流动
 
 ```text
-官方普通成交ZIP + 网盘25档快照
-    → Data标准化，按类型和日期保存
-    → Features基础采样，异常研究值置为null
-    → 全日期连续计算，每个Feature一个Parquet
-    → Gen001，每个Factor一个全日期Parquet
-    → Evaluation关联独立标签，计算分布、IC和分组收益
+官方普通成交 ZIP + 历史盘口快照
+    → Data 标准化，按类型和日期保存
+    → Features 建立 100ms 网格，每列保存全部日期
+    → Factors 使用完整 100ms 历史计算秒级窗口，整秒输出
+    → Targets 独立读取 Features，生成五个跨日预测周期
+    → Evaluation 评价因子
+    → Models 训练与选择线性基线
+    → C++ 在真实 L2 与普通成交上回放并核对账本
 ```
 
-基础采样逐源日期读取，以控制同时驻留的原始行情量。基础变量直接追加到最终单列文件的临时行组，滚动公式读取完整日期序列。盘口原始快照保持25档，当前研究读取前10档。
+标准盘口保留来源实际的 20 档或 25 档，当前研究观察前 10 档。实时 C++ 盘口使用完整增量事件重建。
 
 ## 配置分别属于谁
 
-所有文件路径相对项目根目录。每个YAML开头给出执行命令、输入和输出。
+YAML 用来声明一次生产的输入、参数和输出，路径相对项目根目录。各阶段入口只读取自己所属的配置。
 
-| 配置 | 负责的阶段 |
-| --- | --- |
-| `config/data/standardize_30d.yaml` | 原始行情到标准盘口、成交 |
-| `config/features/build_30d.yaml` | 基础列、衍生Features与独立标签 |
-| `config/factors/gen001.yaml` | Gen001的输入、公式窗口与因子输出 |
-| `config/evaluation/gen001.yaml` | 因子、标签、日期、预测周期和评估结果 |
-| `config/replay/` | C++行情回放 |
-| `config/strategy/` | C++做市委托及风险参数 |
+| 配置 | 输入 | 输出 | 入口 |
+| --- | --- | --- | --- |
+| `config/data/standardize_30d.yaml` | 原始盘口与官方成交 | 标准 snapshots、trades | `scripts/build_standard_data.py` |
+| `config/features/build_531d.yaml` | 标准 Parquet | 100ms Features | `scripts/build_features.py` |
+| `config/targets/build_1s.yaml` | 100ms Features、标准盘口边界信息 | 五周期 Labels | `scripts/build_labels.py` |
+| `config/factors/all_non_ofi.yaml` | 100ms Features | 300 个整秒 Factors | `scripts/build_factors.py` |
+| `config/evaluation/all_non_ofi.yaml` | Factors、Labels | IC、分组收益、分布与图表 | `scripts/evaluate_factors.py` |
+| `config/models/linear_baseline.yaml` | Features、Factors、Labels、训练期 IC | 冻结线性模型和测试预测 | `scripts/train_linear_baseline.py` |
+| `config/replay/linear_test_day.yaml` | 最终测试日真实 L2、官方成交、冻结模型 | 回放、账本及数值对照 | `scripts/run_linear_replay.py` |
+| `config/research/overnight.yaml` | 上述各阶段配置路径 | 分阶段日志和完成标记 | `scripts/run_research.py` |
 
-## 当前存储位置
+本地 30 天 Features 配置仍可独立使用。服务器总入口复用已有 Features，并补充采用冻结训练阈值的大小单列。
+
+## 存储位置
 
 ```text
 workspace/data/
-├── standard/market_v2/
-│   ├── snapshots/YYYY-MM-DD.parquet
-│   └── trades/YYYY-MM-DD.parquet
-├── features/market_columns_v1/
-│   ├── mid_price.parquet
-│   ├── imbalance_1.parquet
-│   ├── trade_imbalance_1s.parquet
-│   └── 其他基础变量、质量字段和衍生特征.parquet
-├── factors/gen001_v1/
-│   └── 因子名.parquet
-└── labels/market_mid_columns_v1/
-    └── horizon=1s/YYYY-MM-DD.parquet
+├── standard/server_market_v1/{snapshots,trades}/YYYY-MM-DD.parquet
+├── features/server_531d_v1/特征名.parquet
+├── factors/server_factors_1s_v1/因子名.parquet
+└── labels/server_mid_1s_v1/horizon=周期/YYYY-MM-DD.parquet
 ```
 
-Feature和Factor文件保存全部生产日期，字段为symbol、date、timestamp_ns和对应变量。公式版本、数据来源及窗口参数内嵌文件元数据。标签还支持100ms、500ms、5s及bps、ticks、USDT三种单位。
+Feature 和 Factor 文件包括 symbol、date、timestamp_ns 与单个变量。每个 Factor 保留全部 45,878,400 个整秒位置，数值使用 Float64，无效值为空。标签按周期和日期独立保存，含目标时间、有效标记及 bps、ticks、USDT 三种单位。质量原因汇总单独保存为小型表。
 
-Parquet时间戳使用差分编码，资产和日期使用字典编码，减少单列布局中的重复时间键开销。相邻`.locks/`目录保存稳定锁文件。不同输出独立写入，读取取得共享锁，发布取得独占锁。
+文件元数据记录共同上游定义、公式版本、采样频率与窗口口径。时间戳用差分编码，资产和日期用字典编码。文件读取取得共享锁，发布取得独占锁，正式文件通过原子替换更新。
 
-## 缺失值和时间窗口
+## 窗口与缺失
 
-研究时钟为交易所时间加20ms固定延迟。每个网格只使用截至该时刻已可见的事件。正常无成交窗口的量为零，无法确定的窗口为null。浮点NaN进入滚动公式前转为null。
+每个样本只使用该时刻已经可见的行情。正常无成交的数量为零，无法确定的数量为空。大小单分桶与时间网格关联时保留网格顺序。
 
-滚动均值和累计量直接调用Polars。窗口按100ms位置计数，质量中断和午夜都继续向前滑动，缺失位置留在时间网格中。当前1s窗口至少8个有效样本，5s窗口至少40个有效样本。
+Factors 的外层窗口单位为秒。5s 对应 50 条 100ms 观测，100s 对应 1,000 条，至少要求 80% 有效值。窗口跨午夜连续滑动，缺失位置继续占据时间位置。同组共用输入，滚动完成后才筛选整秒输出。42 天分块带前日历史，分块不改变公式。`return_100ms_bps` 等源特征继续沿用原定义。
 
-历史收益使用当前和精确历史时刻的Mid，两端任一缺失则为空。盘口连续区段仅供标签规则使用。当前标签要求当前到未来时刻盘口连续有效、未来时刻精确为t+h，并处于同一UTC日。
+Labels 预测未来 1s、10s、60s、180s、300s，目标必须精确落在 t+h。当前到目标时刻的完整 100ms 区间必须通过盘口质量检查。午夜通过标准快照时刻和质量标记判断衔接，2025-10-01 来源切换为显式边界。最后一天无法取得的未来目标为空。
 
-## 模块如何分工
+## 代码阅读顺序
 
-| 文件 | 主要职责 |
+| 模块 | 职责 |
 | --- | --- |
-| `data/standard.py`、`sources.py`、`trades.py`、`orderbook.py` | 官方成交与25档快照标准化 |
-| `data/storage.py` | 文件锁、元数据、Parquet原子发布和单列关联 |
-| `data/dataset.py` | Features生产、增量更新、标签生成及X/y读取 |
-| `features/base.py`、`snapshot.py`、`trades.py` | 100ms基础列和缺失值处理 |
-| `features/book.py`、`trades.py`、`returns.py` | 按类别组织原生Polars公式 |
-| `features/transform.py` | 特征组定义和公式选择 |
-| `factors/gen001.py` | 六个压力序列及短长窗口均值差 |
-| `factors/dataset.py` | 读取Factor依赖并逐因子发布 |
-| `evaluation/dataset.py` | 以时间键关联因子和标签 |
-| `evaluation/metrics.py` | 分布、Pearson IC、Rank IC和重复值分组 |
-| `evaluation/report.py` | 逐日评估、汇总表格、PNG与HTML报告 |
+| `data/standard.py`、`sources.py` | 标准化与显式来源读取 |
+| `features/base.py`、`snapshot.py`、`trades.py` | 100ms 盘口和逐笔聚合 |
+| `features/transform.py`、`trade_size.py` | 分组公式、冻结阈值大小单桶 |
+| `data/dataset.py`、`storage.py` | Features 生产、按列读取、文件锁和发布 |
+| `targets/dataset.py`、`midprice.py` | 跨日上下文与五周期标签 |
+| `factors/sources.py`、`operators.py`、`gen*.py` | 里层变换、秒窗口与分组公式 |
+| `factors/dataset.py` | 分块、并行计算与全日期合并 |
+| `evaluation/metrics.py`、`report.py` | 训练冻结分组、逐日 IC 和报告 |
+| `models/dataset.py`、`linear.py`、`runner.py` | 分期数据、流式拟合与模型选择 |
+| `models/replay.py`、`src/mm/linear_signal.cpp` | Python/C++ 对照与真实回测 |
 
-Feature组用于组织公式和选择计算内容。每个表达式提取实际依赖列，新增衍生组可以复用已发布的基础变量。
-
-Gen001的六个因子沿用用户构造文档的名称及公式，直接使用Polars的rolling_mean(10)减rolling_mean(50)，分别要求8和40个有效值。每个因子只读取所需输入，完整时间序列计算完成后选择输出日期。
+函数上方的核心逻辑编号为全项目共用的阅读顺序。
 
 ## 运行命令
 
 ```sh
-.venv/bin/python scripts/build_standard_data.py config/data/standardize_30d.yaml
-POLARS_MAX_THREADS=6 .venv/bin/python scripts/build_features_targets.py config/features/build_30d.yaml
-POLARS_MAX_THREADS=6 .venv/bin/python scripts/build_factors.py config/factors/gen001.yaml
-POLARS_MAX_THREADS=6 .venv/bin/python scripts/evaluate_factors.py config/evaluation/gen001.yaml
+.venv/bin/python scripts/build_features.py config/features/build_531d.yaml
+.venv/bin/python scripts/build_labels.py config/targets/build_1s.yaml
+POLARS_MAX_THREADS=5 .venv/bin/python scripts/build_factors.py config/factors/all_non_ofi.yaml
+POLARS_MAX_THREADS=2 .venv/bin/python scripts/evaluate_factors.py config/evaluation/all_non_ofi.yaml
+POLARS_MAX_THREADS=2 .venv/bin/python scripts/train_linear_baseline.py config/models/linear_baseline.yaml
+.venv/bin/python scripts/run_linear_replay.py config/replay/linear_test_day.yaml
 ```
 
-同定义文件直接复用。显式重新计算使用`--rebuild`，只更新Features或标签使用`--only features`或`--only labels`。输入或公式身份变化时需要新版本或显式重建。POLARS_MAX_THREADS在进程启动前设置，控制Polars原生线程池。
-
-读取X/y时明确选择列，保持列顺序。
-
-```python
-from pathlib import Path
-from mm_research.data.dataset import load_xy
-
-X, y, index = load_xy(
-    Path("workspace/data/features/market_columns_v1"),
-    Path("workspace/data/labels/market_mid_columns_v1/horizon=1s"),
-    dates=["2026-07-12", "2026-07-13"],
-    columns=["imbalance_5", "trade_imbalance_1s"],
-)
-```
-
-## 如何检查结果
+服务器完整研究入口如下。已有同定义产物直接复用，定义变化须使用新版本或明确重建。
 
 ```sh
-.venv/bin/python scripts/validate_research_dataset.py config/features/build_30d.yaml \
-  2026-07-12 workspace/results/features/market_columns_v1/validation_2026-07-12.json
+.venv/bin/python scripts/run_research.py config/research/overnight.yaml
 ```
 
-独立参考计算检查盘口抽样和逐网格成交数量、笔数及金额。真实跨午夜窗口另外用NumPy整数Lot累计核对。单元测试覆盖缺失值阈值、因果前缀、稳定锁、失败重试、相关系数和重复值分组。
+Factors 初始使用 2 个进程，每进程 5 个 Polars 线程。Evaluation 按因子批次共享五周期标签读取。输出位于 `workspace/results/evaluation/server_factors_1s_v1/`、`workspace/results/models/linear_1s_v1/` 与 `workspace/results/research/one_second_v1/`。
 
-Evaluation输出位于`workspace/results/evaluation/gen001_v1/`，包括summary.parquet、daily_distribution.parquet、daily_ic.parquet、group_returns.parquet、report.html及figures/。结果表元数据包含评估配置和因子定义。
+## 评价与模型
 
-分布统计使用因子自身有效样本，预测指标使用因子与标签共同有效样本。IC按日计算再等权汇总，Rank IC采用平均排名。分组收益采用bps，重复边界合并并记录实际组数，首尾组差只汇总组数完整的日期。
+逐日 Pearson、Spearman IC 和分组收益同时报告整秒与按预测周期取点的非重叠结果。1s 两种取点相同。分组阈值仅用训练期拟定，验证和测试冻结。
+
+训练期截至 2026-05-31，验证期为 2026-06-01 至 08-31，测试期为 2026-09-01 至 10-21。前两个分界前统一剔除 300 秒，并检查目标时刻未越界。候选因子根据训练期 IC 选择，标准化只使用训练期数据，模型参数根据验证误差选择。
+
+首版用未来 1s 的 bps 标签训练 OLS、Ridge、Lasso，比较历史收益、原始特征、筛选因子、实时压力四组。C++ 导出使用实时压力组，每 100ms 更新基础状态，整秒更新预测，间隔内使用最近预测，日初预热 120 秒。Python/C++ 使用同一实时输入逐行核对，L2 与研究快照的来源差异单独记录。

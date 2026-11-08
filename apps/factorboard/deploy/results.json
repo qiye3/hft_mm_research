@@ -1,0 +1,8 @@
+{
+  "evaluation_roots": [
+    "workspace/results/evaluation/server_factors_1s_v1",
+    "workspace/results/evaluation/server_factors_extra_1s_v1",
+    "workspace/results/evaluation/server_factors_latest_1s_v1",
+    "workspace/results/evaluation/server_factors_more_1s_v1"
+  ]
+}

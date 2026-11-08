@@ -1,0 +1,104 @@
+# 补算队列。依据实测耗时优先启动长任务，维持三组并行及内存准入。
+tasks:
+- id: pilot_gen034_v2
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/pilot_gen034_v2.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: &id001 []
+  priority: 1
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches: &id002
+    - gen034
+    chunk_days: 1
+    workers: 1
+    merge_workers: 1
+    write_threads: 2
+    dates:
+    - '2026-07-25'
+    factor_version: memory_pilot_gen034_v2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/pilot_gen034_v2.yaml
+- id: factor_retry_gen034_v2
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen034_v2.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success:
+  - pilot_gen034_v2
+  after_finished: *id001
+  priority: 3
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches: *id002
+    chunk_days: 1
+    workers: 1
+    merge_workers: 3
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen034_v2.yaml
+- id: evaluation_retry_gen034_v2
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen034_v2.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen034_v2
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_latest_1s_v1
+    factors:
+    - info_mid_move_sign_100ms_entropy_5s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_5s
+    - info_mid_move_sign_100ms_mi_lag2_5s
+    - info_mid_move_sign_100ms_entropy_10s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_10s
+    - info_mid_move_sign_100ms_mi_lag2_10s
+    - info_mid_move_sign_100ms_entropy_30s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_30s
+    - info_mid_move_sign_100ms_mi_lag2_30s
+    - info_mid_move_sign_100ms_entropy_100s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_100s
+    - info_mid_move_sign_100ms_mi_lag2_100s
+    - info_trade_aggr_sign_100ms_entropy_5s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_5s
+    - info_trade_aggr_sign_100ms_mi_lag2_5s
+    - info_trade_aggr_sign_100ms_entropy_10s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_10s
+    - info_trade_aggr_sign_100ms_mi_lag2_10s
+    - info_trade_aggr_sign_100ms_entropy_30s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_30s
+    - info_trade_aggr_sign_100ms_mi_lag2_30s
+    - info_trade_aggr_sign_100ms_entropy_100s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_100s
+    - info_trade_aggr_sign_100ms_mi_lag2_100s
+    - info_book_obi_l5_sign_100ms_entropy_5s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_5s
+    - info_book_obi_l5_sign_100ms_mi_lag2_5s
+    - info_book_obi_l5_sign_100ms_entropy_10s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_10s
+    - info_book_obi_l5_sign_100ms_mi_lag2_10s
+    - info_book_obi_l5_sign_100ms_entropy_30s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_30s
+    - info_book_obi_l5_sign_100ms_mi_lag2_30s
+    - info_book_obi_l5_sign_100ms_entropy_100s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_100s
+    - info_book_obi_l5_sign_100ms_mi_lag2_100s
+    output: workspace/results/evaluation/server_factors_latest_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen034_v2.yaml

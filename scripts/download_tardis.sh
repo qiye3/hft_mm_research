@@ -1,5 +1,5 @@
 #!/bin/sh
-# 【核心逻辑34】下载一个免费样本日，先写入.part文件再发布完整行情文件。
+# 【核心逻辑113】下载一个免费样本日，先写入.part文件再发布完整行情文件。
 set -eu
 project_directory=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 raw_directory="$project_directory/workspace/data/raw"

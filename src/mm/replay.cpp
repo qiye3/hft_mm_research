@@ -30,12 +30,12 @@ using Clock = std::chrono::steady_clock;
 // 在 final Local 的公开处理器边界接入观察器，以实际 process 调用统计逐条行情。
 class ObservedLocal final : public hbt::LocalProcessor {
 public:
-    // 【核心逻辑42】接管原生处理器，并以 sample_every 指定本地处理耗时的系统采样间隔。
+    // 【核心逻辑150】接管原生处理器，并以 sample_every 指定本地处理耗时的系统采样间隔。
     ObservedLocal(std::unique_ptr<Local> local, MarketObserver& observer, std::size_t sample_every,
                   ReplayEventSink* sink)
         : local_(std::move(local)), observer_(observer), sample_every_(sample_every), sink_(sink) {}
 
-    // 【核心逻辑43】更新原生本地状态后通知观察器，并按配置测量本地事件处理耗时。
+    // 【核心逻辑151】更新原生本地状态后通知观察器，并按配置测量本地事件处理耗时。
     void process(const hbt::Event& event) override {
         /** 输入是引擎按 local_ts 交付的一条行情，输出包括观察统计和可选纳秒耗时样本。
          * sample_every 为零时关闭计时，为正时从第零条开始每隔该数量取样。
@@ -194,7 +194,7 @@ std::uint64_t peak_rss_bytes() {
 #endif
 }
 
-// 【核心逻辑41】组装双侧原生处理器，完整消费共享行情缓存并汇总观察结果。
+// 【核心逻辑149】组装双侧原生处理器，完整消费共享行情缓存并汇总观察结果。
 ReplayResult replay_reader(const ReplayConfig& config, std::shared_ptr<hbt::EventReaderCache> reader,
                            ReplayEventSink* sink) {
     /** config 指定步长、观察深度和采样频率，reader 必须提供非空且分侧有序的事件。
@@ -332,7 +332,7 @@ std::vector<hbt::Event> synthetic_events() {
     return events;
 }
 
-// 【核心逻辑75】为内存行情夹具建立双消费者缓存，再执行统一观察回放流程。
+// 【核心逻辑187】为内存行情夹具建立双消费者缓存，再执行统一观察回放流程。
 ReplayResult run_memory_replay(const ReplayConfig& config, std::vector<std::vector<hbt::Event>> chunks,
                                ReplayEventSink* sink) {
     /** 输入 chunks 按分片顺序提供原生事件，函数接管这些数组并返回 ReplayResult。
@@ -341,7 +341,7 @@ ReplayResult run_memory_replay(const ReplayConfig& config, std::vector<std::vect
     return replay_reader(config, hbt::EventReaderCache::from_chunks(std::move(chunks), 2), sink);
 }
 
-// 【核心逻辑40】根据配置选择合成夹具或磁盘分片，并调用相同的原生回放接入层。
+// 【核心逻辑148】根据配置选择合成夹具或磁盘分片，并调用相同的原生回放接入层。
 ReplayResult run_replay(const ReplayConfig& config, ReplayEventSink* sink) {
     /** 输入 config.source 为 synthetic 或可读取的转换清单，返回观察回放汇总。
      * 文件模式通过 event_files_from_manifest 和 EventReaderCache 逐片加载数据。

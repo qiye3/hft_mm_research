@@ -1,0 +1,14 @@
+services:
+  factorboard:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      FACTORBOARD_DATA_DIR: /datasets/market_groups_v2
+      FACTORBOARD_STATE_DIR: /app/workspace
+      FACTORBOARD_MAX_JOBS: "2"
+      FACTORBOARD_API_KEY: ${FACTORBOARD_API_KEY:-}
+    volumes:
+      - ./research_data:/datasets:ro
+      - ./workspace:/app/workspace

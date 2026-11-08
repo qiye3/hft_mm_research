@@ -6,6 +6,12 @@
 
 当前Data输入为Binance官方普通成交ZIP与网盘25档快照。标准数据保存到`workspace/data/standard/market_v2/{snapshots,trades}/YYYY-MM-DD.parquet`。
 
+本次服务器生产区间为2025-05-09—2026-10-21，共531天，标准版本为`server_market_v1`。2025-05-09—09-30使用Hugging Face的20档快照，2025-10-01—2026-10-21使用网盘25档快照，标准表保留来源实际档数，Features观察前10档。成交内容统一采用Binance官方普通成交档案，下载渠道分为官方直连与网盘中的同名ZIP镜像。每份新镜像先与Binance官方`.zip.CHECKSUM`核对，完全一致后才发布到`raw/binance_public/date=日期/`供标准化读取。同一天只使用一份档案。逐份结果保存在服务器运行目录`workspace/results/server_migration/mirror_verification.jsonl`。
+
+531天标准数据、73份全日期Features和四周期共2,124份标签已生成并通过覆盖与独立计算验收。实际数据量、有效率、运行命令与资源记录见[服务器迁移报告](../reports/server_migration_2026-11-07/report.md)。
+
+网盘同名ZIP目录覆盖本区间449天，其中2025-08-24和2025-09-01—09-14的15份档案未通过官方一致性核对，已明确排除。这15天及2026-08-01—10-21的82天采用官方直连，选择清单为运行目录中的`trade_delivery_plan.json`与`trade_delivery_exclusions.json`。校验失败的暂存文件不会进入标准化输入。
+
 Features使用交易所时间加20ms作为模拟可见时刻。base、book、trades、returns四组按特征列保存到`features/market_columns_v1/特征名.parquet`，每份文件包含全部日期。标签保存到`labels/market_mid_columns_v1/horizon=周期/YYYY-MM-DD.parquet`。版本与来源定义内嵌Parquet元数据。
 
 下文网盘内容与整日C++验证保留对应检查日期，当前可执行生产命令见第六节。
@@ -36,7 +42,7 @@ Features使用交易所时间加20ms作为模拟可见时刻。base、book、tra
 | `L2增量 2020-2026/BTCUSDT/YYYY/MM/DD/` | 日文件 `BTCUSDT.csv.zst`；2025-10-01 至 2026-10-21 共 386 个日期目录 | 核对了日期目录，抽查文件，并完成下述一个整日验证 |
 | `BTCUSDT/YYYY-MM-DD/` | 日文件 `BTCUSDT.csv.zst`，已确认包含 Tardis 风格逐笔成交字段 | 检查了同日样本并完成一个整日验证 |
 | `BTC-Trades-23-26/` | 日度 ZIP；2025-10-01 至 2026-07-31 共 304 个匹配日文件，约 9.72 GB | 完整核对文件名和日期清单 |
-| `25-orderbook 2020-2026/BTCUSDT/YYYY/MM/DD/` | 25 档快照，包含 `.csv.zst/.zstd` 等压缩版本 | 已取得 2026-07-01 至 07-30 的快照与同源成交并生成 Polars 数据；重叠七天与 C++ 核对 |
+| `25-orderbook 2020-2026/BTCUSDT/YYYY/MM/DD/` | 25档快照，实际包含 `.csv.zst`、`.csv.zstd`、`.csv.xz` | 服务器下载已核实386天的文件名，按明确压缩格式下载；重叠七天曾与C++核对 |
 | `HFT-8.1-9.30/` | 2026-08-01 至 09-30，共 61 天、366 个 Parquet、36.56 GB | 核对文件清单，检查了 2026-08-01 的盘口和成交 |
 | `增量订单簿-L2/YYYY/` | 另外一套月度 ZIP，2025 年有 12 个月文件 | 目录核对，内部是否与日目录重复需解包比对 |
 | `BTC-OI/`、`爆仓数据/` | 未平仓量年度 ZIP、爆仓数据目录 | 目录核对，使用前确认字段、单位与完整性 |
@@ -44,6 +50,10 @@ Features使用交易所时间加20ms作为模拟可见时刻。base、book、tra
 HFT Parquet 中包含 `orderbook`、`trades`、`mark_price`、`ticker`、`open_interest`、`liquidations` 六类，各 61 个日文件。其中盘口合计约 33.09 GB，成交约 2.96 GB，其余约 0.51 GB。
 
 日期目录存在表示有相应目录项，逐日行情连续性还要通过内容检查确认。2026-11-06 完整目录核对确认，标准化成交 CSV 在目标区间内有 307 个日期，截止 2026-08-03。快照与 L2 各有 386 个日期，截止 2026-10-21。
+
+2026-11-07服务器下载并核实全部386份快照，文件后缀分为341份`.zst`、31份`.xz`、14份`.zstd`。其中2026-08-15—09-04的21份文件是真正XZ，2026-10-12—10-21的10份文件虽以`.xz`结尾，实际编码为Zstandard。其余355份文件也均为Zstandard，核验汇总保存在服务器运行目录的`raw_encoding.json`。
+
+下载入口通过`--source-extension zst|zstd|xz`明确选择目录中的文件名，标准化配置的`snapshots`填写实际后缀。Tardis CSV共用`tardis_csv/25`字段定义。标准化读取六字节文件头，遇到确定的XZ标识时使用标准库LZMA解压并在内存读取单日，其余已核实的Zstandard由Polars原生流式读取。两条路径均保留源行序和全部25档。
 
 Binance 官方 2025-10 至 2026-10 的全部十三个月成交档案已确认可下载。七月三十天已逐条验收，网盘 ZIP 能补足标准化 CSV 缺少的全部普通成交，但 ZIP 没有本地接收时间。七月快照也发现了日内长缺口，成交完整性、接收时钟与盘口覆盖需分别管理。[全区间覆盖与处理调整](../reports/data_coverage_202510_202610/report.md)
 
@@ -285,7 +295,7 @@ Tardis 可提供连续日期的 `incremental_book_L2`、`trades` 和 `derivative
 
 ```sh
 .venv/bin/python scripts/build_standard_data.py config/data/standardize_30d.yaml
-.venv/bin/python scripts/build_features_targets.py config/features/build_30d.yaml
+.venv/bin/python scripts/build_features.py config/features/build_30d.yaml
 .venv/bin/python scripts/validate_research_dataset.py \
   config/features/build_30d.yaml 2026-07-14 \
   workspace/results/standard_data/market_v2/validation_2026-07-14.json
@@ -328,3 +338,7 @@ M1 基线成功产生订单和成交，最终净收益为 -153.115508 USDT、费
 M2-A 的固定 100ms 数据生产、特征与未来 1s 标签定义、七天数据准备和 Python 读取方法见专门指南。 [M2-A 研究数据集](m2_a_dataset.md)
 
 当前 Polars 研究包复用基础数据，特征和多周期标签独立保存、分别管理版本，主目标单位为 bps。30 天数据的使用方法见新入口。 [研究包指南](research_package.md)
+
+## 当前整秒研究产物
+
+Features保持100ms，300个非OFI因子和五周期标签每秒输出，标签由独立Targets入口生成。窗口、跨日质量、版本、配置及执行顺序见[研究包指南](research_package.md)。

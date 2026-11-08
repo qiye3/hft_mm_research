@@ -91,16 +91,18 @@ def download_file(entry: dict, destination: Path, token: str) -> dict:
 
 
 # 【核心逻辑1】按日期定位并下载L2增量盘口或25档快照文件。
-def download_day(date: str, kind: str, output_root: Path, token: str) -> None:
+def download_day(date: str, kind: str, output_root: Path, token: str, source_extension: str = "zst") -> None:
     """输入日期、来源类别、输出根目录和授权，写入该日期文件及 sources.json。
 
     book下载L2增量，snapshot下载25档快照。普通成交由官方日档提供。
+    source_extension显式指定目录中的zst、zstd或xz后缀，不搜索替代文件名。
+    后缀用于定位来源，实际压缩编码由数据内容决定。
     文件名明确区分来源，避免网盘中的同名文件互相覆盖。
     """
     calendar_path = date.replace("-", "/")
     sources = {
-        "book": [(f"L2增量 2020-2026/BTCUSDT/{calendar_path}", "BTCUSDT.csv.zst", "book.csv.zst")],
-        "snapshot": [(f"25-orderbook 2020-2026/BTCUSDT/{calendar_path}", "BTCUSDT.csv.zst", "snapshot25.csv.zst")],
+        "book": [(f"L2增量 2020-2026/BTCUSDT/{calendar_path}", f"BTCUSDT.csv.{source_extension}", f"book.csv.{source_extension}")],
+        "snapshot": [(f"25-orderbook 2020-2026/BTCUSDT/{calendar_path}", f"BTCUSDT.csv.{source_extension}", f"snapshot25.csv.{source_extension}")],
     }
     destination = output_root / f"baidu_{date}"
     records = []
@@ -128,13 +130,17 @@ def main() -> None:
     parser.add_argument("--output-root", type=Path, default=Path("workspace/data/raw"))
     parser.add_argument("--credential-file", type=Path, required=True)
     parser.add_argument("--jobs", type=int, default=1)
+    parser.add_argument(
+        "--source-extension", choices=["zst", "zstd", "xz"], default="zst",
+        help="目录中的原始文件后缀，实际压缩编码由数据文件头确定",
+    )
     arguments = parser.parse_args()
     credential = arguments.credential_file.read_text()
     match = re.search(r"access_token=([^&#\s`<>]+)", credential)
     if match is None:
         raise ValueError("凭证文件中缺少 access_token")
     with concurrent.futures.ThreadPoolExecutor(max_workers=arguments.jobs) as pool:
-        futures = [pool.submit(download_day, date, arguments.kind, arguments.output_root, match.group(1))
+        futures = [pool.submit(download_day, date, arguments.kind, arguments.output_root, match.group(1), arguments.source_extension)
                    for date in arguments.dates]
         for future in futures:
             future.result()

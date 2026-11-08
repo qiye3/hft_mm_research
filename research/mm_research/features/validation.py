@@ -40,7 +40,11 @@ def validate_standard_books(base: pl.DataFrame, book_files: list[Path],
     """返回检查的盘口样本数，同时核对全部十档值与盘口有效性。"""
     fields = [f"{side}_{field}_{level}" for level in range(1, 11)
               for side in ["bid", "ask"] for field in ["price", "quantity"]]
-    books = pl.read_parquet(book_files, columns=["exchange_timestamp_ns", *fields])
+    # 独立参考同样逐文件选列，避免20档与25档整表schema参与拼接。
+    books = pl.concat([
+        pl.read_parquet(filename, columns=["exchange_timestamp_ns", *fields])
+        for filename in book_files
+    ])
     order = np.argsort(books["exchange_timestamp_ns"].to_numpy(), kind="stable")
     times = books["exchange_timestamp_ns"].to_numpy()[order] + latency_ns
     book_values = books.select(fields).to_numpy()[order]

@@ -1,0 +1,11 @@
+# LinearReplay配置。100ms更新状态、1s预测，使用真实L2和官方成交、20ms固定行情延迟。
+stage: linear_replay
+date: '2026-10-21'
+book: workspace/data/raw/baidu_2026-10-21/book.csv.xz
+trades: workspace/data/standard/server_market_v1/trades/2026-10-21.parquet
+engine_output: workspace/data/normalized/linear_2026-10-21
+market_data_latency_ns: 20000000
+model_output: workspace/results/models/linear_1s_v1
+baseline_config: config/strategy/linear_baseline.yaml
+alpha_config: config/strategy/linear_alpha.yaml
+output: workspace/results/models/linear_1s_v1/replay

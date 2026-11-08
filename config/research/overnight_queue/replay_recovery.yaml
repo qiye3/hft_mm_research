@@ -1,0 +1,26 @@
+# 恢复已完成回放的独立复核，复用现有行情、成交和委托结果。
+tasks:
+- id: replay_parity_recovery
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/run_linear_replay.py
+  - config/replay/linear_test_day.yaml
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 8
+  requires_success: []
+  after_finished: []
+  priority: 5
+- id: base_full_audit_recovery
+  lane: audit
+  command:
+  - .venv/bin/python
+  - workspace/results/server_migration/audit_full_1s.py
+  threads: 1
+  estimated_peak_gib: 2
+  memory_limit_gib: 6
+  requires_success:
+  - replay_parity_recovery
+  after_finished: []
+  priority: 5

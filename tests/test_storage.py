@@ -9,11 +9,36 @@ from unittest.mock import patch
 
 import polars as pl
 
-from mm_research.data.storage import file_locks, write_parquet
+from mm_research.data.storage import file_locks, scan_series, write_parquet
 
 
 class StorageTests(unittest.TestCase):
     """使用真实文件系统验证单变量文件更新边界。"""
+
+    # 【非核心】多列读取按时间键归并，确认缺失键对齐与流式执行计划。
+    def test_series_join_streams_on_sorted_keys(self):
+        """核对跨日期关联和筛选结果，防止全日期查询退回内存关联。"""
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            dataset = {"dates": ["2026-07-12", "2026-07-13"]}
+            first = pl.DataFrame({
+                "symbol": ["BTCUSDT"] * 3,
+                "date": ["2026-07-12", "2026-07-12", "2026-07-13"],
+                "timestamp_ns": [1, 2, 3], "first": [10.0, 20.0, 30.0],
+            })
+            second = first.select("symbol", "date", "timestamp_ns").filter(
+                pl.col("timestamp_ns") != 2,
+            ).with_columns(pl.Series("second", [100.0, 300.0]))
+            for name, table in [("first", first), ("second", second)]:
+                metadata = {"kind": "feature", "name": name, "dataset": dataset, "definition": {}}
+                write_parquet(table.lazy(), folder / f"{name}.parquet", metadata)
+            query, _ = scan_series(folder, ["first", "second"])
+            self.assertEqual(query.collect(engine="streaming")["second"].to_list(), [100.0, None, 300.0])
+            plan = query.show_graph(plan_stage="physical", engine="streaming", raw_output=True)
+            self.assertIn("merge-join", plan)
+            self.assertNotIn("in-memory-join", plan)
+            filtered, _ = scan_series(folder, ["first", "second"], ["2026-07-13"])
+            self.assertEqual(filtered.collect(engine="streaming")["timestamp_ns"].to_list(), [3])
 
     # 【非核心】同文件写入互斥，不同文件以及同文件共享读取可以并行。
     def test_file_lock_granularity(self):

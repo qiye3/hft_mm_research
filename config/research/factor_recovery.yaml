@@ -1,0 +1,946 @@
+# 补算队列。依据实测耗时优先启动长任务，维持三组并行及内存准入。
+stage: overnight
+output: workspace/results/factor_recovery_2026-11-08
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 6
+lane_limits:
+  cpu: 3
+  audit: 1
+morning_report_at: '2026-11-08T23:59:00+08:00'
+queue_directory: config/research/recovery_queue
+tasks:
+- id: pilot_gen014
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/pilot_gen014.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: &id001 []
+  priority: 1
+  config_template: config/factors/gen011_020.yaml
+  config_overrides:
+    batches: &id002
+    - gen014
+    chunk_days: 1
+    workers: 1
+    merge_workers: 1
+    write_threads: 2
+    dates:
+    - '2026-07-25'
+    - '2026-07-26'
+    - '2026-07-27'
+    factor_version: memory_pilot_gen014
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/pilot_gen014.yaml
+- id: pilot_gen021
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/pilot_gen021.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: &id003 []
+  priority: 1
+  config_template: config/factors/gen021_029.yaml
+  config_overrides:
+    batches: &id004
+    - gen021
+    chunk_days: 1
+    workers: 1
+    merge_workers: 1
+    write_threads: 2
+    dates:
+    - '2026-07-25'
+    - '2026-07-26'
+    - '2026-07-27'
+    factor_version: memory_pilot_gen021
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/pilot_gen021.yaml
+- id: pilot_gen034
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/pilot_gen034.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: &id005 []
+  priority: 1
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches: &id006
+    - gen034
+    chunk_days: 1
+    workers: 1
+    merge_workers: 1
+    write_threads: 2
+    dates:
+    - '2026-07-25'
+    factor_version: memory_pilot_gen034
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/pilot_gen034.yaml
+- id: factor_retry_gen014
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen014.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success:
+  - pilot_gen014
+  after_finished: *id001
+  priority: 10
+  config_template: config/factors/gen011_020.yaml
+  config_overrides:
+    batches: *id002
+    chunk_days: 7
+    workers: 1
+    merge_workers: 1
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen014.yaml
+- id: evaluation_retry_gen014
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen014.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen014
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_extra_1s_v1
+    factors:
+    - book_bid_px_age_sec_100ms_mean_5s
+    - book_bid_px_age_sec_100ms_mean_10s
+    - book_bid_px_age_sec_100ms_mean_30s
+    - book_bid_px_age_sec_100ms_mean_100s
+    - book_ask_px_age_sec_100ms_mean_5s
+    - book_ask_px_age_sec_100ms_mean_10s
+    - book_ask_px_age_sec_100ms_mean_30s
+    - book_ask_px_age_sec_100ms_mean_100s
+    - book_mid_px_age_sec_100ms_mean_5s
+    - book_mid_px_age_sec_100ms_mean_10s
+    - book_mid_px_age_sec_100ms_mean_30s
+    - book_mid_px_age_sec_100ms_mean_100s
+    - book_spread_age_sec_100ms_mean_5s
+    - book_spread_age_sec_100ms_mean_10s
+    - book_spread_age_sec_100ms_mean_30s
+    - book_spread_age_sec_100ms_mean_100s
+    - book_bid_q1_age_sec_100ms_mean_5s
+    - book_bid_q1_age_sec_100ms_mean_10s
+    - book_bid_q1_age_sec_100ms_mean_30s
+    - book_bid_q1_age_sec_100ms_mean_100s
+    - book_ask_q1_age_sec_100ms_mean_5s
+    - book_ask_q1_age_sec_100ms_mean_10s
+    - book_ask_q1_age_sec_100ms_mean_30s
+    - book_ask_q1_age_sec_100ms_mean_100s
+    - trade_any_age_sec_100ms_mean_5s
+    - trade_any_age_sec_100ms_mean_10s
+    - trade_any_age_sec_100ms_mean_30s
+    - trade_any_age_sec_100ms_mean_100s
+    - trade_buy_age_sec_100ms_mean_5s
+    - trade_buy_age_sec_100ms_mean_10s
+    - trade_buy_age_sec_100ms_mean_30s
+    - trade_buy_age_sec_100ms_mean_100s
+    - trade_sell_age_sec_100ms_mean_5s
+    - trade_sell_age_sec_100ms_mean_10s
+    - trade_sell_age_sec_100ms_mean_30s
+    - trade_sell_age_sec_100ms_mean_100s
+    output: workspace/results/evaluation/server_factors_extra_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen014.yaml
+- id: factor_retry_gen017
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen017.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 10
+  config_template: config/factors/gen011_020.yaml
+  config_overrides:
+    batches:
+    - gen017
+    chunk_days: 7
+    workers: 1
+    merge_workers: 1
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen017.yaml
+- id: evaluation_retry_gen017
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen017.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen017
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_extra_1s_v1
+    factors:
+    - trade_buy_flow_rel_depth_l1_100ms_mean_5s
+    - trade_buy_flow_rel_depth_l1_100ms_mean_10s
+    - trade_buy_flow_rel_depth_l1_100ms_mean_30s
+    - trade_buy_flow_rel_depth_l1_100ms_mean_100s
+    - trade_sell_flow_rel_depth_l1_100ms_mean_5s
+    - trade_sell_flow_rel_depth_l1_100ms_mean_10s
+    - trade_sell_flow_rel_depth_l1_100ms_mean_30s
+    - trade_sell_flow_rel_depth_l1_100ms_mean_100s
+    - trade_net_flow_rel_depth_l1_100ms_mean_5s
+    - trade_net_flow_rel_depth_l1_100ms_mean_10s
+    - trade_net_flow_rel_depth_l1_100ms_mean_30s
+    - trade_net_flow_rel_depth_l1_100ms_mean_100s
+    - trade_buy_flow_rel_depth_l5_100ms_mean_5s
+    - trade_buy_flow_rel_depth_l5_100ms_mean_10s
+    - trade_buy_flow_rel_depth_l5_100ms_mean_30s
+    - trade_buy_flow_rel_depth_l5_100ms_mean_100s
+    - trade_sell_flow_rel_depth_l5_100ms_mean_5s
+    - trade_sell_flow_rel_depth_l5_100ms_mean_10s
+    - trade_sell_flow_rel_depth_l5_100ms_mean_30s
+    - trade_sell_flow_rel_depth_l5_100ms_mean_100s
+    - trade_net_flow_rel_depth_l5_100ms_mean_5s
+    - trade_net_flow_rel_depth_l5_100ms_mean_10s
+    - trade_net_flow_rel_depth_l5_100ms_mean_30s
+    - trade_net_flow_rel_depth_l5_100ms_mean_100s
+    - trade_buy_flow_rel_depth_l10_100ms_mean_5s
+    - trade_buy_flow_rel_depth_l10_100ms_mean_10s
+    - trade_buy_flow_rel_depth_l10_100ms_mean_30s
+    - trade_buy_flow_rel_depth_l10_100ms_mean_100s
+    - trade_sell_flow_rel_depth_l10_100ms_mean_5s
+    - trade_sell_flow_rel_depth_l10_100ms_mean_10s
+    - trade_sell_flow_rel_depth_l10_100ms_mean_30s
+    - trade_sell_flow_rel_depth_l10_100ms_mean_100s
+    - trade_net_flow_rel_depth_l10_100ms_mean_5s
+    - trade_net_flow_rel_depth_l10_100ms_mean_10s
+    - trade_net_flow_rel_depth_l10_100ms_mean_30s
+    - trade_net_flow_rel_depth_l10_100ms_mean_100s
+    output: workspace/results/evaluation/server_factors_extra_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen017.yaml
+- id: factor_retry_gen018
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen018.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 10
+  config_template: config/factors/gen011_020.yaml
+  config_overrides:
+    batches:
+    - gen018
+    chunk_days: 7
+    workers: 1
+    merge_workers: 3
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen018.yaml
+- id: evaluation_retry_gen018
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen018.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen018
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_extra_1s_v1
+    factors:
+    - lead_trade_aggr_imb_100ms_ret_lag1_corr_ret_5s
+    - lead_trade_aggr_imb_100ms_ret_lag1_corr_ret_10s
+    - lead_trade_aggr_imb_100ms_ret_lag1_corr_ret_30s
+    - lead_trade_aggr_imb_100ms_ret_lag1_corr_ret_100s
+    - lead_trade_aggr_imb_100ms_ret_lag5_corr_ret_5s
+    - lead_trade_aggr_imb_100ms_ret_lag5_corr_ret_10s
+    - lead_trade_aggr_imb_100ms_ret_lag5_corr_ret_30s
+    - lead_trade_aggr_imb_100ms_ret_lag5_corr_ret_100s
+    - lead_trade_aggr_imb_100ms_ret_lag10_corr_ret_5s
+    - lead_trade_aggr_imb_100ms_ret_lag10_corr_ret_10s
+    - lead_trade_aggr_imb_100ms_ret_lag10_corr_ret_30s
+    - lead_trade_aggr_imb_100ms_ret_lag10_corr_ret_100s
+    - lead_trade_aggr_imb_1s_ret_lag1_corr_ret_5s
+    - lead_trade_aggr_imb_1s_ret_lag1_corr_ret_10s
+    - lead_trade_aggr_imb_1s_ret_lag1_corr_ret_30s
+    - lead_trade_aggr_imb_1s_ret_lag1_corr_ret_100s
+    - lead_trade_aggr_imb_1s_ret_lag5_corr_ret_5s
+    - lead_trade_aggr_imb_1s_ret_lag5_corr_ret_10s
+    - lead_trade_aggr_imb_1s_ret_lag5_corr_ret_30s
+    - lead_trade_aggr_imb_1s_ret_lag5_corr_ret_100s
+    - lead_trade_aggr_imb_1s_ret_lag10_corr_ret_5s
+    - lead_trade_aggr_imb_1s_ret_lag10_corr_ret_10s
+    - lead_trade_aggr_imb_1s_ret_lag10_corr_ret_30s
+    - lead_trade_aggr_imb_1s_ret_lag10_corr_ret_100s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag1_corr_ret_5s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag1_corr_ret_10s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag1_corr_ret_30s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag1_corr_ret_100s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag5_corr_ret_5s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag5_corr_ret_10s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag5_corr_ret_30s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag5_corr_ret_100s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag10_corr_ret_5s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag10_corr_ret_10s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag10_corr_ret_30s
+    - lead_trade_net_flow_rel_depth_l5_100ms_ret_lag10_corr_ret_100s
+    output: workspace/results/evaluation/server_factors_extra_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen018.yaml
+- id: factor_retry_gen020
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen020.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 10
+  config_template: config/factors/gen011_020.yaml
+  config_overrides:
+    batches:
+    - gen020
+    chunk_days: 7
+    workers: 1
+    merge_workers: 3
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen020.yaml
+- id: evaluation_retry_gen020
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen020.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen020
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_extra_1s_v1
+    factors:
+    - utcslot_spread_level_ticks_ratio_20d_mean_5s
+    - utcslot_spread_level_ticks_ratio_20d_mean_10s
+    - utcslot_spread_level_ticks_ratio_20d_mean_30s
+    - utcslot_spread_level_ticks_ratio_20d_mean_100s
+    - utcslot_spread_level_ticks_zscore_20d_mean_5s
+    - utcslot_spread_level_ticks_zscore_20d_mean_10s
+    - utcslot_spread_level_ticks_zscore_20d_mean_30s
+    - utcslot_spread_level_ticks_zscore_20d_mean_100s
+    - utcslot_spread_level_ticks_q90flag_20d_mean_5s
+    - utcslot_spread_level_ticks_q90flag_20d_mean_10s
+    - utcslot_spread_level_ticks_q90flag_20d_mean_30s
+    - utcslot_spread_level_ticks_q90flag_20d_mean_100s
+    - utcslot_trade_count_100ms_ratio_20d_mean_5s
+    - utcslot_trade_count_100ms_ratio_20d_mean_10s
+    - utcslot_trade_count_100ms_ratio_20d_mean_30s
+    - utcslot_trade_count_100ms_ratio_20d_mean_100s
+    - utcslot_trade_count_100ms_zscore_20d_mean_5s
+    - utcslot_trade_count_100ms_zscore_20d_mean_10s
+    - utcslot_trade_count_100ms_zscore_20d_mean_30s
+    - utcslot_trade_count_100ms_zscore_20d_mean_100s
+    - utcslot_trade_count_100ms_q90flag_20d_mean_5s
+    - utcslot_trade_count_100ms_q90flag_20d_mean_10s
+    - utcslot_trade_count_100ms_q90flag_20d_mean_30s
+    - utcslot_trade_count_100ms_q90flag_20d_mean_100s
+    - utcslot_book_depth_total_l10_ratio_20d_mean_5s
+    - utcslot_book_depth_total_l10_ratio_20d_mean_10s
+    - utcslot_book_depth_total_l10_ratio_20d_mean_30s
+    - utcslot_book_depth_total_l10_ratio_20d_mean_100s
+    - utcslot_book_depth_total_l10_zscore_20d_mean_5s
+    - utcslot_book_depth_total_l10_zscore_20d_mean_10s
+    - utcslot_book_depth_total_l10_zscore_20d_mean_30s
+    - utcslot_book_depth_total_l10_zscore_20d_mean_100s
+    - utcslot_book_depth_total_l10_q90flag_20d_mean_5s
+    - utcslot_book_depth_total_l10_q90flag_20d_mean_10s
+    - utcslot_book_depth_total_l10_q90flag_20d_mean_30s
+    - utcslot_book_depth_total_l10_q90flag_20d_mean_100s
+    output: workspace/results/evaluation/server_factors_extra_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen020.yaml
+- id: factor_retry_gen021
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen021.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success:
+  - pilot_gen021
+  after_finished: *id003
+  priority: 8
+  config_template: config/factors/gen021_029.yaml
+  config_overrides:
+    batches: *id004
+    chunk_days: 7
+    workers: 1
+    merge_workers: 3
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen021.yaml
+- id: evaluation_retry_gen021
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen021.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen021
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_more_1s_v1
+    factors:
+    - trade_dir_buy_run_100ms_mean_5s
+    - trade_dir_buy_run_100ms_mean_10s
+    - trade_dir_buy_run_100ms_mean_30s
+    - trade_dir_buy_run_100ms_mean_100s
+    - trade_dir_sell_run_100ms_mean_5s
+    - trade_dir_sell_run_100ms_mean_10s
+    - trade_dir_sell_run_100ms_mean_30s
+    - trade_dir_sell_run_100ms_mean_100s
+    - trade_dir_signed_run_100ms_mean_5s
+    - trade_dir_signed_run_100ms_mean_10s
+    - trade_dir_signed_run_100ms_mean_30s
+    - trade_dir_signed_run_100ms_mean_100s
+    - trade_dir_buy_flag_100ms_mean_5s
+    - trade_dir_buy_flag_100ms_mean_10s
+    - trade_dir_buy_flag_100ms_mean_30s
+    - trade_dir_buy_flag_100ms_mean_100s
+    - trade_dir_sell_flag_100ms_mean_5s
+    - trade_dir_sell_flag_100ms_mean_10s
+    - trade_dir_sell_flag_100ms_mean_30s
+    - trade_dir_sell_flag_100ms_mean_100s
+    - trade_dir_switch_flag_100ms_mean_5s
+    - trade_dir_switch_flag_100ms_mean_10s
+    - trade_dir_switch_flag_100ms_mean_30s
+    - trade_dir_switch_flag_100ms_mean_100s
+    - trade_dir_buy_to_sell_100ms_mean_5s
+    - trade_dir_buy_to_sell_100ms_mean_10s
+    - trade_dir_buy_to_sell_100ms_mean_30s
+    - trade_dir_buy_to_sell_100ms_mean_100s
+    - trade_dir_sell_to_buy_100ms_mean_5s
+    - trade_dir_sell_to_buy_100ms_mean_10s
+    - trade_dir_sell_to_buy_100ms_mean_30s
+    - trade_dir_sell_to_buy_100ms_mean_100s
+    - trade_dir_same_nonzero_100ms_mean_5s
+    - trade_dir_same_nonzero_100ms_mean_10s
+    - trade_dir_same_nonzero_100ms_mean_30s
+    - trade_dir_same_nonzero_100ms_mean_100s
+    output: workspace/results/evaluation/server_factors_more_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen021.yaml
+- id: factor_retry_gen022
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen022.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 2
+  config_template: config/factors/gen021_029.yaml
+  config_overrides:
+    batches:
+    - gen022
+    chunk_days: 7
+    workers: 1
+    merge_workers: 3
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen022.yaml
+- id: evaluation_retry_gen022
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen022.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen022
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_more_1s_v1
+    factors:
+    - book_bid_max_share_l10_mean_5s
+    - book_bid_max_share_l10_mean_10s
+    - book_bid_max_share_l10_mean_30s
+    - book_bid_max_share_l10_mean_100s
+    - book_bid_wall_offset_ticks_l10_mean_5s
+    - book_bid_wall_offset_ticks_l10_mean_10s
+    - book_bid_wall_offset_ticks_l10_mean_30s
+    - book_bid_wall_offset_ticks_l10_mean_100s
+    - book_bid_max_gap_ticks_l10_mean_5s
+    - book_bid_max_gap_ticks_l10_mean_10s
+    - book_bid_max_gap_ticks_l10_mean_30s
+    - book_bid_max_gap_ticks_l10_mean_100s
+    - book_ask_max_share_l10_mean_5s
+    - book_ask_max_share_l10_mean_10s
+    - book_ask_max_share_l10_mean_30s
+    - book_ask_max_share_l10_mean_100s
+    - book_ask_wall_offset_ticks_l10_mean_5s
+    - book_ask_wall_offset_ticks_l10_mean_10s
+    - book_ask_wall_offset_ticks_l10_mean_30s
+    - book_ask_wall_offset_ticks_l10_mean_100s
+    - book_ask_max_gap_ticks_l10_mean_5s
+    - book_ask_max_gap_ticks_l10_mean_10s
+    - book_ask_max_gap_ticks_l10_mean_30s
+    - book_ask_max_gap_ticks_l10_mean_100s
+    - book_bid_ask_max_share_gap_l10_mean_5s
+    - book_bid_ask_max_share_gap_l10_mean_10s
+    - book_bid_ask_max_share_gap_l10_mean_30s
+    - book_bid_ask_max_share_gap_l10_mean_100s
+    - book_bid_ask_wall_offset_ticks_gap_l10_mean_5s
+    - book_bid_ask_wall_offset_ticks_gap_l10_mean_10s
+    - book_bid_ask_wall_offset_ticks_gap_l10_mean_30s
+    - book_bid_ask_wall_offset_ticks_gap_l10_mean_100s
+    - book_bid_ask_max_gap_ticks_gap_l10_mean_5s
+    - book_bid_ask_max_gap_ticks_gap_l10_mean_10s
+    - book_bid_ask_max_gap_ticks_gap_l10_mean_30s
+    - book_bid_ask_max_gap_ticks_gap_l10_mean_100s
+    output: workspace/results/evaluation/server_factors_more_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen022.yaml
+- id: factor_retry_gen024
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen024.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 4
+  config_template: config/factors/gen021_029.yaml
+  config_overrides:
+    batches:
+    - gen024
+    chunk_days: 7
+    workers: 1
+    merge_workers: 3
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen024.yaml
+- id: evaluation_retry_gen024
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen024.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen024
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_more_1s_v1
+    factors:
+    - book_depth_bid_abs_l1_100ms_mean_5s
+    - book_depth_bid_abs_l1_100ms_mean_10s
+    - book_depth_bid_abs_l1_100ms_mean_30s
+    - book_depth_bid_abs_l1_100ms_mean_100s
+    - book_depth_ask_abs_l1_100ms_mean_5s
+    - book_depth_ask_abs_l1_100ms_mean_10s
+    - book_depth_ask_abs_l1_100ms_mean_30s
+    - book_depth_ask_abs_l1_100ms_mean_100s
+    - book_depth_gross_minus_net_l1_100ms_mean_5s
+    - book_depth_gross_minus_net_l1_100ms_mean_10s
+    - book_depth_gross_minus_net_l1_100ms_mean_30s
+    - book_depth_gross_minus_net_l1_100ms_mean_100s
+    - book_depth_bid_abs_l5_100ms_mean_5s
+    - book_depth_bid_abs_l5_100ms_mean_10s
+    - book_depth_bid_abs_l5_100ms_mean_30s
+    - book_depth_bid_abs_l5_100ms_mean_100s
+    - book_depth_ask_abs_l5_100ms_mean_5s
+    - book_depth_ask_abs_l5_100ms_mean_10s
+    - book_depth_ask_abs_l5_100ms_mean_30s
+    - book_depth_ask_abs_l5_100ms_mean_100s
+    - book_depth_gross_minus_net_l5_100ms_mean_5s
+    - book_depth_gross_minus_net_l5_100ms_mean_10s
+    - book_depth_gross_minus_net_l5_100ms_mean_30s
+    - book_depth_gross_minus_net_l5_100ms_mean_100s
+    - book_depth_bid_abs_l10_100ms_mean_5s
+    - book_depth_bid_abs_l10_100ms_mean_10s
+    - book_depth_bid_abs_l10_100ms_mean_30s
+    - book_depth_bid_abs_l10_100ms_mean_100s
+    - book_depth_ask_abs_l10_100ms_mean_5s
+    - book_depth_ask_abs_l10_100ms_mean_10s
+    - book_depth_ask_abs_l10_100ms_mean_30s
+    - book_depth_ask_abs_l10_100ms_mean_100s
+    - book_depth_gross_minus_net_l10_100ms_mean_5s
+    - book_depth_gross_minus_net_l10_100ms_mean_10s
+    - book_depth_gross_minus_net_l10_100ms_mean_30s
+    - book_depth_gross_minus_net_l10_100ms_mean_100s
+    output: workspace/results/evaluation/server_factors_more_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen024.yaml
+- id: factor_retry_gen025
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen025.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 7
+  config_template: config/factors/gen021_029.yaml
+  config_overrides:
+    batches:
+    - gen025
+    chunk_days: 1
+    workers: 1
+    merge_workers: 3
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen025.yaml
+- id: evaluation_retry_gen025
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen025.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen025
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_more_1s_v1
+    factors:
+    - liq_shock_spread_active_100ms_mean_5s
+    - liq_shock_spread_active_100ms_mean_10s
+    - liq_shock_spread_active_100ms_mean_30s
+    - liq_shock_spread_active_100ms_mean_100s
+    - liq_shock_spread_recovery_100ms_mean_5s
+    - liq_shock_spread_recovery_100ms_mean_10s
+    - liq_shock_spread_recovery_100ms_mean_30s
+    - liq_shock_spread_recovery_100ms_mean_100s
+    - liq_shock_spread_age_sec_100ms_mean_5s
+    - liq_shock_spread_age_sec_100ms_mean_10s
+    - liq_shock_spread_age_sec_100ms_mean_30s
+    - liq_shock_spread_age_sec_100ms_mean_100s
+    - liq_shock_bid_depth_active_100ms_mean_5s
+    - liq_shock_bid_depth_active_100ms_mean_10s
+    - liq_shock_bid_depth_active_100ms_mean_30s
+    - liq_shock_bid_depth_active_100ms_mean_100s
+    - liq_shock_bid_depth_recovery_100ms_mean_5s
+    - liq_shock_bid_depth_recovery_100ms_mean_10s
+    - liq_shock_bid_depth_recovery_100ms_mean_30s
+    - liq_shock_bid_depth_recovery_100ms_mean_100s
+    - liq_shock_bid_depth_age_sec_100ms_mean_5s
+    - liq_shock_bid_depth_age_sec_100ms_mean_10s
+    - liq_shock_bid_depth_age_sec_100ms_mean_30s
+    - liq_shock_bid_depth_age_sec_100ms_mean_100s
+    - liq_shock_ask_depth_active_100ms_mean_5s
+    - liq_shock_ask_depth_active_100ms_mean_10s
+    - liq_shock_ask_depth_active_100ms_mean_30s
+    - liq_shock_ask_depth_active_100ms_mean_100s
+    - liq_shock_ask_depth_recovery_100ms_mean_5s
+    - liq_shock_ask_depth_recovery_100ms_mean_10s
+    - liq_shock_ask_depth_recovery_100ms_mean_30s
+    - liq_shock_ask_depth_recovery_100ms_mean_100s
+    - liq_shock_ask_depth_age_sec_100ms_mean_5s
+    - liq_shock_ask_depth_age_sec_100ms_mean_10s
+    - liq_shock_ask_depth_age_sec_100ms_mean_30s
+    - liq_shock_ask_depth_age_sec_100ms_mean_100s
+    output: workspace/results/evaluation/server_factors_more_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen025.yaml
+- id: factor_retry_gen029
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen029.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 5
+  config_template: config/factors/gen021_029.yaml
+  config_overrides:
+    batches:
+    - gen029
+    chunk_days: 7
+    workers: 1
+    merge_workers: 3
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen029.yaml
+- id: evaluation_retry_gen029
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen029.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen029
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_more_1s_v1
+    factors:
+    - regime_spread_mean_shift_1s5s_mean_5s
+    - regime_spread_mean_shift_1s5s_mean_10s
+    - regime_spread_mean_shift_1s5s_mean_30s
+    - regime_spread_mean_shift_1s5s_mean_100s
+    - regime_spread_var_shift_1s5s_mean_5s
+    - regime_spread_var_shift_1s5s_mean_10s
+    - regime_spread_var_shift_1s5s_mean_30s
+    - regime_spread_var_shift_1s5s_mean_100s
+    - regime_spread_cusum_shift_1s5s_mean_5s
+    - regime_spread_cusum_shift_1s5s_mean_10s
+    - regime_spread_cusum_shift_1s5s_mean_30s
+    - regime_spread_cusum_shift_1s5s_mean_100s
+    - regime_activity_mean_shift_1s5s_mean_5s
+    - regime_activity_mean_shift_1s5s_mean_10s
+    - regime_activity_mean_shift_1s5s_mean_30s
+    - regime_activity_mean_shift_1s5s_mean_100s
+    - regime_activity_var_shift_1s5s_mean_5s
+    - regime_activity_var_shift_1s5s_mean_10s
+    - regime_activity_var_shift_1s5s_mean_30s
+    - regime_activity_var_shift_1s5s_mean_100s
+    - regime_activity_cusum_shift_1s5s_mean_5s
+    - regime_activity_cusum_shift_1s5s_mean_10s
+    - regime_activity_cusum_shift_1s5s_mean_30s
+    - regime_activity_cusum_shift_1s5s_mean_100s
+    - regime_depth_mean_shift_1s5s_mean_5s
+    - regime_depth_mean_shift_1s5s_mean_10s
+    - regime_depth_mean_shift_1s5s_mean_30s
+    - regime_depth_mean_shift_1s5s_mean_100s
+    - regime_depth_var_shift_1s5s_mean_5s
+    - regime_depth_var_shift_1s5s_mean_10s
+    - regime_depth_var_shift_1s5s_mean_30s
+    - regime_depth_var_shift_1s5s_mean_100s
+    - regime_depth_cusum_shift_1s5s_mean_5s
+    - regime_depth_cusum_shift_1s5s_mean_10s
+    - regime_depth_cusum_shift_1s5s_mean_30s
+    - regime_depth_cusum_shift_1s5s_mean_100s
+    output: workspace/results/evaluation/server_factors_more_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen029.yaml
+- id: factor_retry_gen034
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen034.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success:
+  - pilot_gen034
+  after_finished: *id005
+  priority: 10
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches: *id006
+    chunk_days: 1
+    workers: 1
+    merge_workers: 3
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen034.yaml
+- id: evaluation_retry_gen034
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen034.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen034
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_latest_1s_v1
+    factors:
+    - info_mid_move_sign_100ms_entropy_5s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_5s
+    - info_mid_move_sign_100ms_mi_lag2_5s
+    - info_mid_move_sign_100ms_entropy_10s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_10s
+    - info_mid_move_sign_100ms_mi_lag2_10s
+    - info_mid_move_sign_100ms_entropy_30s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_30s
+    - info_mid_move_sign_100ms_mi_lag2_30s
+    - info_mid_move_sign_100ms_entropy_100s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_100s
+    - info_mid_move_sign_100ms_mi_lag2_100s
+    - info_trade_aggr_sign_100ms_entropy_5s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_5s
+    - info_trade_aggr_sign_100ms_mi_lag2_5s
+    - info_trade_aggr_sign_100ms_entropy_10s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_10s
+    - info_trade_aggr_sign_100ms_mi_lag2_10s
+    - info_trade_aggr_sign_100ms_entropy_30s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_30s
+    - info_trade_aggr_sign_100ms_mi_lag2_30s
+    - info_trade_aggr_sign_100ms_entropy_100s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_100s
+    - info_trade_aggr_sign_100ms_mi_lag2_100s
+    - info_book_obi_l5_sign_100ms_entropy_5s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_5s
+    - info_book_obi_l5_sign_100ms_mi_lag2_5s
+    - info_book_obi_l5_sign_100ms_entropy_10s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_10s
+    - info_book_obi_l5_sign_100ms_mi_lag2_10s
+    - info_book_obi_l5_sign_100ms_entropy_30s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_30s
+    - info_book_obi_l5_sign_100ms_mi_lag2_30s
+    - info_book_obi_l5_sign_100ms_entropy_100s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_100s
+    - info_book_obi_l5_sign_100ms_mi_lag2_100s
+    output: workspace/results/evaluation/server_factors_latest_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen034.yaml
+- id: factor_retry_gen035
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/gen035.yaml
+  threads: 4
+  estimated_peak_gib: 12
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 6
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches:
+    - gen035
+    chunk_days: 7
+    workers: 1
+    merge_workers: 3
+    write_threads: 2
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/gen035.yaml
+- id: evaluation_retry_gen035
+  lane: audit
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen035.yaml
+  threads: 1
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_retry_gen035
+  after_finished: []
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_latest_1s_v1
+    factors:
+    - book_bid_marginal_density_l1_2_mean_5s
+    - book_bid_marginal_density_l1_2_mean_10s
+    - book_bid_marginal_density_l1_2_mean_30s
+    - book_bid_marginal_density_l1_2_mean_100s
+    - book_ask_marginal_density_l1_2_mean_5s
+    - book_ask_marginal_density_l1_2_mean_10s
+    - book_ask_marginal_density_l1_2_mean_30s
+    - book_ask_marginal_density_l1_2_mean_100s
+    - book_marginal_density_asym_l1_2_mean_5s
+    - book_marginal_density_asym_l1_2_mean_10s
+    - book_marginal_density_asym_l1_2_mean_30s
+    - book_marginal_density_asym_l1_2_mean_100s
+    - book_bid_marginal_density_l3_5_mean_5s
+    - book_bid_marginal_density_l3_5_mean_10s
+    - book_bid_marginal_density_l3_5_mean_30s
+    - book_bid_marginal_density_l3_5_mean_100s
+    - book_ask_marginal_density_l3_5_mean_5s
+    - book_ask_marginal_density_l3_5_mean_10s
+    - book_ask_marginal_density_l3_5_mean_30s
+    - book_ask_marginal_density_l3_5_mean_100s
+    - book_marginal_density_asym_l3_5_mean_5s
+    - book_marginal_density_asym_l3_5_mean_10s
+    - book_marginal_density_asym_l3_5_mean_30s
+    - book_marginal_density_asym_l3_5_mean_100s
+    - book_bid_marginal_density_l6_10_mean_5s
+    - book_bid_marginal_density_l6_10_mean_10s
+    - book_bid_marginal_density_l6_10_mean_30s
+    - book_bid_marginal_density_l6_10_mean_100s
+    - book_ask_marginal_density_l6_10_mean_5s
+    - book_ask_marginal_density_l6_10_mean_10s
+    - book_ask_marginal_density_l6_10_mean_30s
+    - book_ask_marginal_density_l6_10_mean_100s
+    - book_marginal_density_asym_l6_10_mean_5s
+    - book_marginal_density_asym_l6_10_mean_10s
+    - book_marginal_density_asym_l6_10_mean_30s
+    - book_marginal_density_asym_l6_10_mean_100s
+    output: workspace/results/evaluation/server_factors_latest_1s_v1
+    workers: 4
+    factor_batch_size: 9
+  generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen035.yaml

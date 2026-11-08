@@ -1,4 +1,4 @@
-"""当前两阶段YAML配置契约，拒绝重复键、缺项、未知字段及错误入口。"""
+"""分阶段YAML配置契约，拒绝重复键、缺项、未知字段及错误入口。"""
 
 from pathlib import Path
 
@@ -10,19 +10,35 @@ PIPELINE_FIELDS = {
         "tick_size", "lot_size", "snapshot_silence_ns", "confirmed_snapshot_gaps",
         "snapshot_format", "snapshot_depth",
     },
-    "features_targets": {
+    "features": {
         "stage", "standard_root", "standard_version", "dates", "feature_groups",
-        "feature_root", "feature_version", "label_root", "label_version",
+        "feature_root", "feature_version",
         "market_data_latency_ns", "interval_ns", "tick_size", "lot_size",
-        "max_book_age_ns", "horizons_ns", "rolling_min_samples",
+        "max_book_age_ns", "rolling_min_samples",
+    },
+    "targets": {
+        "stage", "feature_root", "feature_version", "standard_root", "standard_version",
+        "dates", "label_root", "label_version", "horizons_ns", "output_interval_ns",
+        "source_boundaries", "workers",
     },
     "factors": {
         "stage", "feature_root", "feature_version", "factor_root", "factor_version",
-        "dates", "factors", "short_window", "long_window", "short_min_samples", "long_min_samples",
+        "dates", "batches", "min_fraction", "tick_size", "chunk_days", "workers", "merge_workers", "write_threads", "output_interval_ns",
+    },
+    "research": {"stage", "feature_config", "target_config", "factor_config", "evaluation_config", "model_config", "replay_config", "output"},
+    "linear_replay": {
+        "stage", "date", "book", "trades", "engine_output", "market_data_latency_ns",
+        "model_output", "baseline_config", "alpha_config", "output",
+    },
+    "models": {
+        "stage", "feature_root", "feature_version", "factor_root", "factor_version",
+        "label_root", "label_version", "evaluation_root", "dates", "train_end", "validation_end",
+        "batches", "min_fraction", "factors_per_batch", "realtime_per_batch", "sample_stride_ns",
+        "ridge_alphas", "lasso_alphas", "workers", "output", "purge_ns",
     },
     "evaluation": {
         "stage", "factor_root", "factor_version", "label_root", "label_version", "dates",
-        "factors", "horizons_ns", "groups", "output",
+        "factors", "horizons_ns", "groups", "output", "train_end", "validation_end", "workers", "output_interval_ns", "purge_ns", "factor_batch_size",
     },
 }
 
@@ -51,8 +67,8 @@ def load_pipeline_config(filename: Path, stage: str) -> dict:
     if not isinstance(config, dict):
         raise ValueError("YAML配置必须是键值映射")
     if config.get("stage") != stage:
-        owners = {"data_standardize": "Data标准化", "features_targets": "Features/Targets",
-                  "factors": "Factors", "evaluation": "Evaluation"}
+        owners = {"data_standardize": "Data标准化", "features": "Features", "targets": "Targets",
+                  "factors": "Factors", "evaluation": "Evaluation", "models": "Models", "research": "Research", "linear_replay": "LinearReplay"}
         owner = owners[stage]
         raise ValueError(f"此入口需要{owner}配置")
     required = PIPELINE_FIELDS[stage]

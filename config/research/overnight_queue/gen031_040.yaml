@@ -1,0 +1,628 @@
+# 可追加批次。252个有输入的因子独立计算和评估，缺少外部行情的组明确等待。
+tasks:
+- id: factor_gen031
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/overnight_2026-11-07/configs/factor_gen031.yaml
+  threads: 3
+  estimated_peak_gib: 22
+  memory_limit_gib: 30
+  requires_success: []
+  after_finished: []
+  priority: 10
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches:
+    - gen031
+    chunk_days: 7
+  generated_config: workspace/results/overnight_2026-11-07/configs/factor_gen031.yaml
+- id: evaluation_gen031
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/overnight_2026-11-07/configs/evaluation_gen031.yaml
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_gen031
+  after_finished:
+  - factor_gen031
+  - factor_gen032
+  - factor_gen033
+  - factor_gen034
+  - factor_gen035
+  - factor_gen036
+  - factor_gen037
+  - base_research
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_latest_1s_v1
+    factors:
+    - book_micro_l1_crossqty_delta_ticks_100ms_mean_5s
+    - book_micro_l1_crossqty_delta_ticks_100ms_mean_10s
+    - book_micro_l1_crossqty_delta_ticks_100ms_mean_30s
+    - book_micro_l1_crossqty_delta_ticks_100ms_mean_100s
+    - book_micro_l1_sqrtqty_delta_ticks_100ms_mean_5s
+    - book_micro_l1_sqrtqty_delta_ticks_100ms_mean_10s
+    - book_micro_l1_sqrtqty_delta_ticks_100ms_mean_30s
+    - book_micro_l1_sqrtqty_delta_ticks_100ms_mean_100s
+    - book_micro_l1_touchsign_delta_ticks_100ms_mean_5s
+    - book_micro_l1_touchsign_delta_ticks_100ms_mean_10s
+    - book_micro_l1_touchsign_delta_ticks_100ms_mean_30s
+    - book_micro_l1_touchsign_delta_ticks_100ms_mean_100s
+    - book_micro_l5_crossqty_delta_ticks_100ms_mean_5s
+    - book_micro_l5_crossqty_delta_ticks_100ms_mean_10s
+    - book_micro_l5_crossqty_delta_ticks_100ms_mean_30s
+    - book_micro_l5_crossqty_delta_ticks_100ms_mean_100s
+    - book_micro_l5_sqrtqty_delta_ticks_100ms_mean_5s
+    - book_micro_l5_sqrtqty_delta_ticks_100ms_mean_10s
+    - book_micro_l5_sqrtqty_delta_ticks_100ms_mean_30s
+    - book_micro_l5_sqrtqty_delta_ticks_100ms_mean_100s
+    - book_micro_l5_touchsign_delta_ticks_100ms_mean_5s
+    - book_micro_l5_touchsign_delta_ticks_100ms_mean_10s
+    - book_micro_l5_touchsign_delta_ticks_100ms_mean_30s
+    - book_micro_l5_touchsign_delta_ticks_100ms_mean_100s
+    - book_micro_l10_crossqty_delta_ticks_100ms_mean_5s
+    - book_micro_l10_crossqty_delta_ticks_100ms_mean_10s
+    - book_micro_l10_crossqty_delta_ticks_100ms_mean_30s
+    - book_micro_l10_crossqty_delta_ticks_100ms_mean_100s
+    - book_micro_l10_sqrtqty_delta_ticks_100ms_mean_5s
+    - book_micro_l10_sqrtqty_delta_ticks_100ms_mean_10s
+    - book_micro_l10_sqrtqty_delta_ticks_100ms_mean_30s
+    - book_micro_l10_sqrtqty_delta_ticks_100ms_mean_100s
+    - book_micro_l10_touchsign_delta_ticks_100ms_mean_5s
+    - book_micro_l10_touchsign_delta_ticks_100ms_mean_10s
+    - book_micro_l10_touchsign_delta_ticks_100ms_mean_30s
+    - book_micro_l10_touchsign_delta_ticks_100ms_mean_100s
+    output: workspace/results/evaluation/server_factors_latest_1s_v1
+    factor_batch_size: 18
+    workers: 4
+  generated_config: workspace/results/overnight_2026-11-07/configs/evaluation_gen031.yaml
+- id: factor_gen032
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/overnight_2026-11-07/configs/factor_gen032.yaml
+  threads: 3
+  estimated_peak_gib: 22
+  memory_limit_gib: 30
+  requires_success: []
+  after_finished: []
+  priority: 10
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches:
+    - gen032
+    chunk_days: 42
+  generated_config: workspace/results/overnight_2026-11-07/configs/factor_gen032.yaml
+- id: evaluation_gen032
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/overnight_2026-11-07/configs/evaluation_gen032.yaml
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_gen032
+  after_finished:
+  - factor_gen031
+  - factor_gen032
+  - factor_gen033
+  - factor_gen034
+  - factor_gen035
+  - factor_gen036
+  - factor_gen037
+  - base_research
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_latest_1s_v1
+    factors:
+    - px_mid_transition_cont_100ms_mean_5s
+    - px_mid_transition_cont_100ms_mean_10s
+    - px_mid_transition_cont_100ms_mean_30s
+    - px_mid_transition_cont_100ms_mean_100s
+    - px_mid_transition_flip_100ms_mean_5s
+    - px_mid_transition_flip_100ms_mean_10s
+    - px_mid_transition_flip_100ms_mean_30s
+    - px_mid_transition_flip_100ms_mean_100s
+    - px_mid_transition_signed_100ms_mean_5s
+    - px_mid_transition_signed_100ms_mean_10s
+    - px_mid_transition_signed_100ms_mean_30s
+    - px_mid_transition_signed_100ms_mean_100s
+    - px_bid_transition_cont_100ms_mean_5s
+    - px_bid_transition_cont_100ms_mean_10s
+    - px_bid_transition_cont_100ms_mean_30s
+    - px_bid_transition_cont_100ms_mean_100s
+    - px_bid_transition_flip_100ms_mean_5s
+    - px_bid_transition_flip_100ms_mean_10s
+    - px_bid_transition_flip_100ms_mean_30s
+    - px_bid_transition_flip_100ms_mean_100s
+    - px_bid_transition_signed_100ms_mean_5s
+    - px_bid_transition_signed_100ms_mean_10s
+    - px_bid_transition_signed_100ms_mean_30s
+    - px_bid_transition_signed_100ms_mean_100s
+    - px_ask_transition_cont_100ms_mean_5s
+    - px_ask_transition_cont_100ms_mean_10s
+    - px_ask_transition_cont_100ms_mean_30s
+    - px_ask_transition_cont_100ms_mean_100s
+    - px_ask_transition_flip_100ms_mean_5s
+    - px_ask_transition_flip_100ms_mean_10s
+    - px_ask_transition_flip_100ms_mean_30s
+    - px_ask_transition_flip_100ms_mean_100s
+    - px_ask_transition_signed_100ms_mean_5s
+    - px_ask_transition_signed_100ms_mean_10s
+    - px_ask_transition_signed_100ms_mean_30s
+    - px_ask_transition_signed_100ms_mean_100s
+    output: workspace/results/evaluation/server_factors_latest_1s_v1
+    factor_batch_size: 18
+    workers: 4
+  generated_config: workspace/results/overnight_2026-11-07/configs/evaluation_gen032.yaml
+- id: factor_gen033
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/overnight_2026-11-07/configs/factor_gen033.yaml
+  threads: 3
+  estimated_peak_gib: 22
+  memory_limit_gib: 30
+  requires_success: []
+  after_finished: []
+  priority: 10
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches:
+    - gen033
+    chunk_days: 42
+  generated_config: workspace/results/overnight_2026-11-07/configs/factor_gen033.yaml
+- id: evaluation_gen033
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/overnight_2026-11-07/configs/evaluation_gen033.yaml
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_gen033
+  after_finished:
+  - factor_gen031
+  - factor_gen032
+  - factor_gen033
+  - factor_gen034
+  - factor_gen035
+  - factor_gen036
+  - factor_gen037
+  - base_research
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_latest_1s_v1
+    factors:
+    - noise_mid_ret_lag1_prod_100ms_mean_5s
+    - noise_mid_ret_lag1_prod_100ms_mean_10s
+    - noise_mid_ret_lag1_prod_100ms_mean_30s
+    - noise_mid_ret_lag1_prod_100ms_mean_100s
+    - noise_mid_ret_lag2_prod_100ms_mean_5s
+    - noise_mid_ret_lag2_prod_100ms_mean_10s
+    - noise_mid_ret_lag2_prod_100ms_mean_30s
+    - noise_mid_ret_lag2_prod_100ms_mean_100s
+    - noise_mid_reversal_overlap_100ms_mean_5s
+    - noise_mid_reversal_overlap_100ms_mean_10s
+    - noise_mid_reversal_overlap_100ms_mean_30s
+    - noise_mid_reversal_overlap_100ms_mean_100s
+    - noise_bid_ret_lag1_prod_100ms_mean_5s
+    - noise_bid_ret_lag1_prod_100ms_mean_10s
+    - noise_bid_ret_lag1_prod_100ms_mean_30s
+    - noise_bid_ret_lag1_prod_100ms_mean_100s
+    - noise_bid_ret_lag2_prod_100ms_mean_5s
+    - noise_bid_ret_lag2_prod_100ms_mean_10s
+    - noise_bid_ret_lag2_prod_100ms_mean_30s
+    - noise_bid_ret_lag2_prod_100ms_mean_100s
+    - noise_bid_reversal_overlap_100ms_mean_5s
+    - noise_bid_reversal_overlap_100ms_mean_10s
+    - noise_bid_reversal_overlap_100ms_mean_30s
+    - noise_bid_reversal_overlap_100ms_mean_100s
+    - noise_ask_ret_lag1_prod_100ms_mean_5s
+    - noise_ask_ret_lag1_prod_100ms_mean_10s
+    - noise_ask_ret_lag1_prod_100ms_mean_30s
+    - noise_ask_ret_lag1_prod_100ms_mean_100s
+    - noise_ask_ret_lag2_prod_100ms_mean_5s
+    - noise_ask_ret_lag2_prod_100ms_mean_10s
+    - noise_ask_ret_lag2_prod_100ms_mean_30s
+    - noise_ask_ret_lag2_prod_100ms_mean_100s
+    - noise_ask_reversal_overlap_100ms_mean_5s
+    - noise_ask_reversal_overlap_100ms_mean_10s
+    - noise_ask_reversal_overlap_100ms_mean_30s
+    - noise_ask_reversal_overlap_100ms_mean_100s
+    output: workspace/results/evaluation/server_factors_latest_1s_v1
+    factor_batch_size: 18
+    workers: 4
+  generated_config: workspace/results/overnight_2026-11-07/configs/evaluation_gen033.yaml
+- id: factor_gen034
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/overnight_2026-11-07/configs/factor_gen034.yaml
+  threads: 3
+  estimated_peak_gib: 22
+  memory_limit_gib: 30
+  requires_success: []
+  after_finished: []
+  priority: 10
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches:
+    - gen034
+    chunk_days: 7
+  generated_config: workspace/results/overnight_2026-11-07/configs/factor_gen034.yaml
+- id: evaluation_gen034
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/overnight_2026-11-07/configs/evaluation_gen034.yaml
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_gen034
+  after_finished:
+  - factor_gen031
+  - factor_gen032
+  - factor_gen033
+  - factor_gen034
+  - factor_gen035
+  - factor_gen036
+  - factor_gen037
+  - base_research
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_latest_1s_v1
+    factors:
+    - info_mid_move_sign_100ms_entropy_5s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_5s
+    - info_mid_move_sign_100ms_mi_lag2_5s
+    - info_mid_move_sign_100ms_entropy_10s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_10s
+    - info_mid_move_sign_100ms_mi_lag2_10s
+    - info_mid_move_sign_100ms_entropy_30s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_30s
+    - info_mid_move_sign_100ms_mi_lag2_30s
+    - info_mid_move_sign_100ms_entropy_100s
+    - info_mid_move_sign_100ms_cond_entropy_lag1_100s
+    - info_mid_move_sign_100ms_mi_lag2_100s
+    - info_trade_aggr_sign_100ms_entropy_5s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_5s
+    - info_trade_aggr_sign_100ms_mi_lag2_5s
+    - info_trade_aggr_sign_100ms_entropy_10s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_10s
+    - info_trade_aggr_sign_100ms_mi_lag2_10s
+    - info_trade_aggr_sign_100ms_entropy_30s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_30s
+    - info_trade_aggr_sign_100ms_mi_lag2_30s
+    - info_trade_aggr_sign_100ms_entropy_100s
+    - info_trade_aggr_sign_100ms_cond_entropy_lag1_100s
+    - info_trade_aggr_sign_100ms_mi_lag2_100s
+    - info_book_obi_l5_sign_100ms_entropy_5s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_5s
+    - info_book_obi_l5_sign_100ms_mi_lag2_5s
+    - info_book_obi_l5_sign_100ms_entropy_10s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_10s
+    - info_book_obi_l5_sign_100ms_mi_lag2_10s
+    - info_book_obi_l5_sign_100ms_entropy_30s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_30s
+    - info_book_obi_l5_sign_100ms_mi_lag2_30s
+    - info_book_obi_l5_sign_100ms_entropy_100s
+    - info_book_obi_l5_sign_100ms_cond_entropy_lag1_100s
+    - info_book_obi_l5_sign_100ms_mi_lag2_100s
+    output: workspace/results/evaluation/server_factors_latest_1s_v1
+    factor_batch_size: 18
+    workers: 4
+  generated_config: workspace/results/overnight_2026-11-07/configs/evaluation_gen034.yaml
+- id: factor_gen035
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/overnight_2026-11-07/configs/factor_gen035.yaml
+  threads: 3
+  estimated_peak_gib: 22
+  memory_limit_gib: 30
+  requires_success: []
+  after_finished: []
+  priority: 10
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches:
+    - gen035
+    chunk_days: 42
+  generated_config: workspace/results/overnight_2026-11-07/configs/factor_gen035.yaml
+- id: evaluation_gen035
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/overnight_2026-11-07/configs/evaluation_gen035.yaml
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_gen035
+  after_finished:
+  - factor_gen031
+  - factor_gen032
+  - factor_gen033
+  - factor_gen034
+  - factor_gen035
+  - factor_gen036
+  - factor_gen037
+  - base_research
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_latest_1s_v1
+    factors:
+    - book_bid_marginal_density_l1_2_mean_5s
+    - book_bid_marginal_density_l1_2_mean_10s
+    - book_bid_marginal_density_l1_2_mean_30s
+    - book_bid_marginal_density_l1_2_mean_100s
+    - book_ask_marginal_density_l1_2_mean_5s
+    - book_ask_marginal_density_l1_2_mean_10s
+    - book_ask_marginal_density_l1_2_mean_30s
+    - book_ask_marginal_density_l1_2_mean_100s
+    - book_marginal_density_asym_l1_2_mean_5s
+    - book_marginal_density_asym_l1_2_mean_10s
+    - book_marginal_density_asym_l1_2_mean_30s
+    - book_marginal_density_asym_l1_2_mean_100s
+    - book_bid_marginal_density_l3_5_mean_5s
+    - book_bid_marginal_density_l3_5_mean_10s
+    - book_bid_marginal_density_l3_5_mean_30s
+    - book_bid_marginal_density_l3_5_mean_100s
+    - book_ask_marginal_density_l3_5_mean_5s
+    - book_ask_marginal_density_l3_5_mean_10s
+    - book_ask_marginal_density_l3_5_mean_30s
+    - book_ask_marginal_density_l3_5_mean_100s
+    - book_marginal_density_asym_l3_5_mean_5s
+    - book_marginal_density_asym_l3_5_mean_10s
+    - book_marginal_density_asym_l3_5_mean_30s
+    - book_marginal_density_asym_l3_5_mean_100s
+    - book_bid_marginal_density_l6_10_mean_5s
+    - book_bid_marginal_density_l6_10_mean_10s
+    - book_bid_marginal_density_l6_10_mean_30s
+    - book_bid_marginal_density_l6_10_mean_100s
+    - book_ask_marginal_density_l6_10_mean_5s
+    - book_ask_marginal_density_l6_10_mean_10s
+    - book_ask_marginal_density_l6_10_mean_30s
+    - book_ask_marginal_density_l6_10_mean_100s
+    - book_marginal_density_asym_l6_10_mean_5s
+    - book_marginal_density_asym_l6_10_mean_10s
+    - book_marginal_density_asym_l6_10_mean_30s
+    - book_marginal_density_asym_l6_10_mean_100s
+    output: workspace/results/evaluation/server_factors_latest_1s_v1
+    factor_batch_size: 18
+    workers: 4
+  generated_config: workspace/results/overnight_2026-11-07/configs/evaluation_gen035.yaml
+- id: factor_gen036
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/overnight_2026-11-07/configs/factor_gen036.yaml
+  threads: 3
+  estimated_peak_gib: 22
+  memory_limit_gib: 30
+  requires_success: []
+  after_finished: []
+  priority: 10
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches:
+    - gen036
+    chunk_days: 7
+  generated_config: workspace/results/overnight_2026-11-07/configs/factor_gen036.yaml
+- id: evaluation_gen036
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/overnight_2026-11-07/configs/evaluation_gen036.yaml
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_gen036
+  after_finished:
+  - factor_gen031
+  - factor_gen032
+  - factor_gen033
+  - factor_gen034
+  - factor_gen035
+  - factor_gen036
+  - factor_gen037
+  - base_research
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_latest_1s_v1
+    factors:
+    - book_obi_l5_lag_beta_5s
+    - book_obi_l5_lag_corr_5s
+    - book_obi_l5_lag_asym_beta_5s
+    - book_obi_l5_lag_beta_10s
+    - book_obi_l5_lag_corr_10s
+    - book_obi_l5_lag_asym_beta_10s
+    - book_obi_l5_lag_beta_30s
+    - book_obi_l5_lag_corr_30s
+    - book_obi_l5_lag_asym_beta_30s
+    - book_obi_l5_lag_beta_100s
+    - book_obi_l5_lag_corr_100s
+    - book_obi_l5_lag_asym_beta_100s
+    - trade_aggr_imb_100ms_lag_beta_5s
+    - trade_aggr_imb_100ms_lag_corr_5s
+    - trade_aggr_imb_100ms_lag_asym_beta_5s
+    - trade_aggr_imb_100ms_lag_beta_10s
+    - trade_aggr_imb_100ms_lag_corr_10s
+    - trade_aggr_imb_100ms_lag_asym_beta_10s
+    - trade_aggr_imb_100ms_lag_beta_30s
+    - trade_aggr_imb_100ms_lag_corr_30s
+    - trade_aggr_imb_100ms_lag_asym_beta_30s
+    - trade_aggr_imb_100ms_lag_beta_100s
+    - trade_aggr_imb_100ms_lag_corr_100s
+    - trade_aggr_imb_100ms_lag_asym_beta_100s
+    - trade_aggr_imb_1s_lag_beta_5s
+    - trade_aggr_imb_1s_lag_corr_5s
+    - trade_aggr_imb_1s_lag_asym_beta_5s
+    - trade_aggr_imb_1s_lag_beta_10s
+    - trade_aggr_imb_1s_lag_corr_10s
+    - trade_aggr_imb_1s_lag_asym_beta_10s
+    - trade_aggr_imb_1s_lag_beta_30s
+    - trade_aggr_imb_1s_lag_corr_30s
+    - trade_aggr_imb_1s_lag_asym_beta_30s
+    - trade_aggr_imb_1s_lag_beta_100s
+    - trade_aggr_imb_1s_lag_corr_100s
+    - trade_aggr_imb_1s_lag_asym_beta_100s
+    output: workspace/results/evaluation/server_factors_latest_1s_v1
+    factor_batch_size: 18
+    workers: 4
+  generated_config: workspace/results/overnight_2026-11-07/configs/evaluation_gen036.yaml
+- id: factor_gen037
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/build_factors.py
+  - workspace/results/overnight_2026-11-07/configs/factor_gen037.yaml
+  threads: 3
+  estimated_peak_gib: 22
+  memory_limit_gib: 30
+  requires_success: []
+  after_finished: []
+  priority: 10
+  config_template: config/factors/gen031_037.yaml
+  config_overrides:
+    batches:
+    - gen037
+    chunk_days: 42
+  generated_config: workspace/results/overnight_2026-11-07/configs/factor_gen037.yaml
+- id: evaluation_gen037
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/evaluate_factors.py
+  - workspace/results/overnight_2026-11-07/configs/evaluation_gen037.yaml
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - factor_gen037
+  after_finished:
+  - factor_gen031
+  - factor_gen032
+  - factor_gen033
+  - factor_gen034
+  - factor_gen035
+  - factor_gen036
+  - factor_gen037
+  - base_research
+  priority: 20
+  config_template: config/evaluation/all_non_ofi.yaml
+  config_overrides:
+    factor_version: server_factors_latest_1s_v1
+    factors:
+    - intrasec_count_late_early_1s_sec_mean_5s
+    - intrasec_count_late_early_1s_sec_mean_10s
+    - intrasec_count_late_early_1s_sec_mean_30s
+    - intrasec_count_late_early_1s_sec_mean_100s
+    - intrasec_count_centroid_1s_sec_mean_5s
+    - intrasec_count_centroid_1s_sec_mean_10s
+    - intrasec_count_centroid_1s_sec_mean_30s
+    - intrasec_count_centroid_1s_sec_mean_100s
+    - intrasec_count_hhi_1s_sec_mean_5s
+    - intrasec_count_hhi_1s_sec_mean_10s
+    - intrasec_count_hhi_1s_sec_mean_30s
+    - intrasec_count_hhi_1s_sec_mean_100s
+    - intrasec_qty_late_early_1s_sec_mean_5s
+    - intrasec_qty_late_early_1s_sec_mean_10s
+    - intrasec_qty_late_early_1s_sec_mean_30s
+    - intrasec_qty_late_early_1s_sec_mean_100s
+    - intrasec_qty_centroid_1s_sec_mean_5s
+    - intrasec_qty_centroid_1s_sec_mean_10s
+    - intrasec_qty_centroid_1s_sec_mean_30s
+    - intrasec_qty_centroid_1s_sec_mean_100s
+    - intrasec_qty_hhi_1s_sec_mean_5s
+    - intrasec_qty_hhi_1s_sec_mean_10s
+    - intrasec_qty_hhi_1s_sec_mean_30s
+    - intrasec_qty_hhi_1s_sec_mean_100s
+    - intrasec_absret_late_early_1s_sec_mean_5s
+    - intrasec_absret_late_early_1s_sec_mean_10s
+    - intrasec_absret_late_early_1s_sec_mean_30s
+    - intrasec_absret_late_early_1s_sec_mean_100s
+    - intrasec_absret_centroid_1s_sec_mean_5s
+    - intrasec_absret_centroid_1s_sec_mean_10s
+    - intrasec_absret_centroid_1s_sec_mean_30s
+    - intrasec_absret_centroid_1s_sec_mean_100s
+    - intrasec_absret_hhi_1s_sec_mean_5s
+    - intrasec_absret_hhi_1s_sec_mean_10s
+    - intrasec_absret_hhi_1s_sec_mean_30s
+    - intrasec_absret_hhi_1s_sec_mean_100s
+    output: workspace/results/evaluation/server_factors_latest_1s_v1
+    factor_batch_size: 18
+    workers: 4
+  generated_config: workspace/results/overnight_2026-11-07/configs/evaluation_gen037.yaml
+- id: factor_gen030
+  lane: cpu
+  command: []
+  threads: 1
+  estimated_peak_gib: 0
+  memory_limit_gib: 0
+  requires_success: []
+  after_finished: []
+  priority: 10
+  blocked_reason: "\u7F3A\u5C11BTC\u73B0\u8D27\u76D8\u53E3\uFF0C\u7B49\u5F85\u6570\
+    \u636E\u540E\u8BA1\u7B97"
+- id: factor_gen038
+  lane: cpu
+  command: []
+  threads: 1
+  estimated_peak_gib: 0
+  memory_limit_gib: 0
+  requires_success: []
+  after_finished: []
+  priority: 10
+  blocked_reason: "\u7F3A\u5C11\u6807\u8BB0\u4EF7\u683C\u548C\u6307\u6570\u4EF7\u683C\
+    \u7684\u6709\u6548\u65F6\u949F\u6570\u636E\uFF0C\u7B49\u5F85\u6570\u636E\u540E\
+    \u8BA1\u7B97"
+- id: factor_gen039
+  lane: cpu
+  command: []
+  threads: 1
+  estimated_peak_gib: 0
+  memory_limit_gib: 0
+  requires_success: []
+  after_finished: []
+  priority: 10
+  blocked_reason: "\u7F3A\u5C11\u53EF\u6838\u5B9E\u8986\u76D6\u7684\u5F3A\u5E73\u4E8B\
+    \u4EF6\u6D41\uFF0C\u7B49\u5F85\u6570\u636E\u540E\u8BA1\u7B97"
+- id: factor_gen040
+  lane: cpu
+  command: []
+  threads: 1
+  estimated_peak_gib: 0
+  memory_limit_gib: 0
+  requires_success: []
+  after_finished: []
+  priority: 10
+  blocked_reason: "\u7F3A\u5C11ETHUSDT\u76D8\u53E3\u4E0E\u9010\u7B14\u6570\u636E\uFF0C\
+    \u7B49\u5F85\u6570\u636E\u540E\u8BA1\u7B97"

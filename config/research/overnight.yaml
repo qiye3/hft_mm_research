@@ -1,0 +1,10 @@
+# Research总配置，各阶段的配置分别声明输入输出。
+# 运行 scripts/run_research.py 本配置。
+stage: research
+feature_config: config/features/build_531d.yaml
+factor_config: config/factors/all_non_ofi.yaml
+evaluation_config: config/evaluation/all_non_ofi.yaml
+model_config: config/models/linear_baseline.yaml
+replay_config: config/replay/linear_test_day.yaml
+output: workspace/results/research/one_second_v1
+target_config: config/targets/build_1s.yaml

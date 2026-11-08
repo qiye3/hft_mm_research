@@ -12,7 +12,7 @@ import polars as pl
 from mm_research.data.sources import DAY_NS
 
 
-# 【核心逻辑21】计算买卖双方的归一化失衡，区分零量窗口与未知值。
+# 【核心逻辑22】计算买卖双方的归一化失衡，区分零量窗口与未知值。
 def normalized_imbalance(buy: pl.Expr, sell: pl.Expr, *, empty_value: float | None) -> pl.Expr:
     """输入双方非负数量表达式及空窗值，输出归一化差值表达式。
 
@@ -25,7 +25,7 @@ def normalized_imbalance(buy: pl.Expr, sell: pl.Expr, *, empty_value: float | No
     )
 
 
-# 【核心逻辑15】建立完整UTC日采样网格，统一盘口与成交的窗口结束时刻。
+# 【核心逻辑16】建立完整UTC日采样网格，统一盘口与成交的窗口结束时刻。
 def make_day_grid(date: str, interval_ns: int) -> pl.DataFrame:
     """输入 UTC 日期与正的采样间隔，返回覆盖 [日初,次日日初) 的时间表。
 

@@ -5,6 +5,7 @@
 """
 
 from contextlib import contextmanager, ExitStack
+from concurrent.futures import ThreadPoolExecutor
 import fcntl
 import json
 import os
@@ -79,7 +80,7 @@ def write_parquet(table: pl.LazyFrame, filename: Path, metadata: dict) -> None:
         staging.replace(filename)
 
 
-# 【核心逻辑19】按共同时间键读取选定研究列，并检查输入来自同一数据定义。
+# 【核心逻辑20】按共同时间键读取选定研究列，并检查输入来自同一数据定义。
 def scan_series(folder: Path, columns: list[str], dates: list[str] | None = None) -> tuple[pl.LazyFrame, dict]:
     """输入单变量文件目录、列名和可选日期，返回时间对齐的查询与共同定义。
 
@@ -92,7 +93,9 @@ def scan_series(folder: Path, columns: list[str], dates: list[str] | None = None
     first_scan = pl.scan_parquet(first)
     if dates is not None:
         first_scan = first_scan.filter(pl.col("date").is_in(dates))
-    table = first_scan.select(*KEY_COLUMNS, columns[0])
+    # 正式单变量文件由同一完整时间网格按序发布，日期筛选保持顺序和唯一性。
+    # 显式声明顺序让Polars采用流式归并，逐次1:1检查会触发全量内存关联。
+    table = first_scan.select(*KEY_COLUMNS, columns[0]).set_sorted("timestamp_ns")
     for column in columns[1:]:
         filename = folder / f"{column}.parquet"
         if read_metadata(filename)["dataset"] != reference:
@@ -100,6 +103,44 @@ def scan_series(folder: Path, columns: list[str], dates: list[str] | None = None
         values = pl.scan_parquet(filename)
         if dates is not None:
             values = values.filter(pl.col("date").is_in(dates))
-        values = values.select("timestamp_ns", column)
-        table = table.join(values, on="timestamp_ns", how="left", validate="1:1", maintain_order="left")
+        values = values.select("timestamp_ns", column).set_sorted("timestamp_ns")
+        table = table.join(values, on="timestamp_ns", how="left", maintain_order="left")
     return table, reference
+
+
+# 【非核心】逐块追加一组单变量文件，整段完成后分别原子发布。
+def write_series_frames(frames, folder: Path, columns: list[str], metadata: dict) -> None:
+    """输入按时间排序的有限内存表块，追加Parquet行组并清理未完成临时文件。"""
+    folder.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".series-", dir=folder) as temporary, ExitStack() as streams, ThreadPoolExecutor(max_workers=5) as compression:
+        staging = Path(temporary)
+        writers = {}
+        for frame in frames:
+            pending = []
+            for column in columns:
+                table = frame.select(*KEY_COLUMNS, column).to_arrow()
+                if column not in writers:
+                    definition = {**metadata[column], "schema_version": SCHEMA_VERSION}
+                    schema = table.schema.with_metadata({METADATA_KEY: json.dumps(definition, sort_keys=True).encode()})
+                    writer = pq.ParquetWriter(
+                        staging / f"{column}.parquet", schema, compression="zstd", compression_level=3,
+                        use_dictionary=["symbol", "date"], column_encoding={"timestamp_ns": "DELTA_BINARY_PACKED"},
+                    )
+                    writers[column] = streams.enter_context(writer)
+                pending.append(compression.submit(writers[column].write_table, table, row_group_size=100_000))
+            # 每列拥有独立writer，同一帧完成后再接下一帧，保持各文件行组顺序。
+            for completed in pending:
+                completed.result()
+        streams.close()
+        for column in columns:
+            (staging / f"{column}.parquet").replace(folder / f"{column}.parquet")
+
+
+# 【非核心】以原子替换发布小型JSON状态，避免中断后留下半份缓存定义。
+def write_json_atomic(filename: Path, content: dict) -> None:
+    """调用方负责需要的写锁，临时文件与正式文件位于同一文件系统。"""
+    filename.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".json-", dir=filename.parent) as temporary:
+        staging = Path(temporary) / filename.name
+        staging.write_text(json.dumps(content, ensure_ascii=False, indent=2) + "\n")
+        staging.replace(filename)

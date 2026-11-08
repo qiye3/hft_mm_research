@@ -1,6 +1,6 @@
 """base特征组，从标准盘口和逐笔计算100ms基础列。
 
-结果与衍生组共同保存到日期命名的特征Parquet，供增量特征和独立标签复用。
+结果与衍生组共同按变量保存为全日期Parquet，供增量特征和独立标签复用。
 """
 
 import datetime as dt
@@ -26,7 +26,7 @@ BASE_COLUMNS = [
 ]
 
 
-# 【核心逻辑12】关联100ms盘口和成交汇总，生成完整网格并将异常研究值置空。
+# 【核心逻辑13】关联100ms盘口和成交汇总，生成完整网格并将异常研究值置空。
 def build_base_features(folder: Path, date: str, interval_ns: int, lot_size: float,
                         max_book_age_ns: int, market_data_latency_ns: int) -> pl.DataFrame:
     """输入标准行情与采样配置，返回可独立用于特征和标签的100ms表。

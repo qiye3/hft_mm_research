@@ -1,12 +1,10 @@
-# 所属阶段为Factors，公式位于factors/gen001.py。
-# 执行命令 .venv/bin/python scripts/build_factors.py config/factors/gen001.yaml
-# 输入 feature_root/feature_version/特征名.parquet，包含全日期连续序列。
-# 输出 factor_root/factor_version/因子名.parquet，窗口忽略缺失值并按min_samples判断。
+# Factors小样本配置。输入服务器100ms Features，输出2026年7月Gen001整秒因子。
+# 运行 scripts/build_factors.py 本配置。小样本产物与全量版本分别保存。
 stage: factors
 feature_root: workspace/data/features
-feature_version: market_columns_v1
+feature_version: server_531d_v1
 factor_root: workspace/data/factors
-factor_version: gen001_v1
+factor_version: sample_gen001_1s_v1
 dates:
 - '2026-07-01'
 - '2026-07-02'
@@ -38,14 +36,12 @@ dates:
 - '2026-07-28'
 - '2026-07-29'
 - '2026-07-30'
-factors:
-- book_obi_l1_mean_diff_10_50
-- book_obi_l5_mean_diff_10_50
-- book_obi_l10_mean_diff_10_50
-- trade_aggr_imb_100ms_mean_diff_10_50
-- trade_aggr_imb_1s_mean_diff_10_50
-- cross_trade_book_gap_mean_diff_10_50
-short_window: 10
-long_window: 50
-short_min_samples: 8
-long_min_samples: 40
+batches:
+- gen001
+min_fraction: 0.8
+tick_size: 0.1
+chunk_days: 42
+workers: 2
+merge_workers: 5
+write_threads: 5
+output_interval_ns: 1000000000

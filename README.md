@@ -82,22 +82,22 @@ python scripts/analyze_baseline.py --analyze-existing workspace/results/m1/BTCUS
 
 ```sh
 python scripts/build_standard_data.py config/data/standardize_30d.yaml
-python scripts/build_features_targets.py config/features/build_30d.yaml
-python scripts/summarize_research_dataset.py workspace/data/features/market_columns_v1 \
-  workspace/results/m2_standard/market_columns_v1/statistics_30d.json \
-  --labels workspace/data/labels/market_mid_columns_v1/horizon=1s
+python scripts/build_features.py config/features/build_30d.yaml
 ```
 
-Data 使用 `config/data/standardize_30d.yaml`，Features/Targets 使用 `config/features/build_30d.yaml`。标准数据按 `standard/版本/{snapshots,trades}/日期.parquet` 保存，特征按 `features/版本/特征名.parquet` 保存，标签按 `labels/版本/horizon=周期/日期.parquet` 保存。来源、字段、版本和 X、y 读取见 [研究包指南](docs/implementation/research_package.md)。
+Data 使用 `config/data/standardize_30d.yaml`，Features 使用 `config/features/build_30d.yaml`。服务器整秒标签使用独立配置 `config/targets/build_1s.yaml`，入口为 `scripts/build_labels.py`。标准数据按 `standard/版本/{snapshots,trades}/日期.parquet` 保存，特征按 `features/版本/特征名.parquet` 保存，标签按 `labels/版本/horizon=周期/日期.parquet` 保存。来源、字段、版本和 X、y 读取见 [研究包指南](docs/implementation/research_package.md)。
 
-### 6. 生成与评估Gen001
+### 6. 服务器整秒研究
+
+已有531天Features后，分别生成标签、因子和评价。
 
 ```sh
-POLARS_MAX_THREADS=6 python scripts/build_factors.py config/factors/gen001.yaml
-POLARS_MAX_THREADS=6 python scripts/evaluate_factors.py config/evaluation/gen001.yaml
+python scripts/build_labels.py config/targets/build_1s.yaml
+POLARS_MAX_THREADS=5 python scripts/build_factors.py config/factors/all_non_ofi.yaml
+POLARS_MAX_THREADS=2 python scripts/evaluate_factors.py config/evaluation/all_non_ofi.yaml
 ```
 
-每个Feature和Factor各保存全部日期。窗口跨午夜连续计算，缺失值通过min_samples处理。评估报告位于 `workspace/results/evaluation/gen001_v1/report.html`。
+每个Feature和Factor各保存全部日期。窗口跨午夜连续计算，缺失值通过min_samples处理。评估报告位于 `workspace/results/evaluation/server_factors_1s_v1/report.html`。
 
 ## 项目结构
 
@@ -163,3 +163,7 @@ M1 默认每单 0.001 BTC、最大净仓位 0.01 BTC，Maker/Taker 费率为 2/5
 - [M1 委托状态、库存与账本](docs/implementation/m1_notes.md)
 - [M1 报价宽度、库存上限与更新频率实验](docs/reports/m1_2025-02-01/report.md)
 - [历史合约规则获取状态](docs/reports/m0_2025-02-01/report.md#未取得的合约元数据)
+
+## 夜间批量研究
+
+常驻任务、内存上限、失败隔离及GPU模型队列见[夜间研究指南](docs/implementation/overnight_research.md)。

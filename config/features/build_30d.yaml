@@ -1,68 +1,51 @@
-# 所属阶段为Features与Targets，读取标准Parquet，生成特征和预测标签。
-# 执行命令 .venv/bin/python scripts/build_features_targets.py config/features/build_30d.yaml
-# 标准输入为standard_root/standard_version/{snapshots,trades}/YYYY-MM-DD.parquet。
-# 每个Feature保存全部日期，缺失值为null，滚动窗口跨日连续。
-# 最终特征为feature_root/feature_version/特征名.parquet。
-# 最终标签为label_root/label_version/horizon=周期/YYYY-MM-DD.parquet。
-stage: features_targets
-
-# 已由Data阶段生成的标准行情输入。
+# Features配置。输入标准100ms盘口和逐笔，输出分组单变量Features。
+# 运行 scripts/build_features.py 本配置 --workers 2。
+stage: features
 standard_root: workspace/data/standard
 standard_version: market_v2
-# 本次计算的UTC日期，所选日期的标准行情应已存在。
 dates:
-  - '2026-07-01'
-  - '2026-07-02'
-  - '2026-07-03'
-  - '2026-07-04'
-  - '2026-07-05'
-  - '2026-07-06'
-  - '2026-07-07'
-  - '2026-07-08'
-  - '2026-07-09'
-  - '2026-07-10'
-  - '2026-07-11'
-  - '2026-07-12'
-  - '2026-07-13'
-  - '2026-07-14'
-  - '2026-07-15'
-  - '2026-07-16'
-  - '2026-07-17'
-  - '2026-07-18'
-  - '2026-07-19'
-  - '2026-07-20'
-  - '2026-07-21'
-  - '2026-07-22'
-  - '2026-07-23'
-  - '2026-07-24'
-  - '2026-07-25'
-  - '2026-07-26'
-  - '2026-07-27'
-  - '2026-07-28'
-  - '2026-07-29'
-  - '2026-07-30'
-# 本次选择的组与公式版本，依赖的base组会自动加入。
+- '2026-07-01'
+- '2026-07-02'
+- '2026-07-03'
+- '2026-07-04'
+- '2026-07-05'
+- '2026-07-06'
+- '2026-07-07'
+- '2026-07-08'
+- '2026-07-09'
+- '2026-07-10'
+- '2026-07-11'
+- '2026-07-12'
+- '2026-07-13'
+- '2026-07-14'
+- '2026-07-15'
+- '2026-07-16'
+- '2026-07-17'
+- '2026-07-18'
+- '2026-07-19'
+- '2026-07-20'
+- '2026-07-21'
+- '2026-07-22'
+- '2026-07-23'
+- '2026-07-24'
+- '2026-07-25'
+- '2026-07-26'
+- '2026-07-27'
+- '2026-07-28'
+- '2026-07-29'
+- '2026-07-30'
 feature_groups:
   base: v3
   book: v2
   trades: v2
   returns: v2
-# 最终特征输出。
 feature_root: workspace/data/features
 feature_version: market_columns_v1
-# 预测标签输出，每个周期独立保存。
-label_root: workspace/data/labels
-label_version: market_mid_columns_v1
-# Features基础计算参数，时间统一使用纳秒。
-market_data_latency_ns: 20000000  # 模拟可见时间比交易所时间晚20ms。
-interval_ns: 100000000          # 每100ms一个样本。
+market_data_latency_ns: 20000000
+interval_ns: 100000000
 tick_size: 0.1
 lot_size: 0.001
-max_book_age_ns: 1000000000     # 最近可见快照超过1s时盘口无效。
-# Targets参数，依次对应100ms、500ms、1s、5s预测周期。
-horizons_ns: [100000000, 500000000, 1000000000, 5000000000]
-
-# 每个滚动窗口需要的最少有效观测，1s为10点、5s为50点。
+max_book_age_ns: 1000000000
 rolling_min_samples:
   1s: 8
   5s: 40

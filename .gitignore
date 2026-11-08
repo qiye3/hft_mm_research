@@ -17,3 +17,5 @@
 __pycache__/
 *.pyc
 .DS_Store
+/.venv-models/
+/workspace/data/model_matrices/

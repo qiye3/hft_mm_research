@@ -1,12 +1,10 @@
-# 所属阶段为Evaluation，读取因子与独立标签。
-# 执行命令 .venv/bin/python scripts/evaluate_factors.py config/evaluation/gen001.yaml
-# 输入 factor_root/factor_version/因子名.parquet及label_root/label_version/horizon=周期/日期.parquet。
-# 输出output目录中的汇总Parquet、PNG与report.html，收益单位bps。
+# Evaluation小样本配置。输入7月Gen001和整秒跨日标签，输出冻结训练阈值的五周期评价。
+# 运行 scripts/evaluate_factors.py 本配置。
 stage: evaluation
 factor_root: workspace/data/factors
-factor_version: gen001_v1
+factor_version: sample_gen001_1s_v1
 label_root: workspace/data/labels
-label_version: market_mid_columns_v1
+label_version: server_mid_1s_v1
 dates:
 - '2026-07-01'
 - '2026-07-02'
@@ -39,16 +37,53 @@ dates:
 - '2026-07-29'
 - '2026-07-30'
 factors:
-- book_obi_l1_mean_diff_10_50
-- book_obi_l5_mean_diff_10_50
-- book_obi_l10_mean_diff_10_50
-- trade_aggr_imb_100ms_mean_diff_10_50
-- trade_aggr_imb_1s_mean_diff_10_50
-- cross_trade_book_gap_mean_diff_10_50
+- book_obi_l1_mean_3s
+- book_obi_l1_mean_5s
+- book_obi_l1_mean_10s
+- book_obi_l1_mean_20s
+- book_obi_l1_mean_50s
+- book_obi_l1_mean_100s
+- book_obi_l5_mean_3s
+- book_obi_l5_mean_5s
+- book_obi_l5_mean_10s
+- book_obi_l5_mean_20s
+- book_obi_l5_mean_50s
+- book_obi_l5_mean_100s
+- book_obi_l10_mean_3s
+- book_obi_l10_mean_5s
+- book_obi_l10_mean_10s
+- book_obi_l10_mean_20s
+- book_obi_l10_mean_50s
+- book_obi_l10_mean_100s
+- trade_aggr_imb_100ms_mean_3s
+- trade_aggr_imb_100ms_mean_5s
+- trade_aggr_imb_100ms_mean_10s
+- trade_aggr_imb_100ms_mean_20s
+- trade_aggr_imb_100ms_mean_50s
+- trade_aggr_imb_100ms_mean_100s
+- trade_aggr_imb_1s_mean_3s
+- trade_aggr_imb_1s_mean_5s
+- trade_aggr_imb_1s_mean_10s
+- trade_aggr_imb_1s_mean_20s
+- trade_aggr_imb_1s_mean_50s
+- trade_aggr_imb_1s_mean_100s
+- cross_trade_book_gap_mean_3s
+- cross_trade_book_gap_mean_5s
+- cross_trade_book_gap_mean_10s
+- cross_trade_book_gap_mean_20s
+- cross_trade_book_gap_mean_50s
+- cross_trade_book_gap_mean_100s
 horizons_ns:
-- 100000000
-- 500000000
 - 1000000000
-- 5000000000
+- 10000000000
+- 60000000000
+- 180000000000
+- 300000000000
 groups: 5
-output: workspace/results/evaluation/gen001_v1
+output: workspace/results/evaluation/sample_gen001_1s_v1
+train_end: '2026-07-20'
+validation_end: '2026-07-25'
+workers: 2
+output_interval_ns: 1000000000
+purge_ns: 300000000000
+factor_batch_size: 6
