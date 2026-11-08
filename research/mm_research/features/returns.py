@@ -6,7 +6,7 @@ GROUP_VERSION = "v2"
 RETURN_FEATURE_COLUMNS = ["return_100ms_bps", "return_1s_bps", "return_5s_bps"]
 
 
-# 【核心逻辑22】按精确历史时刻计算收益，跨午夜延续时间序列。
+# 【核心逻辑23】按精确历史时刻计算收益，跨午夜延续时间序列。
 def return_expressions(interval_ns: int) -> dict[str, pl.Expr]:
     """输入网格间隔，返回100ms、1s和5s的历史收益表达式。
 

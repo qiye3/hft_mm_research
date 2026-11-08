@@ -19,7 +19,7 @@ def main() -> None:
     parser.add_argument("output", type=Path)
     arguments = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    config = load_pipeline_config(arguments.config, "features_targets")
+    config = load_pipeline_config(arguments.config, "features")
     folder = root / config["feature_root"] / config["feature_version"]
     columns = [column for column in BASE_COLUMNS if column not in KEY_COLUMNS]
     with file_locks([folder / f"{name}.parquet" for name in columns], shared=True):

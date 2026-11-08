@@ -23,7 +23,7 @@ def requested_groups(config: dict) -> list[str]:
     return ["base", *[name for name in config["feature_groups"] if name != "base"]]
 
 
-# 【核心逻辑17】按所选组构造表达式，实际依赖列从原生表达式提取。
+# 【核心逻辑18】按所选组构造表达式，实际依赖列从原生表达式提取。
 def group_expressions(name: str, config: dict) -> dict[str, pl.Expr]:
     """输入组名和单位、窗口参数，返回该组的字段及公式。
 

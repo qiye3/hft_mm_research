@@ -5,7 +5,7 @@ import polars as pl
 TRADE_EVENT_EXAMPLE_COLUMNS = ["trade_net_notional_100ms", "trade_net_notional_1s", "trade_intensity_1s"]
 
 
-# 【核心逻辑73】在完整时间网格上计算成交净额和强度，以空值表达异常窗口。
+# 【核心逻辑185】在完整时间网格上计算成交净额和强度，以空值表达异常窗口。
 def build_trade_event_features(bins: pl.DataFrame, grid: pl.DataFrame, min_samples: int = 8) -> pl.DataFrame:
     """输入成交分桶、100ms网格及一秒窗口最少样本数，返回独立示例特征。
 

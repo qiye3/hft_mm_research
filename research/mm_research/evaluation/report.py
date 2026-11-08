@@ -1,6 +1,7 @@
-"""组织逐日单因子评估，并生成可检查的Parquet表格和HTML图表报告。"""
+"""按因子并行评估，训练期固定分组边界，保存分期指标、非重叠对照与诊断图。"""
 
 from html import escape
+import datetime as dt
 import json
 from pathlib import Path
 import time
@@ -12,134 +13,207 @@ import numpy as np
 import polars as pl
 
 from mm_research.config import load_pipeline_config
-from mm_research.data.storage import file_locks, read_metadata
-from mm_research.evaluation.dataset import load_evaluation_day
+from mm_research.data.storage import file_locks, read_metadata, write_json_atomic
+from mm_research.evaluation.dataset import load_evaluation_targets, partition_sample_mask
 from mm_research.evaluation.metrics import correlation_statistics, distribution_statistics, grouped_returns
-from mm_research.targets.midprice import horizon_name
+from mm_research.execution import ordered_process_map
 
 
-# 【核心逻辑29】逐因子逐日评估，按周期汇总等权逐日IC和分组收益。
-def run_evaluation(config_path: Path) -> dict:
-    """输入Evaluation配置，保存指标表格、图和HTML，返回汇总表及耗时。
+# 【非核心】按预先固定的时间边界标记样本归属，测试期保持独立。
+def split_name(date: str, config: dict) -> str:
+    """返回train、validation或test，日期使用UTC交易日。"""
+    if date <= config["train_end"]:
+        return "train"
+    if date <= config["validation_end"]:
+        return "validation"
+    return "test"
 
-    同时只物化一个因子日与周期，完整因子列仅用于自身分布与直方图。
-    """
-    root = Path(__file__).resolve().parents[3]
-    config = load_pipeline_config(config_path, "evaluation")
-    if config["groups"] < 2:
-        raise ValueError("分组数至少为2")
+
+# 【核心逻辑113】仅使用训练期因子值拟定分组及直方图边界。
+def fit_group_boundaries(filename: Path, config: dict) -> dict:
+    """精确训练分位数固定用于全部日期，重复分位边界改用负零正分组。"""
+    next_date = dt.date.fromisoformat(config["train_end"]) + dt.timedelta(days=1)
+    boundary = int(dt.datetime.combine(next_date, dt.time(), tzinfo=dt.timezone.utc).timestamp()) * 1_000_000_000
+    values = pl.scan_parquet(filename).filter(
+        pl.col("date").is_in(config["dates"]) & (pl.col("timestamp_ns") < boundary - config["purge_ns"])
+    ).select(pl.col(filename.stem).alias("value")).filter(pl.col("value").is_finite())
+    series = values.collect(engine="streaming")["value"]
+    if series.is_empty():
+        raise ValueError(f"训练期无有效因子 {filename.stem}")
+    # 一次分区计算全部分位数，避免四个独立quantile各复制完整训练列。
+    numbers = series.to_numpy(writable=True)
+    del series
+    lower = float(numbers.min())
+    upper = float(numbers.max())
+    cutoffs = np.quantile(numbers, [index / config["groups"] for index in range(1, config["groups"])],
+                          method="linear", overwrite_input=True).tolist()
+    mode = "quantile" if len(set(cutoffs)) == config["groups"] - 1 else "sign"
+    return {"mode": mode, "cutoffs": cutoffs, "min": lower, "max": upper,
+            "train_end": config["train_end"]}
+
+
+
+# 【核心逻辑112】同批因子共享每日五周期标签读取，各自保存分布和预测指标。
+def evaluate_factor_batch(task: tuple) -> list[dict]:
+    """批次内共享标签和质量筛选，源因子只读，完成状态按因子独立发布。"""
+    root, config, names = task
     factors = root / config["factor_root"] / config["factor_version"]
     labels = root / config["label_root"] / config["label_version"]
-    output = root / config["output"]
-    output.mkdir(parents=True, exist_ok=True)
-    started = time.perf_counter()
-    daily_distributions = []
-    daily_correlations = []
-    group_tables = []
-    overall = []
-    histograms = {}
-    source_definitions = {}
-    for name in config["factors"]:
-        filename = factors / f"{name}.parquet"
-        # 同一因子的共享锁覆盖全部评估，防止日期之间切换到新文件。
-        with file_locks([filename], shared=True):
-            metadata = read_metadata(filename)
-            source_definitions[name] = metadata["definition"]
-            if not set(config["dates"]) <= set(metadata["definition"]["dates"]):
-                raise ValueError(f"评估日期超出Factor范围 {name}")
-            for date in config["dates"]:
-                for index, horizon in enumerate(config["horizons_ns"]):
-                    table = load_evaluation_day(filename, labels, date, horizon)
-                    identity = {"factor": name, "date": date, "horizon_ns": horizon}
-                    if index == 0:
-                        daily_distributions.append({"factor": name, "date": date, **distribution_statistics(table)})
-                    daily_correlations.append({**identity, **correlation_statistics(table)})
-                    returns = grouped_returns(table, config["groups"]).with_columns(
-                        pl.lit(name).alias("factor"), pl.lit(date).alias("date"),
-                        pl.lit(horizon).alias("horizon_ns"),
-                    )
-                    group_tables.append(returns)
-            values = pl.read_parquet(filename, columns=["date", name]).filter(
-                pl.col("date").is_in(config["dates"])
-            ).select(pl.col(name).alias("value"))
-            overall.append({"factor": name, **distribution_statistics(values)})
-            numbers = values["value"].to_numpy()
-            histograms[name] = np.histogram(numbers[np.isfinite(numbers)], bins=80)
-        print(f"评估完成 {name}", flush=True)
-    daily_ic = pl.DataFrame(daily_correlations, infer_schema_length=None,
-                           schema_overrides={"ic": pl.Float64, "rank_ic": pl.Float64})
-    distributions = pl.DataFrame(daily_distributions, infer_schema_length=None)
-    returns = pl.concat(group_tables, how="vertical_relaxed")
-    summary = daily_ic.group_by("factor", "horizon_ns").agg(
-        pl.col("ic").count().alias("valid_ic_days"),
-        pl.col("ic").mean().alias("ic_mean"), pl.col("ic").std().alias("ic_std"),
+    states = {}
+    results = []
+    with file_locks([factors / f"{name}.parquet" for name in names], shared=True):
+        for name in names:
+            output = root / config["output"] / name
+            output.mkdir(parents=True, exist_ok=True)
+            identity = {
+                "definition_version": "one_second_five_horizons_v3",
+                "config": {key: value for key, value in config.items() if key not in ["workers", "factor_batch_size"]},
+                "source": read_metadata(factors / f"{name}.parquet"),
+            }
+            completed = output / "completed.json"
+            if completed.exists() and json.loads(completed.read_text()) == identity:
+                results.append({"factor": name, "cached": True})
+                continue
+            boundaries = fit_group_boundaries(factors / f"{name}.parquet", config)
+            lower, upper = boundaries["min"], boundaries["max"]
+            if lower == upper:
+                lower, upper = lower - 0.5, upper + 0.5
+            states[name] = {
+                "output": output, "identity": identity, "boundaries": boundaries,
+                "edges": np.linspace(lower, upper, 81), "histogram": np.zeros(80, dtype=np.int64),
+                "distributions": [], "correlations": [], "groups": [],
+            }
+        for date in config["dates"]:
+            daily_values = {}
+            for name, state in states.items():
+                values = pl.scan_parquet(factors / f"{name}.parquet").filter(pl.col("date") == date).select(
+                    "timestamp_ns", pl.col(name).alias("value"),
+                ).collect(engine="streaming")
+                daily_values[name] = values
+                state["distributions"].append({"factor": name, "date": date, "split": split_name(date, config),
+                                                **distribution_statistics(values), "unique_values": values["value"].drop_nulls().n_unique()})
+                numbers = values["value"].to_numpy()
+                state["histogram"] += np.histogram(
+                    np.clip(numbers[np.isfinite(numbers)], state["edges"][0], state["edges"][-1]), bins=state["edges"],
+                )[0]
+            if not states:
+                break
+            dataset = next(iter(states.values()))["identity"]["source"]["dataset"]
+            for horizon in config["horizons_ns"]:
+                target = load_evaluation_targets(labels, date, horizon, dataset).with_columns(
+                    (pl.col("label_valid") & partition_sample_mask(date, config)).fill_null(False).alias("label_valid"),
+                )
+                for name, values in daily_values.items():
+                    state = states[name]
+                    table = values.join(target, on="timestamp_ns", how="left")
+                    keys = {"factor": name, "date": date, "split": split_name(date, config), "horizon_ns": horizon}
+                    full_metrics = correlation_statistics(table)
+                    full_groups = grouped_returns(table, config["groups"], state["boundaries"])
+                    state["correlations"].append({**keys, "sampling": "all", **full_metrics})
+                    if horizon == config["output_interval_ns"]:
+                        nonoverlap_metrics = full_metrics
+                        nonoverlap_groups = full_groups
+                    else:
+                        nonoverlap = table.filter(pl.col("timestamp_ns") % horizon == 0)
+                        nonoverlap_metrics = correlation_statistics(nonoverlap)
+                        nonoverlap_groups = grouped_returns(nonoverlap, config["groups"], state["boundaries"])
+                    state["correlations"].append({**keys, "sampling": "nonoverlap", **nonoverlap_metrics})
+                    for sampling, returns in [("all", full_groups), ("nonoverlap", nonoverlap_groups)]:
+                        state["groups"].append(returns.with_columns(
+                            *[pl.lit(value).alias(key) for key, value in keys.items()],
+                            pl.lit(sampling).alias("sampling"),
+                        ))
+        for name, state in states.items():
+            publish_factor_evaluation(name, config, state)
+            results.append({"factor": name, "cached": False})
+            print(f"评估完成 {name}", flush=True)
+    return results
+
+
+# 【核心逻辑119】汇总单因子的分期指标和固定分组价差，并发布可独立复用的结果。
+def publish_factor_evaluation(name: str, config: dict, state: dict) -> None:
+    """输入已完成的日级统计，保存结果表、图及与源定义绑定的完成状态。"""
+    daily_ic = pl.DataFrame(state["correlations"], infer_schema_length=None, schema_overrides={"ic": pl.Float64, "rank_ic": pl.Float64})
+    distributions = pl.DataFrame(state["distributions"], infer_schema_length=None)
+    returns = pl.concat(state["groups"], how="vertical_relaxed")
+    summary = daily_ic.group_by("factor", "split", "horizon_ns", "sampling").agg(
+        pl.col("ic").count().alias("valid_ic_days"), pl.col("ic").mean().alias("ic_mean"),
+        pl.col("ic").median().alias("ic_median"), pl.col("ic").std().alias("ic_std"),
         pl.col("rank_ic").mean().alias("rank_ic_mean"),
-        (pl.col("ic") > 0).mean().alias("positive_ic_day_ratio"),
+        (pl.col("ic").drop_nulls() > 0).mean().alias("positive_ic_day_ratio"),
         pl.col("paired_rows").sum().alias("paired_rows"),
+    ).sort("split", "horizon_ns", "sampling")
+    spreads = returns.filter(pl.col("actual_groups") == pl.col("requested_groups")).group_by("factor", "split", "date", "horizon_ns", "sampling").agg(
+        (pl.col("mean_return_bps").sort_by("group").last()
+         - pl.col("mean_return_bps").sort_by("group").first()).alias("top_bottom_bps"),
+    ).group_by("factor", "split", "horizon_ns", "sampling").agg(
+        pl.col("top_bottom_bps").mean(), pl.len().alias("complete_group_days"),
     )
-    spreads = returns.filter(pl.col("actual_groups") == config["groups"]).group_by("factor", "date", "horizon_ns").agg(
-        (pl.col("mean_return_bps").filter(pl.col("group") == config["groups"]).first()
-         - pl.col("mean_return_bps").filter(pl.col("group") == 1).first()).alias("spread_bps"),
-    ).group_by("factor", "horizon_ns").agg(
-        pl.col("spread_bps").mean().alias("top_bottom_bps"), pl.len().alias("complete_group_days"),
-    )
-    summary = summary.join(spreads, on=["factor", "horizon_ns"], how="left")
-    summary = summary.join(pl.DataFrame(overall, infer_schema_length=None), on="factor").sort("factor", "horizon_ns")
-    for filename, table in [("summary", summary), ("daily_distribution", distributions),
-                            ("daily_ic", daily_ic), ("group_returns", returns)]:
-        table.write_parquet(
-            output / f"{filename}.parquet", compression="zstd",
-            metadata={"mm_evaluation": json.dumps({"config": config, "factors": source_definitions}, sort_keys=True)},
-        )
-    render_report(output, config, summary, daily_ic, returns, histograms)
+    summary = summary.join(spreads, on=["factor", "split", "horizon_ns", "sampling"], how="left")
+    output = state["output"]
+    with file_locks([output / "evaluation"]):
+        for filename, table in [("summary", summary), ("daily_distribution", distributions),
+                                ("daily_ic", daily_ic), ("group_returns", returns)]:
+            table.write_parquet(output / f"{filename}.parquet", compression="zstd")
+        write_json_atomic(output / "group_boundaries.json", state["boundaries"])
+        render_factor_report(output, name, summary, daily_ic, distributions, returns, state["histogram"], state["edges"])
+        write_json_atomic(output / "completed.json", state["identity"])
+
+
+# 【核心逻辑111】并行调度独立因子评估，并汇总分期结果及原始基线对照。
+def run_evaluation(config_path: Path) -> dict:
+    """配置明确训练和验证边界，按因子独立保存结果，失败后可复用已完成因子。"""
+    root = Path(__file__).resolve().parents[3]
+    config = load_pipeline_config(config_path, "evaluation")
+    started = time.perf_counter()
+    names = config["factors"]
+    batches = [names[start:start + config["factor_batch_size"]] for start in range(0, len(names), config["factor_batch_size"])]
+    for results in ordered_process_map(evaluate_factor_batch, [(root, config, batch) for batch in batches], config["workers"]):
+        for result in results:
+            if result["cached"]:
+                print(f'评估复用 {result["factor"]}', flush=True)
+    output = root / config["output"]
+    summary = pl.concat([pl.read_parquet(output / name / "summary.parquet") for name in config["factors"]])
+    summary.write_parquet(output / "summary.parquet", compression="zstd")
+    links = "".join(f'<li><a href="{escape(name)}/report.html">{escape(name)}</a></li>' for name in config["factors"])
+    (output / "report.html").write_text('<!doctype html><meta charset="utf-8"><h1>分期因子评估</h1><ul>' + links + '</ul>')
     return {"elapsed_seconds": time.perf_counter() - started, "summary": summary}
 
 
-# 【非核心】把指标表和四类诊断图组织为一个可在浏览器查看的报告。
-def render_report(output: Path, config: dict, summary: pl.DataFrame, daily_ic: pl.DataFrame,
-                  returns: pl.DataFrame, histograms: dict) -> None:
-    """输入已计算指标和直方图，输出PNG图与HTML，绘图使用已保存的指标。"""
-    figures = output / "figures"
-    figures.mkdir(exist_ok=True)
-    sections = []
-    for name in config["factors"]:
-        figure, axes = plt.subplots(2, 2, figsize=(13, 8), constrained_layout=True)
-        figure.suptitle(name, fontsize=11)
-        counts, edges = histograms[name]
-        axes[0, 0].bar(edges[:-1], counts, width=np.diff(edges), align="edge", color="#3b729f")
-        axes[0, 0].set(title="Factor distribution", xlabel="Factor value", ylabel="Samples")
-        day_values = daily_ic.filter((pl.col("factor") == name) & (pl.col("horizon_ns") == 1_000_000_000)).sort("date")
-        axes[0, 1].plot(day_values["date"], day_values["ic"], label="Pearson IC")
-        axes[0, 1].plot(day_values["date"], day_values["rank_ic"], label="Rank IC", alpha=0.7)
-        axes[0, 1].axhline(0, color="gray", linewidth=0.6)
-        axes[0, 1].set(title="Daily IC, 1s", ylabel="IC")
-        axes[0, 1].tick_params(axis="x", rotation=65, labelsize=6)
-        axes[0, 1].legend(fontsize=8)
-        horizons = summary.filter(pl.col("factor") == name).sort("horizon_ns")
-        axes[1, 0].bar([horizon_name(value) for value in horizons["horizon_ns"]],
-                       np.asarray(horizons["ic_mean"].to_numpy(), dtype=float), color="#3b729f")
-        axes[1, 0].set(title="Mean daily IC by horizon", ylabel="Pearson IC")
-        groups = returns.filter(
-            (pl.col("factor") == name) & (pl.col("horizon_ns") == 1_000_000_000)
-            & (pl.col("actual_groups") == config["groups"])
-        ).group_by("group").agg(pl.col("mean_return_bps").mean()).sort("group")
-        axes[1, 1].bar(groups["group"], groups["mean_return_bps"], color="#599c88")
-        axes[1, 1].set(title="Equal-day group returns, 1s", xlabel="Group", ylabel="Future return (bps)")
-        figure.savefig(figures / f"{name}.png", dpi=140)
-        plt.close(figure)
-        sections.append(f'<section><h2>{escape(name)}</h2><img src="figures/{escape(name)}.png" alt="因子诊断图"></section>')
-    columns = ["factor", "horizon_ns", "ic_mean", "rank_ic_mean", "top_bottom_bps", "valid_ic_days", "missing_rate", "zero_rate"]
-    header = "".join(f"<th>{escape(column)}</th>" for column in columns)
-    rows = []
-    for row in summary.select(columns).iter_rows():
-        cells = [f"{value:.6g}" if isinstance(value, float) else str(value) for value in row]
-        rows.append("<tr>" + "".join(f"<td>{escape(value)}</td>" for value in cells) + "</tr>")
-    content = """<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Gen001 因子评估</title>
-<style>body{max-width:1400px;margin:30px auto;padding:0 20px;font:15px/1.7 system-ui;color:#243447}
-table{border-collapse:collapse;font-size:12px}td,th{border:1px solid #dde3ea;padding:6px}img{width:100%}
-section{margin:35px 0}h2{font-size:18px} .table{overflow:auto}</style><h1>Gen001 买卖压力持续水平</h1>"""
-    content += f'<p>日期范围 {escape(str(config["dates"][0]))} 至 {escape(str(config["dates"][-1]))}。'
-    content += "IC采用逐日等权汇总，零值率以有效因子样本为分母。收益单位为bps，分组差只汇总实际组数完整的日期。</p>"
-    content += "<p>原始因子保留缺失值，滚动均值由配置的最少有效样本数决定。表中的分组收益反映未来Mid变化，交易执行成本另由策略回测计算。</p>"
-    content += '<div class="table"><table><thead><tr>' + header + "</tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>"
-    (output / "report.html").write_text(content + "".join(sections) + "</html>")
+# 【非核心】绘制可直接检查的分布、逐日IC、多尺度IC与固定分组收益。
+def render_factor_report(output: Path, name: str, summary: pl.DataFrame, daily_ic: pl.DataFrame,
+                         distributions: pl.DataFrame, returns: pl.DataFrame,
+                         counts: np.ndarray, edges: np.ndarray) -> None:
+    """仅用已保存的评估表绘图，日分布额外展示有效率与分位变化。"""
+    figure, axes = plt.subplots(3, 2, figsize=(14, 12), constrained_layout=True)
+    figure.suptitle(name, fontsize=10)
+    axes[0, 0].bar(edges[:-1], counts, width=np.diff(edges), align="edge")
+    axes[0, 0].set(title="Distribution, training-range edge bins", ylabel="Samples")
+    day_values = daily_ic.filter((pl.col("horizon_ns") == 1_000_000_000) & (pl.col("sampling") == "all")).sort("date")
+    axes[0, 1].plot(day_values["ic"], label="Pearson")
+    axes[0, 1].plot(day_values["rank_ic"], label="Spearman", alpha=0.7)
+    axes[0, 1].axhline(0, color="gray", linewidth=0.5)
+    axes[0, 1].set(title="Daily IC, 1s", xlabel="Trading-day index")
+    axes[0, 1].legend()
+    for split in ["train", "validation", "test"]:
+        values = summary.filter((pl.col("split") == split) & (pl.col("sampling") == "all")).sort("horizon_ns")
+        axes[1, 0].plot(values["horizon_ns"] / 1e9, values["ic_mean"], marker="o", label=split)
+    axes[1, 0].set(title="Mean daily IC by horizon", xlabel="Seconds")
+    axes[1, 0].legend()
+    group_values = returns.filter((pl.col("split") == "test") & (pl.col("horizon_ns") == 1_000_000_000) & (pl.col("sampling") == "all")).group_by("group").agg(pl.col("mean_return_bps").mean()).sort("group")
+    axes[1, 1].bar(group_values["group"], group_values["mean_return_bps"])
+    axes[1, 1].set(title="Frozen-training groups, test 1s", ylabel="Future mid return, bps")
+    axes[2, 0].plot(distributions["valid_rows"] / distributions["rows"])
+    axes[2, 0].set(title="Daily factor validity", ylim=(0, 1.02))
+    for column in ["q05", "median", "q95"]:
+        axes[2, 1].plot(distributions[column], label=column)
+    axes[2, 1].set(title="Daily quantiles")
+    axes[2, 1].legend()
+    figure.savefig(output / "diagnostics.png", dpi=120)
+    plt.close(figure)
+    (output / "report.html").write_text(
+        '<!doctype html><meta charset="utf-8"><title>' + escape(name) + '</title><h1>' + escape(name)
+        + '</h1><p>训练阈值固定，IC含全网格与非重叠对照。条件未来中间价收益以bps计。'
+        + '直方图边界来自训练期，超范围值归入两端。逐日指标见同目录Parquet。</p>'
+        + '<img style="max-width:100%" src="diagnostics.png" alt="因子评估">',
+    )

@@ -10,7 +10,7 @@ import polars as pl
 ORDER_FLOW_FEATURE_COLUMNS = ["ofi_100ms", "ofi_1s", "ofi_5s"]
 
 
-# 【核心逻辑74】将逐事件OFI累计为100ms、1秒和5秒订单流特征。
+# 【核心逻辑186】将逐事件OFI累计为100ms、1秒和5秒订单流特征。
 def add_order_flow_features(table: pl.DataFrame, min_samples: dict[str, int]) -> pl.DataFrame:
     """输入含ofi_bbo的连续网格和窗口最少样本数，返回附加三个 OFI 窗口的表。
 

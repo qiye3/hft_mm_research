@@ -1,0 +1,24 @@
+# 补齐396个因子后，复用既有流式验证逐行核对全日期网格、Float64及null表示。
+tasks:
+- id: recovered_full_grid_audit
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - workspace/results/factor_recovery_2026-11-08/audit_recovered.py
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 8
+  requires_success:
+  - factor_retry_gen014
+  - factor_retry_gen017
+  - factor_retry_gen018
+  - factor_retry_gen020
+  - factor_retry_gen021
+  - factor_retry_gen022
+  - factor_retry_gen024
+  - factor_retry_gen025
+  - factor_retry_gen029
+  - factor_retry_gen035
+  - factor_retry_gen034_v2
+  after_finished: []
+  priority: 5

@@ -52,7 +52,7 @@ M0的历史样本来自Tardis。盘口文件包含快照和增量更新。快照
 
 ## 五、第二遍阅读，跟着一笔委托理解做市
 
-如果当前重点是因子研究，可以先转到M2-A。当前离线入口读取标准Parquet，在Features内部建立100ms网格，生成分组特征和独立多周期标签。先读数据集指南，再从`build_features_targets.py`进入`run_dataset_production()`。C++事件OFI路径可从`extract_research`跟到`ResearchSampler`。 [M2-A 数据集指南](implementation/m2_a_dataset.md)
+如果当前重点是因子研究，可以先转到M2-A。当前离线入口读取标准Parquet，在Features内部建立100ms网格，生成分组特征和独立多周期标签。先读数据集指南，再从`build_features.py`进入`run_dataset_production()`。C++事件OFI路径可从`extract_research`跟到`ResearchSampler`。 [M2-A 数据集指南](implementation/m2_a_dataset.md)
 
 先打开 `src/apps/baseline_mm.cpp`，它读取策略配置后调用 `run_baseline`。再对照 `config/strategy/baseline_mm.yaml` 阅读 `TradingConfig`，认识策略使用的参数。默认价格步长 `tick_size` 为 0.1 USDT，表示一 tick 对应 0.1 USDT。报价半宽 `half_width_ticks` 为 20，表示买价和卖价各距离中间价约 2 USDT。每笔订单为 0.001 BTC，最大净持仓绝对值为 0.01 BTC。 [做市入口](../src/apps/baseline_mm.cpp) · [做市配置](../config/strategy/baseline_mm.yaml) · [参数定义](../src/mm/trade_recorder.hpp)
 
@@ -106,12 +106,16 @@ M0的历史样本来自Tardis。盘口文件包含快照和增量更新。快照
 
 ## 当前研究数据入口
 
-Data使用`config/data/standardize_30d.yaml`，入口为`scripts/build_standard_data.py`。Features/Targets使用`config/features/build_30d.yaml`，入口为`scripts/build_features_targets.py`。
+Data使用`config/data/standardize_30d.yaml`，入口为`scripts/build_standard_data.py`。Features使用`config/features/build_30d.yaml`，入口为`scripts/build_features.py`。
 
-标准文件保存到`workspace/data/standard/market_v2/{snapshots,trades}/YYYY-MM-DD.parquet`。base与衍生组共同写入`features/market_columns_v1/特征名.parquet`，标签位于`labels/market_mid_columns_v1/horizon=周期/YYYY-MM-DD.parquet`。
+标准文件保存到`workspace/data/standard/market_v2/{snapshots,trades}/YYYY-MM-DD.parquet`。base与衍生组共同写入`features/market_columns_v1/特征名.parquet`，整秒跨日标签由`config/targets/build_1s.yaml`和`scripts/build_labels.py`独立生成，位于`labels/server_mid_1s_v1/horizon=周期/YYYY-MM-DD.parquet`。
 
 `features/transform.py`注册base、book、trades、returns四组，发布时每个变量保存为一个全日期文件。当前可见时间为交易所时间加20ms，滚动窗口跨午夜及缺失位置连续计算。研究读取使用`load_samples()`或`load_xy()`，明确选择特征列与日期。
 
 Gen001从`factors/gen001.py`读取六个因子的公式，经`factors/dataset.py`保存到`workspace/data/factors/gen001_v1/`。评估入口是`scripts/evaluate_factors.py`，指标与报告分别位于`evaluation/metrics.py`和`evaluation/report.py`。报告保存到`workspace/results/evaluation/gen001_v1/report.html`。
 
 完整命令见 [研究包指南](implementation/research_package.md)。历史报告按对应的数据版本、时钟和质量规则阅读。
+
+## 当前整秒研究链路
+
+531天的100ms Features、300个整秒Float64因子、五周期跨日标签、线性模型和C++实时核对，统一从[研究包指南](implementation/research_package.md)继续阅读。旧Gen001结果保留原实验口径，当前生产使用server_factors_1s_v1。

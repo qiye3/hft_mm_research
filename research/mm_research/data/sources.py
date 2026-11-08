@@ -1,11 +1,12 @@
 """读取官方成交ZIP、Tardis格式25档CSV及Crypto Lake的20档Parquet。
 
-load_official_trades 统一官方逐笔字段，scan_snapshot_source 流式映射完整盘口。
+load_official_trades 统一官方逐笔字段，scan_snapshot_source 映射完整盘口。
 标准行情使用交易所时间，快照原始接收时间仅供来源质量检查，写入前移除。
 """
 
 import datetime as dt
 import gzip
+import lzma
 from pathlib import Path
 import zipfile
 
@@ -25,11 +26,26 @@ TRADE_COLUMNS = [
 ]
 
 
+# 【非核心】按确定文件头解码CSV，Zstandard原生扫描，真实XZ通过可定位二进制流读取。
+def scan_market_csv(filename: Path, schema: dict) -> pl.LazyFrame:
+    """返回行情CSV惰性表，避免将不可定位的解压文本流交给Polars。"""
+    # 文件头是压缩格式的确定标识，不能仅凭网盘后缀选择解码器。
+    with filename.open("rb") as stream:
+        is_xz = stream.read(6) == b"\xfd7zXZ\x00"
+    if is_xz:
+        with lzma.open(filename, "rb") as stream:
+            table = pl.read_csv(stream, schema_overrides=schema).lazy()
+    else:
+        table = pl.scan_csv(filename, schema_overrides=schema)
+    return table
+
+
 # 【核心逻辑5】按明确来源格式读取全部快照档位，映射到统一价量与纳秒时间字段。
 def scan_snapshot_source(filename: Path, source: str, source_format: str, depth: int) -> pl.LazyFrame:
     """输入快照文件、来源、声明格式与档数，返回标准字段的流式表。
 
     Tardis CSV微秒转纳秒，Crypto Lake Parquet原生纳秒保持原值。
+    文件头确定压缩编码，网盘的xz后缀同时包含XZ和Zstandard数据。
     source_row 从第一条数据记录的1开始计数，同时间戳的连续状态保持源顺序。
     保留原始档数与行序，原始接收时间在标注来源缺口后移除。
     """
@@ -61,7 +77,8 @@ def scan_snapshot_source(filename: Path, source: str, source_format: str, depth:
                 schema[raw] = pl.Float64
                 levels.append(pl.col(raw).alias(f"{side}_{field}_{level + 1}"))
 
-    return pl.scan_csv(filename, schema_overrides=schema).with_row_index("source_row", offset=1).select( # 读取CSV文件，并添加源行号
+    table = scan_market_csv(filename, schema)
+    return table.with_row_index("source_row", offset=1).select( # 读取CSV文件，并添加源行号
         "exchange", "symbol", # 交易所和符号
         (pl.col("timestamp") * 1000).alias("exchange_timestamp_ns"), # 交易所时间，纳秒
         (pl.col("local_timestamp") * 1000).alias("received_timestamp_ns"), # 原始接收时间，纳秒
@@ -111,25 +128,33 @@ def load_official_trades(filename: Path, source: str, tick_size: float, lot_size
     return table.with_columns(build_record_flags(rules).alias("quality_flags")).select(TRADE_COLUMNS)
 
 
-# 【非核心】按声明的压缩格式打开CSV文本流，拒绝未知后缀。
+# 【非核心】按已核实的压缩格式打开CSV文本流，拒绝未知后缀。
 def open_market_csv(filename: Path):
-    """打开 gzip 或 Zstandard 压缩的行情 CSV。
+    """打开 gzip、Zstandard或网盘XZ压缩的行情CSV。
 
-    filename只接受明确声明的.gz、.zst或.zstd后缀。
+    filename接受明确声明的.gz、.zst、.zstd和网盘已核实的.xz后缀。
     返回可用于 with 的文本流，换行交给 csv.reader 处理，关闭时同时释放底层文件。
     两种压缩格式共用后续字段、时间和盘口检查。
     """
     if filename.suffix in {".zst", ".zstd"}:
+        return zstandard.open(filename, "rt", encoding="utf-8", newline="")
+    if filename.suffix == ".xz":
+        with filename.open("rb") as stream:
+            is_xz = stream.read(6) == b"\xfd7zXZ\x00"
+        if is_xz:
+            return lzma.open(filename, "rt", encoding="utf-8", newline="")
         return zstandard.open(filename, "rt", encoding="utf-8", newline="")
     if filename.suffix == ".gz":
         return gzip.open(filename, "rt", newline="")
     raise ValueError(f"不支持的压缩行情格式 {filename.name}")
 
 
-# 【核心逻辑14】合并本日与已有前日标准行情，按事件时间稳定排序。
-def scan_standard_history(folder: Path, kind: str, date: str) -> pl.LazyFrame:
+# 【核心逻辑15】合并本日与已有前日标准行情，按事件时间稳定排序。
+def scan_standard_history(folder: Path, kind: str, date: str,
+                          columns: list[str] | None = None) -> pl.LazyFrame:
     """输入标准版本目录、表类型与日期，返回按交易所时间和源行号排序的行情。
 
+    columns指定读取字段，各文件先投影再连接，使20档与25档来源可共享前十档。
     首个已下载日期的前日可能不可用，基础表会明确屏蔽无法确认的起始成交区间。
     """
     calendar = dt.date.fromisoformat(date)
@@ -139,6 +164,9 @@ def scan_standard_history(folder: Path, kind: str, date: str) -> pl.LazyFrame:
     if previous.exists():
         filenames.insert(0, previous) # 将前一日标准行情插入到列表开头
 
-    return pl.scan_parquet(filenames).with_row_index("_history_row").sort(
+    tables = [pl.scan_parquet(filename) for filename in filenames]
+    if columns is not None:
+        tables = [table.select(columns) for table in tables]
+    return pl.concat(tables).with_row_index("_history_row").sort(
         ["exchange_timestamp_ns", "_history_row"], maintain_order=True, # 按交易所时间和源行号排序
     ).drop("_history_row")

@@ -23,8 +23,8 @@ def validate(manifest: dict, replay: dict) -> None:
         同时检查两个处理器各自恰好消费一次逻辑事件，并确认分片缓存全部释放。
         首尾本地时间按原始两源的最早和最晚边界计算，价格数量采用绝对误差比较。
     """
-    if manifest["timestamp_policy"] != "source_local_time":
-        raise ValueError("回放校验只接受未经自动平移的源接收时间")
+    if manifest["timestamp_policy"] not in {"source_local_time", "exchange_timestamp_plus_fixed_latency"}:
+        raise ValueError("回放校验需要明确的源接收时间或固定延迟时钟")
     for name in ["normalized_rows", "depth_updates", "snapshot_levels", "clear_events", "trade_events"]:
         if manifest[name] != replay[name]:
             raise ValueError(f"{name} 不一致：{manifest[name]} != {replay[name]}")

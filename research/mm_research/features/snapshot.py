@@ -17,17 +17,18 @@ SNAPSHOT_EXAMPLE_COLUMNS = ["snapshot_bid_notional_10", "snapshot_ask_notional_1
 
 
 # ==================== 标准快照的基础特征计算 ====================
-# 【核心逻辑13】按固定延迟对齐最近可见快照，计算Mid、Spread和盘口连续区段。
+# 【核心逻辑14】按固定延迟对齐最近可见快照，计算Mid、Spread和盘口连续区段。
 def build_snapshot_grid(folder: Path, date: str, interval_ns: int,
                         max_snapshot_age_ns: int, market_data_latency_ns: int) -> pl.DataFrame:
     """输入标准版本目录与日期和时间参数，返回前十档盘口网格。
 
     同时刻快照按源行号取最后状态，时间倒序先按交易所时间稳定排序。
-    已确认或疑似来源缺口的恢复行使后续窗口重新积累，标记不回写更早样本。
+    缺口恢复行记录盘口区段供标签使用，滚动因子通过null与min_samples处理缺失。
     """
     columns = [f"{side}_{field}_{level}" for level in range(1, 11)
                for side in ["bid", "ask"] for field in ["price", "quantity"]]
-    snapshots = scan_standard_history(folder, "snapshots", date).select(
+    source_columns = ["exchange_timestamp_ns", "quality_flags", *columns]
+    snapshots = scan_standard_history(folder, "snapshots", date, source_columns).select(
         (pl.col("exchange_timestamp_ns") + market_data_latency_ns).alias("last_book_timestamp_ns"),
         pl.col("exchange_timestamp_ns").alias("book_exchange_ns"),
         *columns,
@@ -62,7 +63,7 @@ def build_snapshot_grid(folder: Path, date: str, interval_ns: int,
 
 
 # ==================== 快照特征模块示例 ====================
-# 【核心逻辑72】计算前十档双侧挂单金额及金额失衡，作为快照特征示例。
+# 【核心逻辑184】计算前十档双侧挂单金额及金额失衡，作为快照特征示例。
 def add_snapshot_notional_features(table: pl.DataFrame) -> pl.DataFrame:
     """输入包含十档价格数量及 book_valid 的网格，返回新增示例特征的表。
 

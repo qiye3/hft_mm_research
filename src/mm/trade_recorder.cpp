@@ -86,7 +86,7 @@ void TradeRecorder::write_order(const std::string& kind, const hbt::Order<>& ord
             << ',' << order.exec_price() << ',' << order.exec_qty << ',' << order.maker << '\n';
 }
 
-// 【核心逻辑64】在原生请求提交成功后记录下单或撤单动作，并累计请求次数。
+// 【核心逻辑175】在原生请求提交成功后记录下单或撤单动作，并累计请求次数。
 void TradeRecorder::action(const std::string& kind, const hbt::Order<>& order, std::int64_t local_timestamp) {
     /** 输入 kind 取 submit 或 cancel_request，order 为框架请求后的订单视图。
      * 输出为请求计数与订单流水，实际接受或撤销结果由 response 接口记录。
@@ -101,7 +101,7 @@ void TradeRecorder::action(const std::string& kind, const hbt::Order<>& order, s
     write_order(kind, order, local_timestamp);
 }
 
-// 【核心逻辑70】依据一笔新增成交更新独立账本，写出成交后的成本、库存和收益。
+// 【核心逻辑181】依据一笔新增成交更新独立账本，写出成交后的成本、库存和收益。
 void TradeRecorder::apply_fill(const hbt::Order<>& order, std::int64_t timestamp, double mid) {
     /** 输入 order.exec_qty 是本次回报新增成交量，timestamp 为接收时刻，mid 为可见标记价格。
      * 输出为独立账本、fills.csv 和成交时刻权益记录，数量为 BTC，收益为 USDT。
@@ -154,7 +154,7 @@ void TradeRecorder::apply_fill(const hbt::Order<>& order, std::int64_t timestamp
     record_equity(timestamp, mid, std::nullopt, std::nullopt);
 }
 
-// 【核心逻辑69】区分生命周期确认与真实成交，只对有效成交回报增加经济账本。
+// 【核心逻辑180】区分生命周期确认与真实成交，只对有效成交回报增加经济账本。
 void TradeRecorder::response(const hbt::Order<>& order, std::int64_t local_timestamp, double mid) {
     /** 输入为队列中保存的原始回报、本地实际接收时间及当前标记价格。
      * 每条回报都会导出，拒绝请求只计拒绝次数，成交状态且新增量为正才调用 apply_fill。
@@ -192,7 +192,7 @@ void TradeRecorder::reconcile(const hbt::StateValues& state) const {
     }
 }
 
-// 【核心逻辑67】在指定本地时刻盯市，并更新观察点上的权益峰值和金额回撤。
+// 【核心逻辑178】在指定本地时刻盯市，并更新观察点上的权益峰值和金额回撤。
 void TradeRecorder::record_equity(std::int64_t timestamp, double mid, std::optional<double> reserved_buy,
                                    std::optional<double> reserved_sell) {
     /** 输入 mid 必须有限，reserved_buy/sell 在决策点为真实剩余风险量，成交点可为空。
@@ -223,7 +223,7 @@ void TradeRecorder::record_equity(std::int64_t timestamp, double mid, std::optio
     equity_ << ',' << summary_.max_drawdown << '\n';
 }
 
-// 【核心逻辑66】在决策点核对最坏单侧成交风险，并记录完整权益观察值。
+// 【核心逻辑177】在决策点核对最坏单侧成交风险，并记录完整权益观察值。
 void TradeRecorder::checkpoint(std::int64_t timestamp, double mid, const hbt::StateValues& state,
                                double reserved_buy, double reserved_sell) {
     /** 输入为同一时刻的原生账户状态、标记价格和买卖侧预留 BTC 数量。
@@ -277,6 +277,8 @@ void TradeRecorder::write_summary() {
            << ",\n\"price_threshold_ticks\":" << config_.price_threshold_ticks
            << ",\n\"entry_latency_ns\":" << config_.entry_latency_ns
            << ",\n\"response_latency_ns\":" << config_.response_latency_ns
+           << ",\n\"quote_start_timestamp_ns\":" << config_.quote_start_timestamp_ns
+           << ",\n\"quote_stop_timestamp_ns\":" << config_.quote_stop_timestamp_ns
            << ",\n\"submissions\":" << totals.submissions << ",\n\"cancel_requests\":" << totals.cancel_requests
            << ",\n\"cancellations\":" << totals.cancellations << ",\n\"expired\":" << totals.expired
            << ",\n\"rejected\":" << totals.rejected << ",\n\"fills\":" << totals.fills

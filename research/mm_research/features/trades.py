@@ -22,7 +22,7 @@ TRADE_FEATURE_COLUMNS = [
 
 
 # ==================== 标准逐笔的基础特征计算 ====================
-# 【核心逻辑16】按模拟可见时刻汇总100ms成交笔数、主动买卖量和金额。
+# 【核心逻辑17】按模拟可见时刻汇总100ms成交笔数、主动买卖量和金额。
 def build_trade_bins(folder: Path, date: str, interval_ns: int,
                      lot_size: float, market_data_latency_ns: int) -> pl.DataFrame:
     """输入标准版本目录与日期与延迟参数，返回数量、金额、笔数和区间质量。
@@ -62,7 +62,7 @@ def build_trade_bins(folder: Path, date: str, interval_ns: int,
 
 
 # ==================== 衍生成交特征 ====================
-# 【核心逻辑20】构造跨午夜且忽略缺失观测的成交窗口表达式。
+# 【核心逻辑21】构造跨午夜且忽略缺失观测的成交窗口表达式。
 def trade_expressions(lot_size: float, min_samples: dict[str, int]) -> dict[str, pl.Expr]:
     """输入Lot步长与各窗口最少样本数，返回成交量和失衡表达式。
 

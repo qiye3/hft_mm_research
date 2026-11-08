@@ -19,3 +19,4 @@ entry_latency_ns: 1000000
 response_latency_ns: 500000
 # UTC 23:59:59 起停止报价，预留最后一秒撤单；不强行平仓。
 quote_stop_timestamp_ns: 1738454399000000000
+quote_start_timestamp_ns: 0

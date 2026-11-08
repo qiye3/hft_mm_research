@@ -14,7 +14,7 @@ BOOK_FEATURE_COLUMNS = [
 ]
 
 
-# 【核心逻辑18】构造盘口特征的原生表达式，每列只依赖所需的价格和数量。
+# 【核心逻辑19】构造盘口特征的原生表达式，每列只依赖所需的价格和数量。
 def book_expressions(tick_size: float) -> dict[str, pl.Expr]:
     """输入Tick Size，返回字段名到表达式的映射，源空值继续传播。
 

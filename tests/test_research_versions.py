@@ -6,8 +6,9 @@ from unittest.mock import patch
 import polars as pl
 from test_standard_data import make_snapshots, write_compressed_csv, write_official_archive, START_US, DATE
 from mm_research.data.standard import build_standard_day
-from mm_research.data.dataset import build_features, build_labels_day, load_xy
+from mm_research.data.dataset import build_features, load_xy
 from mm_research.data.storage import read_metadata
+from mm_research.targets.dataset import build_labels_day
 from mm_research.features.base import build_base_features
 from mm_research.features.validation import validate_feature_intermediates
 
@@ -33,15 +34,49 @@ class ResearchVersionTests(unittest.TestCase):
             self.assertEqual(filename.read_bytes(), original)
             self.assertEqual(pl.read_parquet(filename).columns, ["symbol", "date", "timestamp_ns", "imbalance_5"])
             self.assertFalse(list(features.glob("2026-*.parquet")))
-            label = build_labels_day(root, config, DATE, 1_000_000_000)
+            target_config = {key: config[key] for key in ["feature_root", "feature_version", "standard_root", "standard_version", "dates"]}
+            target_config.update(label_root=str(root / "labels"), label_version="test_labels", horizons_ns=[1_000_000_000],
+                                 output_interval_ns=1_000_000_000, source_boundaries=[], workers=1)
+            build_labels_day(root, target_config, DATE)
+            label = root / "labels/test_labels/horizon=1s" / f"{DATE}.parquet"
             modified = label.stat().st_mtime_ns
-            self.assertEqual(build_labels_day(root, config, DATE, 1_000_000_000), label)
+            build_labels_day(root, target_config, DATE)
             self.assertEqual(label.stat().st_mtime_ns, modified)
             matrix, target, index = load_xy(features, label.parent, [DATE], ["imbalance_5", "trade_imbalance_1s"])
             self.assertEqual(matrix.shape[1], 2)
             self.assertGreater(len(target), 0)
             self.assertEqual(index.height, len(target))
             self.assertEqual(read_metadata(filename)["kind"], "feature")
+
+    # 【非核心】核对20档切换25档时，午夜样本仍使用前日最后可见盘口。
+    def test_mixed_depth_midnight_snapshot_history(self):
+        """从真实标准字段构造跨来源边界，前十档一致且延迟不泄漏未来。"""
+        with tempfile.TemporaryDirectory() as directory:
+            folder = prepare_standard_fixture(Path(directory))
+            filename = folder / "snapshots" / f"{DATE}.parquet"
+            current = pl.read_parquet(filename)
+            midnight_ns = START_US * 1000
+            previous = current.head(1).with_columns(
+                pl.lit(midnight_ns - 10_000_000).alias("exchange_timestamp_ns"),
+                pl.lit(99.95).alias("bid_price_1"),
+            )
+            previous = previous.drop([
+                f"{side}_{field}_{level}"
+                for level in range(21, 26)
+                for side in ["bid", "ask"]
+                for field in ["price", "quantity"]
+            ])
+            previous.write_parquet(folder / "snapshots/2026-07-11.parquet")
+            grid = pl.DataFrame({"timestamp_ns": [midnight_ns, midnight_ns + 20_000_000]})
+            with patch("mm_research.features.snapshot.make_day_grid", return_value=grid):
+                result = build_base_features(folder, DATE, 100_000_000, 0.001, 1_000_000_000, 20_000_000)
+            self.assertIsNone(result["bid_price_1"][0])
+            self.assertEqual(result["bid_price_1"][1], 99.95)
+            validate_feature_intermediates(
+                result, folder, DATE, 20_000_000, 100_000_000, 0.001, 1_000_000_000,
+            )
+            self.assertNotIn("bid_price_21", result.columns)
+            self.assertEqual(pl.read_parquet_schema(filename), current.schema)
 
     # 【非核心】检查写盘失败保留已有文件，随后可显式重试。
     def test_failed_feature_write_and_retry(self):
@@ -84,7 +119,7 @@ class ResearchVersionTests(unittest.TestCase):
 def fixture_config(root: Path) -> dict:
     """返回单日分组配置，输出仍为标准逐日布局。"""
     return {
-        "stage": "features_targets", "standard_root": str(root / "standard"),
+        "stage": "features", "standard_root": str(root / "standard"),
         "standard_version": "market_v2", "market_data_latency_ns": 20_000_000,
         "dates": [DATE], "feature_groups": {"base": "v3", "book": "v2", "trades": "v2", "returns": "v2"},
         "feature_root": str(root / "features"), "feature_version": "test_features",
@@ -109,6 +144,7 @@ def prepare_standard_fixture(root: Path) -> Path:
     config = {
         "version": "market_v2", "output_root": "standard", "snapshots": "raw/snapshots.zst",
         "trades": "raw/trades.zip", "tick_size": 0.1, "lot_size": 0.001,
+        "snapshot_format": "tardis_csv", "snapshot_depth": 25,
         "snapshot_silence_ns": 1_000_000_000, "confirmed_snapshot_gaps": {},
     }
     build_standard_day(root, config, DATE)

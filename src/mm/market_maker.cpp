@@ -4,6 +4,7 @@
  * 输入为 TradingConfig 和行情分片，输出为交易汇总及逐笔 CSV。
  */
 #include "mm/market_maker.hpp"
+#include "mm/linear_signal.hpp"
 #include "mm/detail/trading_engine.hpp"
 #include "mm/detail/config.hpp"
 
@@ -16,7 +17,7 @@
 namespace mm {
 namespace {
 
-// 【核心逻辑63】判断订单的剩余数量是否仍占用方向性库存预算。
+// 【核心逻辑174】判断订单的剩余数量是否仍占用方向性库存预算。
 bool reserves_inventory(const hbt::Order<>& order) {
     /** 输入为框架本地订单，返回它是否仍可能带来新增成交。
      * active 覆盖已接受和部分成交订单，新单尚未确认时由 req=New 识别。
@@ -27,8 +28,8 @@ bool reserves_inventory(const hbt::Order<>& order) {
 
 } // namespace
 
-// 【核心逻辑61】以中间价为中心，将固定半宽的双边报价向外取整到价格档位。
-QuoteTicks fixed_quotes(std::int64_t best_bid, std::int64_t best_ask, std::int64_t half_width) {
+// 【核心逻辑172】以中间价为中心，将固定半宽的双边报价向外取整到价格档位。
+QuoteTicks fixed_quotes(std::int64_t best_bid, std::int64_t best_ask, std::int64_t half_width, double shift_ticks) {
     /** 输入 best_bid、best_ask 和 half_width 的单位均为 tick。
      * 盘口必须满足买价小于卖价，半宽必须为正，否则抛出 invalid_argument。
      * 输出买卖整数档位，买价向下取整、卖价向上取整，供后续限价委托使用。
@@ -37,8 +38,8 @@ QuoteTicks fixed_quotes(std::int64_t best_bid, std::int64_t best_ask, std::int64
         throw std::invalid_argument("need noncrossed book and positive half width");
     }
     const double mid_tick = (static_cast<double>(best_bid) + static_cast<double>(best_ask)) * 0.5;
-    return {static_cast<std::int64_t>(std::floor(mid_tick - static_cast<double>(half_width))),
-            static_cast<std::int64_t>(std::ceil(mid_tick + static_cast<double>(half_width)))};
+    return {static_cast<std::int64_t>(std::floor(mid_tick + shift_ticks - static_cast<double>(half_width))),
+            static_cast<std::int64_t>(std::ceil(mid_tick + shift_ticks + static_cast<double>(half_width)))};
 }
 
 // 【非核心】校验数量网格、风险上限和调度参数能否组成有效的做市实验。
@@ -75,7 +76,7 @@ TradingConfig load_trading_config(const std::filesystem::path& filename) {
         "update_mode", "tick_size", "lot_size", "order_quantity",
         "max_position", "initial_capital", "maker_fee", "taker_fee",
         "half_width_ticks", "decision_interval_ns", "price_threshold_ticks", "entry_latency_ns",
-        "response_latency_ns", "quote_stop_timestamp_ns",
+        "response_latency_ns", "quote_start_timestamp_ns", "quote_stop_timestamp_ns",
     });
     TradingConfig config;
     config.name = fields.at("name");
@@ -95,6 +96,7 @@ TradingConfig load_trading_config(const std::filesystem::path& filename) {
     config.price_threshold_ticks = detail::config_number<std::int64_t>(fields, "price_threshold_ticks");
     config.entry_latency_ns = detail::config_number<std::int64_t>(fields, "entry_latency_ns");
     config.response_latency_ns = detail::config_number<std::int64_t>(fields, "response_latency_ns");
+    config.quote_start_timestamp_ns = detail::config_number<std::int64_t>(fields, "quote_start_timestamp_ns");
     config.quote_stop_timestamp_ns = detail::config_number<std::int64_t>(fields, "quote_stop_timestamp_ns");
     const auto root = std::filesystem::path{MM_PROJECT_ROOT};
     config.source = root / config.source;
@@ -102,11 +104,11 @@ TradingConfig load_trading_config(const std::filesystem::path& filename) {
     return config;
 }
 
-// 【核心逻辑58】保存调用方已校验的策略参数，并关联会话级交易记录器。
+// 【核心逻辑167】保存调用方已校验的策略参数，并关联会话级交易记录器。
 MarketMaker::MarketMaker(const TradingConfig& config, TradeRecorder& recorder)
     : config_(config), recorder_(recorder) {}
 
-// 【核心逻辑65】从框架订单中累计买卖两侧仍需预留的未成交数量。
+// 【核心逻辑176】从框架订单中累计买卖两侧仍需预留的未成交数量。
 std::pair<double, double> MarketMaker::reservations(const hbt::Backtest& backtest) const {
     /** 输入为当前原生回测状态，输出按买方、卖方排列的 BTC 数量对。
      * 使用 leaves_qty 处理部分成交后的剩余风险，供决策检查和权益记录共用。
@@ -128,7 +130,7 @@ std::pair<double, double> MarketMaker::reservations(const hbt::Backtest& backtes
     return {buys, sells};
 }
 
-// 【核心逻辑62】对单侧执行保留、撤单或新增委托，并把新增数量限制在可用库存预算内。
+// 【核心逻辑173】对单侧执行保留、撤单或新增委托，并把新增数量限制在可用库存预算内。
 void MarketMaker::quote_side(hbt::Backtest& backtest, hbt::Side side, std::int64_t target_tick, bool stop) {
     /** 输入 side 指定方向，target_tick 是目标价格档位，stop 要求该侧退出。
      * 通过 backtest 提交原生请求并交给 recorder_ 记录，订单状态由框架推进。
@@ -175,8 +177,8 @@ void MarketMaker::quote_side(hbt::Backtest& backtest, hbt::Side side, std::int64
     recorder_.action("submit", backtest.orders(0).at(order_id), backtest.current_timestamp());
 }
 
-// 【核心逻辑60】更新双边报价，并返回包含在途订单的买卖预留数量。
-std::pair<double, double> MarketMaker::on_decision(hbt::Backtest& backtest, bool stop) {
+// 【核心逻辑171】更新双边报价，并返回包含在途订单的买卖预留数量。
+std::pair<double, double> MarketMaker::on_decision(hbt::Backtest& backtest, bool stop, double alpha_bps) {
     /** 输入 backtest 提供本地可见盘口和实际仓位，stop 表示进入收尾阶段。
      * 输出体现为原生下单或撤单请求，返回的买卖预留量用于决策点风控与权益记录。
      * 空簿时触发退出，价格阈值模式以最近一次更新目标时的中间价为锚。
@@ -187,10 +189,11 @@ std::pair<double, double> MarketMaker::on_decision(hbt::Backtest& backtest, bool
     stop = stop || !std::isfinite(backtest.mid(0));
     if (!stop) {
         const double mid_tick = (static_cast<double>(best_bid) + static_cast<double>(best_ask)) * 0.5;
+        const double shift_ticks = mid_tick * alpha_bps * 0.0001;
         if (!reference_tick_ || config_.update_mode == "time" ||
-            std::abs(mid_tick - *reference_tick_) >= static_cast<double>(config_.price_threshold_ticks)) {
-            targets_ = fixed_quotes(best_bid, best_ask, config_.half_width_ticks);
-            reference_tick_ = mid_tick;
+            std::abs(mid_tick + shift_ticks - *reference_tick_) >= static_cast<double>(config_.price_threshold_ticks)) {
+            targets_ = fixed_quotes(best_bid, best_ask, config_.half_width_ticks, shift_ticks);
+            reference_tick_ = mid_tick + shift_ticks;
         }
     }
     // 即使价格阈值尚未触发，也要处理已成交侧的补单和库存方向限制。
@@ -199,8 +202,8 @@ std::pair<double, double> MarketMaker::on_decision(hbt::Backtest& backtest, bool
     return reservations(backtest);
 }
 
-// 【核心逻辑55】让原生双时钟引擎推进完整行情，在固定决策网格上执行做市并记录账本。
-TradingSummary run_baseline(const TradingConfig& config, std::shared_ptr<hbt::EventReaderCache> reader) {
+// 【核心逻辑164】让原生双时钟引擎推进完整行情，在固定决策网格上执行做市并记录账本。
+TradingSummary run_baseline(const TradingConfig& config, std::shared_ptr<hbt::EventReaderCache> reader, LinearSignal* signal) {
     /** 输入为有效策略配置及双方共用的行情缓存，缓存也可由测试夹具构造。
      * 输出为 TradingSummary，逐笔订单、成交和权益写入 config.output。
      * 每次 elapse 会处理目标时间前的全部市场事件和回报，策略随后才作决策。
@@ -208,14 +211,33 @@ TradingSummary run_baseline(const TradingConfig& config, std::shared_ptr<hbt::Ev
      */
     validate_trading_config(config);
     TradeRecorder recorder{config};
-    detail::TradingEngine engine{config, recorder, std::move(reader)};
+    detail::TradingEngine engine{config, recorder, std::move(reader), signal != nullptr};
     auto& backtest = engine.backtest;
     MarketMaker maker{config, recorder};
     const auto start = std::chrono::steady_clock::now();
     auto status = backtest.elapse(0);
     while (status != hbt::ElapseResult::EndOfData) {
         const auto now = backtest.current_timestamp();
-        const auto [buys, sells] = maker.on_decision(backtest, now >= config.quote_stop_timestamp_ns);
+        bool stop = now < config.quote_start_timestamp_ns || now >= config.quote_stop_timestamp_ns;
+        double alpha_bps = 0;
+        if (signal != nullptr) {
+            if (now % config.decision_interval_ns == 0) {
+                const double prediction = signal->sample(
+                    now, engine.local->depth(), engine.local->last_book_timestamp_ns,
+                    engine.local->buy_lots * config.lot_size, engine.local->sell_lots * config.lot_size);
+                engine.local->buy_lots = 0;
+                engine.local->sell_lots = 0;
+                if (std::isfinite(prediction)) {
+                    // 固定1bps价格偏移上限，实测时与无Alpha基线使用同一风险及费率设置。
+                    alpha_bps = std::clamp(prediction, -1.0, 1.0);
+                } else {
+                    stop = true;
+                }
+            } else {
+                stop = true;
+            }
+        }
+        const auto [buys, sells] = maker.on_decision(backtest, stop, alpha_bps);
         if (std::isfinite(engine.local->last_mid)) {
             recorder.checkpoint(now, engine.local->last_mid, backtest.state_values(0), buys, sells);
         }
@@ -241,7 +263,7 @@ TradingSummary run_baseline(const TradingConfig& config, std::shared_ptr<hbt::Ev
     return result;
 }
 
-// 【核心逻辑54】从标准事件清单加载共享分片缓存，并启动与测试相同的策略执行链路。
+// 【核心逻辑163】从标准事件清单加载共享分片缓存，并启动与测试相同的策略执行链路。
 TradingSummary run_baseline(const TradingConfig& config) {
     /** 输入 config.source 指向包含 shards 的转换清单，输出完整策略汇总。
      * 文件加载由原生 EventReaderCache 完成，真实数据与内存夹具共用上面的执行实现。

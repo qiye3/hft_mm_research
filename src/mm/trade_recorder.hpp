@@ -28,6 +28,7 @@ struct TradingConfig {
     std::int64_t price_threshold_ticks = 20;
     std::int64_t entry_latency_ns = 1'000'000;
     std::int64_t response_latency_ns = 500'000;
+    std::int64_t quote_start_timestamp_ns = 0; // 新实验可预留日初历史窗口，双基线使用相同起点。
     std::int64_t quote_stop_timestamp_ns = 1738454399000000000; // 停止新报价的绝对 UTC 纳秒时刻。
     std::string update_mode = "time"; // time 每次决策刷新目标，price 按锚点变动阈值刷新。
 };
@@ -66,13 +67,13 @@ class TradeRecorder {
 public:
     // 【非核心】为全新输出目录建立三个 CSV，拒绝覆盖已有实验。
     explicit TradeRecorder(const TradingConfig& config);
-    // 【核心逻辑64】记录原生 submit 或 cancel_request 操作及当时的订单视图。
+    // 【核心逻辑175】记录原生 submit 或 cancel_request 操作及当时的订单视图。
     void action(const std::string& kind, const hbt::Order<>& order, std::int64_t local_timestamp);
-    // 【核心逻辑69】保存一条原始回报，依据状态与新增执行量累计成交账本。
+    // 【核心逻辑180】保存一条原始回报，依据状态与新增执行量累计成交账本。
     void response(const hbt::Order<>& order, std::int64_t local_timestamp, double mid);
     // 【非核心】在同批回报处理完成后，对齐原生现金流、费用、仓位与成交统计。
     void reconcile(const hbt::StateValues& state) const;
-    // 【核心逻辑66】集中核对决策点最坏方向敞口，并记录带预留数量的权益值。
+    // 【核心逻辑177】集中核对决策点最坏方向敞口，并记录带预留数量的权益值。
     void checkpoint(std::int64_t timestamp, double mid, const hbt::StateValues& state,
                     double reserved_buy, double reserved_sell);
     // 【非核心】依据最终 checkpoint 的账本保存 JSON 汇总，并检查 CSV 刷新结果。
@@ -84,9 +85,9 @@ public:
 private:
     // 【非核心】序列化订单动作和原始回报共用的生命周期字段。
     void write_order(const std::string& kind, const hbt::Order<>& order, std::int64_t timestamp);
-    // 【核心逻辑70】用本次新增执行量更新现金、费用、平均成本和仓位。
+    // 【核心逻辑181】用本次新增执行量更新现金、费用、平均成本和仓位。
     void apply_fill(const hbt::Order<>& order, std::int64_t timestamp, double mid);
-    // 【核心逻辑67】盯市并更新权益峰值，空的预留数量在 CSV 中保留为空字段。
+    // 【核心逻辑178】盯市并更新权益峰值，空的预留数量在 CSV 中保留为空字段。
     void record_equity(std::int64_t timestamp, double mid, std::optional<double> reserved_buy,
                        std::optional<double> reserved_sell);
     // 【非核心】输出可供离线独立核对的参数、收益分解和最终统计。

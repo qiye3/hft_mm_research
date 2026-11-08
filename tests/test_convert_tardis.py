@@ -1,6 +1,10 @@
 """核对 gzip→NPZ→C++ 引擎的真实格式兼容性及快照/双时钟语义。"""
 import gzip
-import importlib.util
+import datetime as dt
+
+import polars as pl
+
+from mm_research.data.engine_inputs import prepare_engine_day
 import json
 import subprocess
 import sys
@@ -13,13 +17,53 @@ import zstandard
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("convert_tardis", ROOT / "scripts/convert_tardis.py")
-CONVERTER = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(CONVERTER)
+from mm_research.data import engine as CONVERTER
 PROBE = Path(sys.argv[1]).resolve()
 
 
 class ConversionTests(unittest.TestCase):
+    # 【非核心】标准官方成交接入原生引擎，固定延迟跨午夜仍保留全部事件。
+    def test_standard_trades_fixed_clock_adapter(self):
+        """网盘误后缀Zstandard L2与标准Parquet经正式适配后逐事件对照。"""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            date = "2026-10-21"
+            start = int(dt.datetime(2026, 10, 21, tzinfo=dt.timezone.utc).timestamp()) * 1_000_000
+            end = start + 86_400_000_000
+            content = (
+                "exchange,symbol,timestamp,local_timestamp,is_snapshot,side,price,amount\n"
+                f"binance-futures,BTCUSDT,{start},{start+1000},true,bid,99.9,1\n"
+                f"binance-futures,BTCUSDT,{start},{start+1000},true,ask,100.1,1\n"
+                f"binance-futures,BTCUSDT,{end-1000},{end-500},false,bid,99.9,2\n"
+            )
+            book = root / "book.csv.xz"
+            book.write_bytes(zstandard.ZstdCompressor().compress(content.encode()))
+            trades = root / "trades.parquet"
+            pl.DataFrame({
+                "exchange": ["binance-futures"] * 2, "symbol": ["BTCUSDT"] * 2, "trade_id": [1, 2],
+                "exchange_timestamp_ns": [(start + 100_000) * 1000, (end - 10_000) * 1000],
+                "price": [100.1, 99.9], "quantity": [0.001, 0.002], "side": ["buy", "sell"],
+                "quality_flags": pl.Series([[], []], dtype=pl.List(pl.String)),
+            }).write_parquet(trades)
+            destination = root / "normalized"
+            manifest = prepare_engine_day(book, trades, date, destination, 20_000_000)
+            events = np.concatenate([np.load(destination / part["file"])["data"] for part in manifest["shards"]])
+            self.assertTrue(np.all(events["local_ts"] - events["exch_ts"] == 20_000_000))
+            self.assertTrue(manifest["full_day_validated"])
+            self.assertEqual(manifest["logical_events"], 6)
+            self.assertGreater(int(events["local_ts"].max()), end * 1000)
+            self.assertFalse(list(root.glob(".engine-input-*")))
+            probe_config = root / "probe.yaml"
+            probe_output = root / "replay.json"
+            probe_config.write_text(yaml.safe_dump({
+                "source": str(destination / "manifest.json"), "output": str(probe_output),
+                "date": date, "symbol": "BTCUSDT", "tick_size": 0.1, "lot_size": 0.001,
+                "depth_levels": 10, "snapshot_interval_ns": 100_000_000, "latency_sample_every": 0,
+            }))
+            subprocess.run([str(PROBE), str(probe_config)], check=True, capture_output=True)
+            subprocess.run([sys.executable, str(ROOT / "scripts/validate_replay.py"),
+                            str(destination / "manifest.json"), str(probe_output)], check=True, capture_output=True)
+
     # 【非核心】核对Zstandard和gzip原始文件转换后的事件内容一致。
     def test_zstandard_sources_match_gzip(self):
         with tempfile.TemporaryDirectory() as directory:

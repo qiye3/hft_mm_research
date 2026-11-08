@@ -1,6 +1,7 @@
-"""在共享锁内按日期读取因子和标签，以时间键关联评估样本。"""
+"""按日期读取同源预测标签，供因子评价与模型数据集共同使用。"""
 
 from pathlib import Path
+import datetime as dt
 
 import polars as pl
 
@@ -8,23 +9,29 @@ from mm_research.data.storage import file_locks, read_metadata
 from mm_research.targets.midprice import horizon_name
 
 
-# 【核心逻辑30】读取单日因子和指定周期标签，保留全部因子样本以统计损耗。
-def load_evaluation_day(factor: Path, labels: Path, date: str, horizon_ns: int) -> pl.DataFrame:
-    """输入因子文件、标签版本目录和日期周期，返回value、target及标签有效性。
+# 【核心逻辑115】在共享锁内读取指定周期标签并核对共同输入定义。
+def load_evaluation_targets(labels: Path, date: str, horizon_ns: int, dataset: dict) -> pl.DataFrame:
+    """返回timestamp_ns、label_valid和bps target，未通过质量规则的标签仍保留。"""
+    suffix = horizon_name(horizon_ns)
+    filename = labels / f"horizon={suffix}" / f"{date}.parquet"
+    with file_locks([filename], shared=True):
+        metadata = read_metadata(filename)
+        if metadata["dataset"] != dataset or metadata["horizon_ns"] != horizon_ns:
+            raise ValueError("标签与输入数据定义或周期不一致")
+        return pl.read_parquet(filename, columns=["timestamp_ns", "label_valid", "label_end_timestamp_ns", f"y_mid_{suffix}_bps"]).rename(
+            {f"y_mid_{suffix}_bps": "target"},
+        )
 
-    因子与标签通过时间戳关联。缺失因子或标签均保留，指标计算阶段分别选样本。
-    """
-    label_file = labels / f"horizon={horizon_name(horizon_ns)}" / f"{date}.parquet"
-    with file_locks([factor, label_file], shared=True):
-        factor_metadata = read_metadata(factor)
-        label_metadata = read_metadata(label_file)
-        if (factor_metadata["dataset"] != label_metadata["dataset"]
-                or label_metadata["horizon_ns"] != horizon_ns):
-            raise ValueError("因子与标签来源或周期不一致")
-        values = pl.scan_parquet(factor).filter(pl.col("date") == date).select(
-            "timestamp_ns", pl.col(factor.stem).alias("value"),
-        )
-        targets = pl.scan_parquet(label_file).select(
-            "timestamp_ns", "label_valid", pl.col(f"y_mid_{horizon_name(horizon_ns)}_bps").alias("target"),
-        )
-        return values.join(targets, on="timestamp_ns", how="left", validate="1:1").collect(engine="streaming")
+
+# 【核心逻辑116】按绝对时间隔离训练与验证末端，检查目标时刻未跨入下一分区。
+def partition_sample_mask(date: str, config: dict) -> pl.Expr:
+    """分界前统一剔除300s，测试期由标签可用性决定样本范围。"""
+    if date <= config["train_end"]:
+        final_date = config["train_end"]
+    elif date <= config["validation_end"]:
+        final_date = config["validation_end"]
+    else:
+        return pl.lit(True)
+    calendar = dt.date.fromisoformat(final_date) + dt.timedelta(days=1)
+    boundary = int(dt.datetime.combine(calendar, dt.time(), tzinfo=dt.timezone.utc).timestamp()) * 1_000_000_000
+    return (pl.col("timestamp_ns") < boundary - config["purge_ns"]) & (pl.col("label_end_timestamp_ns") < boundary)

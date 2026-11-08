@@ -18,7 +18,7 @@ from polars.testing import assert_frame_equal
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from mm_research.features.transform import group_expressions
-from convert_tardis import EVENT_DTYPE, LOCAL, EXCHANGE, BUY, SELL, DEPTH, SNAPSHOT, CLEAR, TRADE
+from mm_research.data.engine import EVENT_DTYPE, LOCAL, EXCHANGE, BUY, SELL, DEPTH, SNAPSHOT, CLEAR, TRADE
 
 EXTRACTOR = Path(sys.argv[1]).resolve()
 

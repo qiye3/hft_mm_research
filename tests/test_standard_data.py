@@ -4,6 +4,7 @@
 """
 
 import datetime as dt
+import lzma
 from pathlib import Path
 import tempfile
 import unittest
@@ -64,12 +65,31 @@ def write_official_archive(filename: Path, ids: list[int], times_ms: list[int]) 
 class StandardDataTests(unittest.TestCase):
     """通过实际压缩源文件验证官方成交与快照生产接口。"""
 
+    # 【非核心】真实XZ和带不同后缀的Zstandard应读取出同一份快照。
+    def test_snapshot_compression_formats(self):
+        """同时覆盖真正XZ与误用xz后缀的Zstandard，核对档位、行序和时间戳。"""
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            snapshots = make_snapshots()
+            expected = None
+            for extension, codec in [("zst", "zstd"), ("zstd", "zstd"), ("xz", "zstd"), ("xz", "xz")]:
+                filename = folder / f"snapshots.csv.{extension}"
+                if codec == "xz":
+                    filename.write_bytes(lzma.compress(snapshots.write_csv().encode()))
+                else:
+                    write_compressed_csv(filename, snapshots)
+                actual = scan_snapshot_source(filename, "same_source", "tardis_csv", 25).collect()
+                if expected is None:
+                    expected = actual
+                else:
+                    assert_frame_equal(actual, expected)
+
     # 【非核心】两份YAML所属阶段不同，传错入口时明确说明应使用的配置。
     def test_reject_features_config(self):
         """检查Features配置不能被Data标准化入口执行。"""
         with tempfile.TemporaryDirectory() as directory:
             config_file = Path(directory) / "features.yaml"
-            config_file.write_text("stage: features_targets\n")
+            config_file.write_text("stage: features\n")
             with self.assertRaisesRegex(ValueError, "Data标准化"):
                 run_standard_production(config_file)
 
