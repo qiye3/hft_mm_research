@@ -1,0 +1,1796 @@
+# Research后台编排。入口scripts/run_research_background.py本文件。
+# GPU进行训练期前向预测时，CPU预计算可复用的固定订单与S0基线。
+# CPU最多八路、GPU最多两路，内存准入和失败重试独立管理。
+stage: overnight
+output: workspace/results/forecast_strategy_20261110_v1/queue
+poll_seconds: 10
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 8
+  gpu: 2
+morning_report_at: null
+queue_directory: config/research/forecast_strategy_queue
+report_command: null
+tasks:
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success: &id003 []
+  after_finished: &id001 []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: inventory
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - inventory
+  priority: -10
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_old_mlp_oof_0
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_old_mlp
+  - --fold
+  - oof_0
+  priority: 0
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_combined_mlp_oof_0
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_combined_mlp
+  - --fold
+  - oof_0
+  priority: 32
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_old_xgb_oof_0
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_old_xgb
+  - --fold
+  - oof_0
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_combined_xgb_oof_0
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_combined_xgb
+  - --fold
+  - oof_0
+  priority: 32
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h30_old_mlp_oof_0
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h30_old_mlp
+  - --fold
+  - oof_0
+  priority: 2
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h60_combined_xgb_oof_0
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h60_combined_xgb
+  - --fold
+  - oof_0
+  priority: 32
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_old_mlp_oof_1
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_old_mlp
+  - --fold
+  - oof_1
+  priority: 3
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_combined_mlp_oof_1
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_combined_mlp
+  - --fold
+  - oof_1
+  priority: 35
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_old_xgb_oof_1
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_old_xgb
+  - --fold
+  - oof_1
+  priority: 4
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_combined_xgb_oof_1
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_combined_xgb
+  - --fold
+  - oof_1
+  priority: 35
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h30_old_mlp_oof_1
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h30_old_mlp
+  - --fold
+  - oof_1
+  priority: 5
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h60_combined_xgb_oof_1
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h60_combined_xgb
+  - --fold
+  - oof_1
+  priority: 35
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_old_mlp_oof_2
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_old_mlp
+  - --fold
+  - oof_2
+  priority: 6
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_combined_mlp_oof_2
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_combined_mlp
+  - --fold
+  - oof_2
+  priority: 38
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_old_xgb_oof_2
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_old_xgb
+  - --fold
+  - oof_2
+  priority: 7
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h180_combined_xgb_oof_2
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h180_combined_xgb
+  - --fold
+  - oof_2
+  priority: 38
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h30_old_mlp_oof_2
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h30_old_mlp
+  - --fold
+  - oof_2
+  priority: 8
+- threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 28
+  allocation_limit_gib: 48
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  id: oof_h60_combined_xgb_oof_2
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - oof
+  - --signal
+  - h60_combined_xgb
+  - --fold
+  - oof_2
+  priority: 38
+- threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 16
+  allocation_limit_gib: 24
+  requires_success:
+  - oof_h180_old_mlp_oof_0
+  - oof_h180_combined_mlp_oof_0
+  - oof_h180_old_xgb_oof_0
+  - oof_h180_combined_xgb_oof_0
+  - oof_h30_old_mlp_oof_0
+  - oof_h60_combined_xgb_oof_0
+  - oof_h180_old_mlp_oof_1
+  - oof_h180_combined_mlp_oof_1
+  - oof_h180_old_xgb_oof_1
+  - oof_h180_combined_xgb_oof_1
+  - oof_h30_old_mlp_oof_1
+  - oof_h60_combined_xgb_oof_1
+  - oof_h180_old_mlp_oof_2
+  - oof_h180_combined_mlp_oof_2
+  - oof_h180_old_xgb_oof_2
+  - oof_h180_combined_xgb_oof_2
+  - oof_h30_old_mlp_oof_2
+  - oof_h60_combined_xgb_oof_2
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: calibrate
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - calibrate
+  priority: 25
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: probe_2026-01-02
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - probe
+  - --date
+  - '2026-01-02'
+  priority: 0
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: probe_2026-01-18
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - probe
+  - --date
+  - '2026-01-18'
+  priority: 0
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: probe_2026-02-03
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - probe
+  - --date
+  - '2026-02-03'
+  priority: 0
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: probe_2026-02-18
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - probe
+  - --date
+  - '2026-02-18'
+  priority: 0
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: probe_2026-03-06
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - probe
+  - --date
+  - '2026-03-06'
+  priority: 0
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: probe_2026-03-22
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - probe
+  - --date
+  - '2026-03-22'
+  priority: 0
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: pilot_2026-03-23
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - pilot
+  - --date
+  - '2026-03-23'
+  priority: 30
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: pilot_2026-04-15
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - pilot
+  - --date
+  - '2026-04-15'
+  priority: 30
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: pilot_2026-05-14
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - pilot
+  - --date
+  - '2026-05-14'
+  priority: 30
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: &id002
+  - pilot_2026-03-23
+  - pilot_2026-04-15
+  - pilot_2026-05-14
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-03-23
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-03-23'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id002
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-03-27
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-03-27'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id002
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-04-01
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-04-01'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id002
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-04-06
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-04-06'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id002
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-04-10
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-04-10'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id002
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-04-15
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-04-15'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id002
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-04-20
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-04-20'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id002
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-04-25
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-04-25'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id002
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-04-29
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-04-29'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id002
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-05-04
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-05-04'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id002
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-05-09
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-05-09'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - calibrate
+  after_finished: *id002
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: develop_2026-05-14
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - develop
+  - --date
+  - '2026-05-14'
+  priority: 40
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success: *id003
+  after_finished:
+  - develop_2026-03-23
+  - develop_2026-03-27
+  - develop_2026-04-01
+  - develop_2026-04-06
+  - develop_2026-04-10
+  - develop_2026-04-15
+  - develop_2026-04-20
+  - develop_2026-04-25
+  - develop_2026-04-29
+  - develop_2026-05-04
+  - develop_2026-05-09
+  - develop_2026-05-14
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: freeze
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - select
+  priority: 50
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-05-15
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-05-15'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-05-19
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-05-19'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-05-24
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-05-24'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-05-29
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-05-29'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-06-02
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-06-02'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-06-07
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-06-07'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-06-12
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-06-12'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-06-17
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-06-17'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-06-21
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-06-21'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-06-26
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-06-26'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-07-01
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-07-01'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: validate_2026-07-06
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - validate
+  - --date
+  - '2026-07-06'
+  priority: 60
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished:
+  - validate_2026-05-15
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: stress_2026-05-15
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - stress
+  - --date
+  - '2026-05-15'
+  priority: 70
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished:
+  - validate_2026-06-12
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: stress_2026-06-12
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - stress
+  - --date
+  - '2026-06-12'
+  priority: 70
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - freeze
+  after_finished:
+  - validate_2026-07-06
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: stress_2026-07-06
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - stress
+  - --date
+  - '2026-07-06'
+  priority: 70
+- threads: 6
+  estimated_peak_gib: 6
+  memory_limit_gib: 16
+  allocation_limit_gib: 24
+  requires_success: *id003
+  after_finished:
+  - inventory
+  - oof_h180_old_mlp_oof_0
+  - oof_h180_combined_mlp_oof_0
+  - oof_h180_old_xgb_oof_0
+  - oof_h180_combined_xgb_oof_0
+  - oof_h30_old_mlp_oof_0
+  - oof_h60_combined_xgb_oof_0
+  - oof_h180_old_mlp_oof_1
+  - oof_h180_combined_mlp_oof_1
+  - oof_h180_old_xgb_oof_1
+  - oof_h180_combined_xgb_oof_1
+  - oof_h30_old_mlp_oof_1
+  - oof_h60_combined_xgb_oof_1
+  - oof_h180_old_mlp_oof_2
+  - oof_h180_combined_mlp_oof_2
+  - oof_h180_old_xgb_oof_2
+  - oof_h180_combined_xgb_oof_2
+  - oof_h30_old_mlp_oof_2
+  - oof_h60_combined_xgb_oof_2
+  - calibrate
+  - probe_2026-01-02
+  - probe_2026-01-18
+  - probe_2026-02-03
+  - probe_2026-02-18
+  - probe_2026-03-06
+  - probe_2026-03-22
+  - pilot_2026-03-23
+  - pilot_2026-04-15
+  - pilot_2026-05-14
+  - develop_2026-03-23
+  - develop_2026-03-27
+  - develop_2026-04-01
+  - develop_2026-04-06
+  - develop_2026-04-10
+  - develop_2026-04-15
+  - develop_2026-04-20
+  - develop_2026-04-25
+  - develop_2026-04-29
+  - develop_2026-05-04
+  - develop_2026-05-09
+  - develop_2026-05-14
+  - freeze
+  - validate_2026-05-15
+  - validate_2026-05-19
+  - validate_2026-05-24
+  - validate_2026-05-29
+  - validate_2026-06-02
+  - validate_2026-06-07
+  - validate_2026-06-12
+  - validate_2026-06-17
+  - validate_2026-06-21
+  - validate_2026-06-26
+  - validate_2026-07-01
+  - validate_2026-07-06
+  - stress_2026-05-15
+  - stress_2026-06-12
+  - stress_2026-07-06
+  - baseline_2026-03-23
+  - baseline_2026-03-27
+  - baseline_2026-04-01
+  - baseline_2026-04-06
+  - baseline_2026-04-10
+  - baseline_2026-04-15
+  - baseline_2026-04-20
+  - baseline_2026-04-25
+  - baseline_2026-04-29
+  - baseline_2026-05-04
+  - baseline_2026-05-09
+  - baseline_2026-05-14
+  - baseline_2026-05-15
+  - baseline_2026-05-19
+  - baseline_2026-05-24
+  - baseline_2026-05-29
+  - baseline_2026-06-02
+  - baseline_2026-06-07
+  - baseline_2026-06-12
+  - baseline_2026-06-17
+  - baseline_2026-06-21
+  - baseline_2026-06-26
+  - baseline_2026-07-01
+  - baseline_2026-07-06
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: report
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - report
+  priority: 100
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-03-23
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-03-23'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-03-27
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-03-27'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-04-01
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-04-01'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-04-06
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-04-06'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-04-10
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-04-10'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-04-15
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-04-15'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-04-20
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-04-20'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-04-25
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-04-25'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-04-29
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-04-29'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-05-04
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-05-04'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-05-09
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-05-09'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-05-14
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-05-14'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-05-15
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-05-15'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-05-19
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-05-19'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-05-24
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-05-24'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-05-29
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-05-29'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-06-02
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-06-02'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-06-07
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-06-07'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-06-12
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-06-12'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-06-17
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-06-17'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-06-21
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-06-21'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-06-26
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-06-26'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-07-01
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-07-01'
+  priority: 1
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 10
+  allocation_limit_gib: 24
+  requires_success:
+  - inventory
+  after_finished: *id001
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  id: baseline_2026-07-06
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/run_forecast_strategy.py
+  - config/strategy/forecast_research_20261110.yaml
+  - baseline
+  - --date
+  - '2026-07-06'
+  priority: 1

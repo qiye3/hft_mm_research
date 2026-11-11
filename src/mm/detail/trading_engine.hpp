@@ -24,16 +24,17 @@ using Queue = hbt::RiskAdverseQueueModel;
 using Local = hbt::Local<Asset, Latency, Depth, Fees>;
 using Exchange = hbt::PartialFillExchange<Asset, Latency, Queue, Depth, Fees>;
 using ResponseQueue = std::deque<std::pair<hbt::Order<>, std::int64_t>>;
+enum class QueueAssumption { RiskAdverse, LogProbability };
 
 // 在原生 Local 更新状态的边界增加行情计数与逐条回报记录。
 class RecordingLocal final : public hbt::LocalProcessor {
 public:
-    // 【核心逻辑166】接管原生 Local，并关联它消费的共享响应队列和会话级记录器。
+    // 【核心逻辑183】接管原生 Local，并关联它消费的共享响应队列和会话级记录器。
     RecordingLocal(std::unique_ptr<Local> local, std::shared_ptr<ResponseQueue> responses,
                     TradeRecorder& recorder, bool capture_market = false)
         : local_(std::move(local)), responses_(std::move(responses)), recorder_(recorder), capture_market_(capture_market) {}
 
-    // 【核心逻辑168】先让本地处理器应用一条行情，再保存当时可见的中间价。
+    // 【核心逻辑185】先让本地处理器应用一条行情，再保存当时可见的中间价。
     void process(const hbt::Event& event) override {
         /** 输入为调度器按 local_ts 交付的事件，输出为原生盘口更新和本地事件计数。
          * 当前盘口无效时保留非有限值，后续成交和最终盯市必须明确失败。
@@ -56,22 +57,24 @@ public:
             }
         }
     }
-    // 【核心逻辑179】在当前接收时刻保存全部原始回报，并在原生批次处理后进行账本核对。
+    // 【核心逻辑196】在当前接收时刻保存全部原始回报，并在原生批次处理后进行账本核对。
     bool process_recv_order(std::int64_t timestamp, std::optional<hbt::OrderId> order_id) override {
         /** 输入 timestamp 为队首响应的本地接收时刻，order_id 可指定等待的委托。
          * 返回原生 Local 是否收到了目标订单响应，供 Backtest 的等待语义使用。
          * 队列条目先复制到 received，才能在 Local 消费后逐笔导出原始载荷。
          */
         std::vector<hbt::Order<>> received;
-        for (const auto& [response, receipt_timestamp] : *responses_) {
+        for (auto& [response, receipt_timestamp] : *responses_) {
             if (receipt_timestamp != timestamp) {
                 break;
             }
             received.push_back(response);
-            // 拒绝回报携带成交状态会触发固定引擎的重复记账，必须在消费前终止。
+            // ack_cancel找不到已成交订单时保留请求中的旧成交状态。
+            // 原始载荷已保存；仅对原生Local隐藏拒绝请求的旧状态，防止再次apply_fill。
+            // Local仍按req=Rejected和请求时钟清理在途请求，订单实际状态保持不变。
             if (response.req == hbt::Status::Rejected &&
                 (response.status == hbt::Status::PartiallyFilled || response.status == hbt::Status::Filled)) {
-                throw std::runtime_error("rejected response carries a fill status; pinned engine cannot process it safely");
+                response.status = hbt::Status::None;
             }
         }
         const bool received_requested = local_->process_recv_order(timestamp, order_id);
@@ -162,7 +165,7 @@ private:
 class CountingExchange final : public hbt::Processor {
 public:
     // 【非核心】接管原生交易所处理器，后续所有行情和请求按原接口转发。
-    explicit CountingExchange(std::unique_ptr<Exchange> exchange) : exchange_(std::move(exchange)) {}
+    explicit CountingExchange(std::unique_ptr<hbt::Processor> exchange) : exchange_(std::move(exchange)) {}
     // 【非核心】应用一条交易所可见行情，并增加该侧逻辑事件计数。
     void process(const hbt::Event& event) override {
         /** 输入为调度器按 exch_ts 交付的事件，输出为原生交易所状态更新。
@@ -190,7 +193,7 @@ public:
     std::uint64_t event_count = 0;
 
 private:
-    std::unique_ptr<Exchange> exchange_;
+    std::unique_ptr<hbt::Processor> exchange_;
 };
 
 // 单次策略回测的组装结果，两个观测指针的有效期与 backtest 持有的处理器一致。
@@ -199,9 +202,10 @@ struct TradingEngine {
     RecordingLocal* local;
     CountingExchange* exchange;
 
-    // 【核心逻辑165】把原生处理器、共享请求响应队列和行情缓存注册到同一回测会话。
+    // 【核心逻辑182】把原生处理器、共享请求响应队列和行情缓存注册到同一回测会话。
     TradingEngine(const TradingConfig& config, TradeRecorder& recorder,
-                  std::shared_ptr<hbt::EventReaderCache> reader, bool capture_market = false) {
+                  std::shared_ptr<hbt::EventReaderCache> reader, bool capture_market = false,
+                  QueueAssumption queue_assumption = QueueAssumption::RiskAdverse) {
         /** config 提供步长、费率和固定延迟，recorder 必须比本会话存活更久。
          * reader 由 Local 和 Exchange 共同消费，输出为可通过 backtest 推进的会话。
          * 两个 OrderBus 的副本共享底层队列，RecordingLocal 通过公开 shared 接口观测响应。
@@ -212,9 +216,18 @@ struct TradingEngine {
         auto native_local = std::make_unique<Local>(Depth{config.tick_size, config.lot_size},
             hbt::State<Asset, Fees>{Asset{1.0}, Fees{hbt::CommonFees{config.maker_fee, config.taker_fee}}},
             0, hbt::LocalToExch<Latency>{requests, responses, latency});
-        auto native_exchange = std::make_unique<Exchange>(Depth{config.tick_size, config.lot_size},
-            hbt::State<Asset, Fees, Queue::OrderState>{Asset{1.0}, Fees{hbt::CommonFees{config.maker_fee, config.taker_fee}}},
-            Queue{}, hbt::ExchToLocal<Latency>{requests, responses, latency});
+        std::unique_ptr<hbt::Processor> native_exchange;
+        if (queue_assumption == QueueAssumption::RiskAdverse) {
+            native_exchange = std::make_unique<Exchange>(Depth{config.tick_size, config.lot_size},
+                hbt::State<Asset, Fees, Queue::OrderState>{Asset{1.0}, Fees{hbt::CommonFees{config.maker_fee, config.taker_fee}}},
+                Queue{}, hbt::ExchToLocal<Latency>{requests, responses, latency});
+        } else {
+            using ProbabilityQueue = hbt::ProbQueueModel<hbt::LogProbQueueFunc>;
+            using ProbabilityExchange = hbt::PartialFillExchange<Asset, Latency, ProbabilityQueue, Depth, Fees>;
+            native_exchange = std::make_unique<ProbabilityExchange>(Depth{config.tick_size, config.lot_size},
+                hbt::State<Asset, Fees, ProbabilityQueue::OrderState>{Asset{1.0}, Fees{hbt::CommonFees{config.maker_fee, config.taker_fee}}},
+                ProbabilityQueue{hbt::LogProbQueueFunc{}}, hbt::ExchToLocal<Latency>{requests, responses, latency});
+        }
         auto recording_local = std::make_unique<RecordingLocal>(std::move(native_local), responses.shared(), recorder, capture_market);
         auto counting_exchange = std::make_unique<CountingExchange>(std::move(native_exchange));
         local = recording_local.get();

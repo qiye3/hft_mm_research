@@ -1,0 +1,37 @@
+# GPU汇总扩展批次，入口为主GPU研究队列。
+# 输入为全部模型结果，输出配置汇总、日级配对比较和报告，并清理临时RAM输入。
+tasks:
+- id: gpu_model_summary
+  lane: gpu
+  threads: 1
+  estimated_peak_gib: 1
+  memory_limit_gib: 4
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -m
+  - mm_research.models.target180_report
+  - workspace/results/target180_gpu_20261110_v1
+  - workspace/results/sequence180_gpu_20261110_v1
+  - --ephemeral-input
+  - /dev/shm/hft_sequence180_20261110_v1.npy
+  requires_success: []
+  after_finished:
+  - mlp_lr0.0003_seed17
+  - mlp_lr0.0003_seed42
+  - mlp_lr0.0003_seed73
+  - mlp_lr0.001_seed17
+  - mlp_lr0.001_seed42
+  - mlp_lr0.001_seed73
+  - prepare_sequence48
+  - mlp_sequence48_seed17
+  - mlp_sequence48_seed42
+  - mlp_sequence48_seed73
+  - gru_sequence48_seed17
+  - gru_sequence48_seed42
+  - gru_sequence48_seed73
+  - tcn_sequence48_seed17
+  - tcn_sequence48_seed42
+  - tcn_sequence48_seed73
+  - ram_sequence_cache
+  - xgb_depth6_seed17
+  priority: 100

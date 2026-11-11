@@ -37,4 +37,4 @@ def source_expressions(config: dict, initial_start_ns: int | None = None) -> dic
 def factor_expressions(config: dict) -> dict[str, pl.Expr]:
     """九种里层状态共享输入，输出四档秒级均值。"""
     sources = {name: pl.col(name) for name in source_expressions(config)}
-    return rolling_factors(sources, (5, 10, 30, 100), 'mean', config['min_fraction'])
+    return rolling_factors(sources, config["aggregation_windows_s"], 'mean', config['min_fraction'])

@@ -27,28 +27,29 @@ class FactorMemoryTests(unittest.TestCase):
     # 【非核心】真实分块入口携带年龄及方向状态，比较全部36列与整段计算。
     def test_stateful_chunks_match_whole_history(self):
         """在两种日界上检查状态、80%窗口及首尾空值逐行相同。"""
-        config = {"tick_size": .1, "min_fraction": .8, "write_threads": 1,
+        config = {"tick_size": .1, "min_fraction": .8, "aggregation_windows_s": [10, 60, 180, 600],
+                  "mean_diff_windows_s": [[10, 60], [60, 180], [180, 600]], "write_threads": 1,
                   "output_interval_ns": 1_000_000_000}
         for last_date in ["2026-07-12", "2025-10-01"]:
             midnight = int(dt.datetime.fromisoformat(last_date).replace(tzinfo=dt.timezone.utc).timestamp()) * 1_000_000_000
-            timestamps = midnight - 160_000_000_000 + np.arange(3200, dtype=np.int64) * 100_000_000
+            timestamps = midnight - 700_000_000_000 + np.arange(14000, dtype=np.int64) * 100_000_000
             dates = [str(dt.date.fromisoformat(last_date) - dt.timedelta(days=1)), last_date]
-            source = pl.DataFrame({"symbol": ["BTCUSDT"] * 3200,
-                                   "date": [dates[0]] * 1600 + [dates[1]] * 1600,
+            source = pl.DataFrame({"symbol": ["BTCUSDT"] * 14000,
+                                   "date": [dates[0]] * 7000 + [dates[1]] * 7000,
                                    "timestamp_ns": timestamps,
-                                   "book_segment_id": [0] * 3200,
-                                   "flow_valid": [True] * 3200,
-                                   "bid_price_1": [100.] + [101.] * 3199,
-                                   "ask_price_1": [103.] + [104.] * 3199,
-                                   "mid_price": [101.5] + [102.5] * 3199,
-                                   "bid_quantity_1": [1.] + [2.] * 3199,
-                                   "ask_quantity_1": [3.] + [4.] * 3199,
-                                   "trade_count": [1.] * 3200,
-                                   "buy_volume": [1.] * 3200,
-                                   "sell_volume": [0.] * 3200})
-            # 第一次切块跨越一条超过120秒的连续方向；日界后插入真实缺失。
+                                   "book_segment_id": [0] * 14000,
+                                   "flow_valid": [True] * 14000,
+                                   "bid_price_1": [100.] + [101.] * 13999,
+                                   "ask_price_1": [103.] + [104.] * 13999,
+                                   "mid_price": [101.5] + [102.5] * 13999,
+                                   "bid_quantity_1": [1.] + [2.] * 13999,
+                                   "ask_quantity_1": [3.] + [4.] * 13999,
+                                   "trade_count": [1.] * 14000,
+                                   "buy_volume": [1.] * 14000,
+                                   "sell_volume": [0.] * 14000})
+            # 第一次切块跨越一条超过600秒的连续方向；日界后插入真实缺失。
             source = source.with_columns([
-                pl.when(pl.int_range(pl.len()).is_between(1750, 1765)).then(None).otherwise(pl.col(name)).alias(name)
+                pl.when(pl.int_range(pl.len()).is_between(7750, 7765)).then(None).otherwise(pl.col(name)).alias(name)
                 for name in ["buy_volume", "bid_price_1"]
             ])
             config["dates"] = dates

@@ -1,0 +1,133 @@
+# 模型统一对照配置。输入正式Features、Factors与Labels，输出共享磁盘矩阵和共同样本研究结论。
+# 训练期选列；标签质量决定共同样本；训练均值填补及缺失通道；300秒分界隔离。
+# 4天有界预读，主线程按日期计算跨日派生和标准化统计。
+stage: model_comparison
+start_date: '2025-05-09'
+end_date: '2026-10-21'
+feature_folder: workspace/data/features/server_531d_v1
+factor_sources:
+- folder: workspace/data/factors/server_factors_1s_v1
+  evaluation: workspace/results/evaluation/server_factors_1s_v1
+  batches:
+  - gen001
+  - gen002
+  - gen003
+  - gen004
+  - gen005
+  - gen006
+  - gen008
+  - gen009
+  - gen010
+- folder: workspace/data/factors/server_factors_extra_1s_v1
+  evaluation: workspace/results/evaluation/server_factors_extra_1s_v1
+  batches:
+  - gen011
+  - gen012
+  - gen013
+  - gen014
+  - gen015
+  - gen016
+  - gen017
+  - gen018
+  - gen019
+  - gen020
+- folder: workspace/data/factors/server_factors_more_1s_v1
+  evaluation: workspace/results/evaluation/server_factors_more_1s_v1
+  batches:
+  - gen021
+  - gen022
+  - gen023
+  - gen024
+  - gen025
+  - gen026
+  - gen027
+  - gen028
+  - gen029
+- folder: workspace/data/factors/server_factors_latest_1s_v1
+  evaluation: workspace/results/evaluation/server_factors_latest_1s_v1
+  batches:
+  - gen031
+  - gen032
+  - gen033
+  - gen034
+  - gen035
+  - gen036
+  - gen037
+label_folder: workspace/data/labels/server_mid_1s_v1
+dataset_output: workspace/data/model_matrices/comparison_2026-11-09_v2
+output: workspace/results/models/comparison_2026-11-09_v2
+train_end: '2026-05-31'
+validation_end: '2026-08-31'
+minimum_train_coverage: 0.95
+families:
+  price:
+  - 5
+  - 15
+  - 28
+  - 32
+  - 33
+  obi:
+  - 1
+  - 2
+  - 19
+  depth:
+  - 3
+  - 6
+  - 22
+  - 24
+  - 35
+  trade:
+  - 4
+  - 10
+  - 16
+  - 17
+  - 21
+  - 23
+  micro:
+  - 12
+  - 31
+  cross:
+  - 8
+  - 9
+  - 26
+  state:
+  - 11
+  - 13
+  - 14
+  - 18
+  - 20
+  - 25
+  - 27
+  - 29
+  - 34
+  - 36
+  - 37
+training_rows: 6000000
+validation_rows: 100000
+seed: 7
+threads: 8
+chunk_rows: 25000
+ridge_alphas:
+- 0.0001
+- 0.001
+- 0.01
+- 0.1
+- 1.0
+lasso_alphas:
+- 0.001
+- 0.01
+- 0.1
+tree:
+  leaves:
+  - 31
+  - 127
+  rounds: 1200
+gru:
+  sequences:
+  - 1
+  - 30
+  - 120
+  hidden: 64
+  epochs: 1
+  batch_size: 1024
+read_workers: 4

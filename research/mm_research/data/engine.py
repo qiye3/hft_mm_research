@@ -5,7 +5,6 @@ write_routed_shards 负责分侧排序与分片。输入为 BTCUSDT 全深度 L2
 输出为与 C++ hbt.Event 二进制布局兼容的 NPZ，以及含原始计数和最终盘口的 manifest。
 最终盘口字典用于离线对照，回测中的盘口更新由 C++ 引擎执行。
 """
-import csv
 import datetime as dt
 import json
 import math
@@ -15,6 +14,9 @@ from collections import Counter
 from pathlib import Path
 
 import numpy as np
+import polars as pl
+import pyarrow as pa
+import pyarrow.csv as arrow_csv
 from mm_research.data.sources import open_market_csv
 
 BUY = 1 << 29
@@ -60,7 +62,7 @@ def validate_grid(price: float, quantity: float, tick_size: float, lot_size: flo
         raise ValueError(f"数量不符合 lot_size：{quantity}")
 
 
-# 【核心逻辑144】将一个压缩源文件校验并追加为标准记录，同时保存原始数据的对照统计。
+# 【核心逻辑161】将一个压缩源文件校验并追加为标准记录，同时保存原始数据的对照统计。
 def append_source(filename: Path, kind: str, output, tick_size: float, lot_size: float,
                   chunk_rows: int) -> dict:
     """读取完整 Tardis 源流，为后续双侧路由准备无路由标志的事件。
@@ -76,8 +78,6 @@ def append_source(filename: Path, kind: str, output, tick_size: float, lot_size:
         验证品种、方向、源流时序和初始快照，并提供独立于 C++ 回放的最终盘口基准。
         列缺失、非法数值、空流或最终盘口交叉时抛出异常。
     """
-    buffer = np.zeros(chunk_rows, dtype=EVENT_DTYPE)
-    used = 0
     counts = Counter()
     first_local = None
     last_local = None
@@ -85,73 +85,89 @@ def append_source(filename: Path, kind: str, output, tick_size: float, lot_size:
     previous_snapshot = False
     bids = {}
     asks = {}
+    names = ["exchange", "symbol", "timestamp", "local_timestamp", "side", "price", "amount"]
+    types = {"exchange": pa.string(), "symbol": pa.string(), "timestamp": pa.int64(),
+             "local_timestamp": pa.int64(), "side": pa.string(), "price": pa.float64(), "amount": pa.float64()}
+    if kind == "book":
+        names.append("is_snapshot")
+        types["is_snapshot"] = pa.string()
     with open_market_csv(filename) as source:
-        rows = csv.reader(source)
-        columns = {name: index for index, name in enumerate(next(rows))}
-        required = {"exchange", "symbol", "timestamp", "local_timestamp", "side", "price", "amount"}
-        if kind == "book":
-            required.add("is_snapshot")
-        if not required.issubset(columns):
-            raise ValueError(f"缺少 CSV 列：{required - columns.keys()}")
-        for row in rows:
-            if row[columns["exchange"]] != "binance-futures" or row[columns["symbol"]] != "BTCUSDT":
+        reader = arrow_csv.open_csv(source.buffer,
+            read_options=arrow_csv.ReadOptions(block_size=16 * 1024 * 1024),
+            convert_options=arrow_csv.ConvertOptions(column_types=types, include_columns=names))
+        for batch in reader:
+            frame = pl.from_arrow(batch)
+            if frame.null_count().sum_horizontal().item() != 0:
+                raise ValueError("原始事件存在缺失字段")
+            if frame.filter((pl.col("exchange") != "binance-futures") | (pl.col("symbol") != "BTCUSDT")).height:
                 raise ValueError("仅接收 binance-futures BTCUSDT 行情")
-            # Tardis CSV 时间戳以微秒表示，标准事件在此统一放大为纳秒。
-            exchange_ts = int(row[columns["timestamp"]]) * 1000
-            local_ts = int(row[columns["local_timestamp"]]) * 1000
-            if last_local is not None and local_ts < last_local:
+            exchange_times = frame["timestamp"].to_numpy() * 1000
+            local_times = frame["local_timestamp"].to_numpy() * 1000
+            if np.any(local_times[1:] < local_times[:-1]) or (last_local is not None and local_times[0] < last_local):
                 raise ValueError(f"源文件本地时间戳倒退：{filename}")
             if first_local is None:
-                first_local = local_ts
-            latency = local_ts - exchange_ts
+                first_local = int(local_times[0])
+            latency = int(np.min(local_times - exchange_times))
             minimum_latency = latency if minimum_latency is None else min(minimum_latency, latency)
-            price = float(row[columns["price"]])
-            quantity = float(row[columns["amount"]])
-            validate_grid(price, quantity, tick_size, lot_size)
-            side = row[columns["side"]]
-            allowed_sides = {"bid", "ask"} if kind == "book" else {"buy", "sell"}
-            if side not in allowed_sides:
-                raise ValueError(f"未知方向：{side}")
-            flag = BUY if side in {"buy", "bid"} else SELL
-            event_kind = TRADE
-            is_snapshot = False
+            prices = frame["price"].to_numpy()
+            quantities = frame["amount"].to_numpy()
+            if not np.all(np.isfinite(prices) & (prices > 0) & np.isfinite(quantities) & (quantities >= 0)):
+                raise ValueError("无效价格/数量")
+            if np.any(np.abs(prices / tick_size - np.rint(prices / tick_size)) > 1e-6):
+                raise ValueError("价格不符合 tick_size")
+            if np.any(np.abs(quantities / lot_size - np.rint(quantities / lot_size)) > 1e-6):
+                raise ValueError("数量不符合 lot_size")
+            sides = frame["side"].to_numpy()
+            buy_side = "bid" if kind == "book" else "buy"
+            sell_side = "ask" if kind == "book" else "sell"
+            if np.any((sides != buy_side) & (sides != sell_side)):
+                raise ValueError("未知方向")
+            buys = sides == buy_side
+            snapshots = np.zeros(len(frame), dtype=bool)
+            clears = np.zeros(len(frame), dtype=bool)
             if kind == "book":
-                snapshot_value = row[columns["is_snapshot"]]
-                if snapshot_value not in {"true", "false"}:
-                    raise ValueError(f"无效 is_snapshot：{snapshot_value}")
-                is_snapshot = snapshot_value == "true"
-                if counts["rows"] == 0 and not is_snapshot:
+                snapshot_values = frame["is_snapshot"].to_numpy()
+                if np.any((snapshot_values != "true") & (snapshot_values != "false")):
+                    raise ValueError("无效 is_snapshot")
+                snapshots = snapshot_values == "true"
+                if counts["rows"] == 0 and not snapshots[0]:
                     raise ValueError("盘口文件必须从初始快照开始")
-                new_snapshot = is_snapshot and (not previous_snapshot or local_ts != last_local)
-                if new_snapshot:
-                    # 同一快照的各价位共享本地接收时刻，只在该批快照起点清空一次。
-                    # 日初和重连都按完整替换处理，旧价位不能继续残留在离线对照中。
-                    buffer[used] = (CLEAR, exchange_ts, local_ts, 0, 0, 0, 0, 0)
-                    used += 1
-                    counts["clear_events"] += 1
+                previous_flags = np.r_[previous_snapshot, snapshots[:-1]]
+                previous_times = np.r_[local_times[0] if last_local is None else last_local, local_times[:-1]]
+                clears = snapshots & (~previous_flags | (local_times != previous_times))
+                counts["clear_events"] += int(clears.sum())
+                counts[str(SNAPSHOT)] += int(snapshots.sum())
+                counts[str(DEPTH)] += len(frame) - int(snapshots.sum())
+                # 仅压缩独立最终盘口对照的重复价位，写入引擎的事件保持逐行完整。
+                final_start = int(np.flatnonzero(clears)[-1]) if clears.any() else 0
+                if clears.any():
                     bids.clear()
                     asks.clear()
-                    if used == chunk_rows:
-                        buffer.tofile(output)
-                        used = 0
-                event_kind = SNAPSHOT if is_snapshot else DEPTH
-                # 全量保留深层更新，使它们在前方价位删除后仍可进入观察范围。
-                side_book = bids if flag == BUY else asks
-                if quantity == 0:
-                    side_book.pop(price, None)
-                else:
-                    side_book[price] = quantity
-            buffer[used] = (event_kind | flag, exchange_ts, local_ts, price, quantity, 0, 0, 0)
-            used += 1
-            counts["rows"] += 1
-            counts[str(event_kind)] += 1
-            last_local = local_ts
-            previous_snapshot = is_snapshot
-            if used == chunk_rows:
-                buffer.tofile(output)
-                used = 0
-        if used:
-            buffer[:used].tofile(output)
+                final_updates = frame.slice(final_start).group_by(["side", "price"], maintain_order=True).agg(pl.col("amount").last())
+                for side, price, quantity in final_updates.iter_rows():
+                    book = bids if side == "bid" else asks
+                    if quantity == 0:
+                        book.pop(price, None)
+                    else:
+                        book[price] = quantity
+            else:
+                counts[str(TRADE)] += len(frame)
+            event_positions = np.arange(len(frame)) + np.cumsum(clears)
+            events = np.zeros(len(frame) + int(clears.sum()), dtype=EVENT_DTYPE)
+            event_kinds = np.where(snapshots, SNAPSHOT, DEPTH) if kind == "book" else TRADE
+            events["ev"][event_positions] = event_kinds | np.where(buys, BUY, SELL)
+            events["exch_ts"][event_positions] = exchange_times
+            events["local_ts"][event_positions] = local_times
+            events["px"][event_positions] = prices
+            events["qty"][event_positions] = quantities
+            clear_positions = event_positions[clears] - 1
+            events["ev"][clear_positions] = CLEAR
+            events["exch_ts"][clear_positions] = exchange_times[clears]
+            events["local_ts"][clear_positions] = local_times[clears]
+            events.tofile(output)
+            counts["rows"] += len(frame)
+            last_local = int(local_times[-1])
+            previous_snapshot = bool(snapshots[-1])
     if not counts["rows"]:
         raise ValueError(f"源文件为空：{filename}")
     final_bids = sorted(bids.items(), reverse=True)[:10]
@@ -159,15 +175,11 @@ def append_source(filename: Path, kind: str, output, tick_size: float, lot_size:
     if kind == "book" and (not final_bids or not final_asks or final_bids[0][0] >= final_asks[0][0]):
         raise ValueError("最终原始盘口为空或交叉")
     return {
-        "file": str(filename.resolve()),
-        "bytes": filename.stat().st_size,
-        "counts": dict(counts),
-        "first_local_timestamp_ns": first_local,
-        "last_local_timestamp_ns": last_local,
-        "minimum_feed_latency_ns": minimum_latency,
-        "final_bids": final_bids,
-        "final_asks": final_asks,
+        "file": str(filename.resolve()), "bytes": filename.stat().st_size, "counts": dict(counts),
+        "first_local_timestamp_ns": first_local, "last_local_timestamp_ns": last_local,
+        "minimum_feed_latency_ns": minimum_latency, "final_bids": final_bids, "final_asks": final_asks,
     }
+
 
 
 # 【非核心】用两个源文件的首尾接收时刻检查它们是否覆盖指定 UTC 日的两端。
@@ -192,7 +204,7 @@ def validate_day(sources: list[dict], date: str) -> None:
 
 
 # ==================== 双时钟路由与分片落盘 ====================
-# 【核心逻辑145】为交易所与本地分别生成可见事件，并按可见时间稳定排序写出 NPZ。
+# 【核心逻辑162】为交易所与本地分别生成可见事件，并按可见时间稳定排序写出 NPZ。
 def write_routed_shards(events: np.ndarray, destination: Path, shard_rows: int) -> list[dict]:
     """生成两个处理器各自有序的标准事件分片。
 
@@ -242,7 +254,7 @@ def write_routed_shards(events: np.ndarray, destination: Path, shard_rows: int) 
 
 
 # ==================== 单日转换编排与命令行入口 ====================
-# 【核心逻辑143】编排单日全深度行情转换，生成可被原生 C++ reader 直接消费的清单。
+# 【核心逻辑160】编排单日全深度行情转换，生成可被原生 C++ reader 直接消费的清单。
 def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: float = 0.1,
             lot_size: float = 0.001, shard_rows: int = 250_000, full_day: bool = True) -> dict:
     """完成从两个原始压缩文件到标准事件和转换清单的离线准备。
@@ -311,5 +323,3 @@ def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: f
     del events
     shutil.rmtree(workspace)
     return manifest
-
-

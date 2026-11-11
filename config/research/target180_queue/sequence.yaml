@@ -1,0 +1,239 @@
+# GPU序列扩展批次，由 target180_gpu_20261110.yaml 主队列读取。
+# 入口 scripts/run_overnight.py config/research/target180_gpu_20261110.yaml。
+# 输入为冻结146列，输出训练期48列清单、临时RAM输入和同列模型结果。
+tasks:
+- lane: gpu
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 24
+  after_finished: &id001 []
+  priority: -1
+  id: prepare_sequence48
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_sequence180.py
+  - config/models/sequence180_gpu_20261110.yaml
+  - prepare
+  requires_success: []
+- id: ram_sequence_cache
+  lane: gpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_sequence180.py
+  - config/models/sequence180_gpu_20261110.yaml
+  - cache
+  - --normalized-input
+  - /dev/shm/hft_sequence180_20261110_v1.npy
+  threads: 1
+  estimated_peak_gib: 18
+  memory_limit_gib: 24
+  requires_success:
+  - prepare_sequence48
+  after_finished: []
+  priority: -1
+- lane: gpu
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 24
+  after_finished: *id001
+  priority: 2
+  id: mlp_sequence48_seed17
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_sequence180.py
+  - config/models/sequence180_gpu_20261110.yaml
+  - train
+  - --family
+  - mlp
+  - --seed
+  - '17'
+  - --normalized-input
+  - /dev/shm/hft_sequence180_20261110_v1.npy
+  requires_success:
+  - prepare_sequence48
+  - ram_sequence_cache
+- lane: gpu
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 24
+  after_finished: *id001
+  priority: 2
+  id: mlp_sequence48_seed42
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_sequence180.py
+  - config/models/sequence180_gpu_20261110.yaml
+  - train
+  - --family
+  - mlp
+  - --seed
+  - '42'
+  - --normalized-input
+  - /dev/shm/hft_sequence180_20261110_v1.npy
+  requires_success:
+  - prepare_sequence48
+  - ram_sequence_cache
+- lane: gpu
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 24
+  after_finished: *id001
+  priority: 2
+  id: mlp_sequence48_seed73
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_sequence180.py
+  - config/models/sequence180_gpu_20261110.yaml
+  - train
+  - --family
+  - mlp
+  - --seed
+  - '73'
+  - --normalized-input
+  - /dev/shm/hft_sequence180_20261110_v1.npy
+  requires_success:
+  - prepare_sequence48
+  - ram_sequence_cache
+- lane: gpu
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 24
+  after_finished: *id001
+  priority: 0
+  id: gru_sequence48_seed17
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_sequence180.py
+  - config/models/sequence180_gpu_20261110.yaml
+  - train
+  - --family
+  - gru
+  - --seed
+  - '17'
+  - --normalized-input
+  - /dev/shm/hft_sequence180_20261110_v1.npy
+  requires_success:
+  - prepare_sequence48
+  - ram_sequence_cache
+- lane: gpu
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 24
+  after_finished: *id001
+  priority: 0
+  id: gru_sequence48_seed42
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_sequence180.py
+  - config/models/sequence180_gpu_20261110.yaml
+  - train
+  - --family
+  - gru
+  - --seed
+  - '42'
+  - --normalized-input
+  - /dev/shm/hft_sequence180_20261110_v1.npy
+  requires_success:
+  - prepare_sequence48
+  - ram_sequence_cache
+- lane: gpu
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 24
+  after_finished: *id001
+  priority: 0
+  id: gru_sequence48_seed73
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_sequence180.py
+  - config/models/sequence180_gpu_20261110.yaml
+  - train
+  - --family
+  - gru
+  - --seed
+  - '73'
+  - --normalized-input
+  - /dev/shm/hft_sequence180_20261110_v1.npy
+  requires_success:
+  - prepare_sequence48
+  - ram_sequence_cache
+- lane: gpu
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 24
+  after_finished: *id001
+  priority: 1
+  id: tcn_sequence48_seed17
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_sequence180.py
+  - config/models/sequence180_gpu_20261110.yaml
+  - train
+  - --family
+  - tcn
+  - --seed
+  - '17'
+  - --normalized-input
+  - /dev/shm/hft_sequence180_20261110_v1.npy
+  - --batch-size
+  - '1024'
+  requires_success:
+  - prepare_sequence48
+  - ram_sequence_cache
+- lane: gpu
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 24
+  after_finished: *id001
+  priority: 1
+  id: tcn_sequence48_seed42
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_sequence180.py
+  - config/models/sequence180_gpu_20261110.yaml
+  - train
+  - --family
+  - tcn
+  - --seed
+  - '42'
+  - --normalized-input
+  - /dev/shm/hft_sequence180_20261110_v1.npy
+  - --batch-size
+  - '1024'
+  requires_success:
+  - prepare_sequence48
+  - ram_sequence_cache
+- lane: gpu
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 24
+  after_finished: *id001
+  priority: 1
+  id: tcn_sequence48_seed73
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_sequence180.py
+  - config/models/sequence180_gpu_20261110.yaml
+  - train
+  - --family
+  - tcn
+  - --seed
+  - '73'
+  - --normalized-input
+  - /dev/shm/hft_sequence180_20261110_v1.npy
+  - --batch-size
+  - '1024'
+  requires_success:
+  - prepare_sequence48
+  - ram_sequence_cache

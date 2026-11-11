@@ -26,4 +26,4 @@ def source_expressions(config: dict) -> dict[str, pl.Expr]:
 def factor_expressions(config: dict) -> dict[str, pl.Expr]:
     """每个里层序列只生成一次，返回四档窗口的Float64表达式。"""
     sources = {name: pl.col(name) for name in source_expressions(config)}
-    return rolling_factors(sources, (5, 10, 30, 100), 'mean', config['min_fraction'])
+    return rolling_factors(sources, config["aggregation_windows_s"], 'mean', config['min_fraction'])

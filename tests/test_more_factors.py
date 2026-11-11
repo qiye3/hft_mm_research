@@ -19,8 +19,8 @@ class MoreFactorTests(unittest.TestCase):
         """包含状态源预处理和有界失败突破内核，所有组各36个。"""
         for number in range(21, 31):
             batch = f'gen{number:03d}'
-            expressions = factor_module(batch).factor_expressions({'min_fraction': .8, 'tick_size': .1})
-            inputs = factor_module(batch).source_expressions({'tick_size': .1, 'min_fraction': .8}) if number in [21, 22, 25, 26, 28] else expressions
+            expressions = factor_module(batch).factor_expressions({'min_fraction': .8, 'tick_size': .1, "aggregation_windows_s": [5, 10, 30, 100], "mean_diff_windows_s": [[3, 10], [5, 20], [5, 50], [10, 50], [10, 100], [20, 100]]})
+            inputs = factor_module(batch).source_expressions({'tick_size': .1, 'min_fraction': .8, "aggregation_windows_s": [5, 10, 30, 100], "mean_diff_windows_s": [[3, 10], [5, 20], [5, 50], [10, 50], [10, 100], [20, 100]]}) if number in [21, 22, 25, 26, 28] else expressions
             names = sorted({name for expression in inputs.values() for name in expression.meta.root_names()})
             data = {}
             for name in names:

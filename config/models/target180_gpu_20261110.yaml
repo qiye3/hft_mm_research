@@ -1,0 +1,9 @@
+# 模型阶段。入口 scripts/train_target180.py，由独立GPU队列逐项执行。
+# 输入为昨日冻结146列NPY及训练期标准化缓存，尚未包含新四档1206因子。
+# 输出为每次实验的权重、两段整秒验证预测、逐日统计和资源记录。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/target180_gpu_20261110_v1
+batch_size: 8192
+max_epochs: 20
+patience: 4
+nonoverlap_phases_s: [0, 60, 120]

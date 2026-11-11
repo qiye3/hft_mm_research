@@ -19,4 +19,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         sources[f'noise_{name}_reversal_overlap_100ms'] = pl.when(valid).then(
             pl.when(returns * previous < 0).then(pl.min_horizontal(returns.abs(), previous.abs())).otherwise(0),
         )
-    return rolling_factors(sources, (5, 10, 30, 100), 'mean', config['min_fraction'])
+    return rolling_factors(sources, config["aggregation_windows_s"], 'mean', config['min_fraction'])

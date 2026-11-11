@@ -17,11 +17,11 @@ from torch import nn
 import yaml
 
 from mm_research.data.storage import write_json_atomic
-from mm_research.models.experiment_data import HORIZONS, prepare_experiment_data
+from mm_research.models.experiment_data import HORIZONS, prepare_experiment_data, history_batch
 from mm_research.models.neural import FactorNetwork
 
 
-# 【核心逻辑134】按输入列训练IC选择每个目标的候选，排序只使用训练期统计。
+# 【核心逻辑152】按输入列训练IC选择每个目标的候选，排序只使用训练期统计。
 def selected_columns(metadata: dict, horizon_index: int, count: int) -> np.ndarray:
     """固定保留六列原始基线，其余按训练绝对IC挑选，输出稳定列顺序。"""
     correlations = np.abs(np.asarray(metadata['train_ic'][horizon_index], dtype=np.float64))
@@ -29,16 +29,6 @@ def selected_columns(metadata: dict, horizon_index: int, count: int) -> np.ndarr
     selected = list(range(6))
     selected.extend(int(index) for index in order if index >= 6 and np.isfinite(correlations[index]))
     return np.asarray(selected[:count], dtype=np.int64)
-
-
-# 【核心逻辑136】从完整时间网格读取过去序列，缺失用训练均值及显式标记处理。
-def history_batch(matrix, indices: np.ndarray, columns: np.ndarray, sequence: int) -> np.ndarray:
-    """标准化矩阵的零对应训练均值，附加等宽缺失通道，不跨越未来时点。"""
-    positions = indices[:, None] + np.arange(1 - sequence, 1)
-    values = np.asarray(matrix[positions[:, :, None], columns[None, None, :]])
-    missing = ~np.isfinite(values)
-    values = np.nan_to_num(values, nan=0, copy=False)
-    return np.concatenate([values, missing.astype(np.float32)], axis=-1)
 
 
 # 【非核心】以固定时间位置抽取验证样本，不根据实际收益选择样本。
@@ -53,7 +43,7 @@ def evaluation_indices(targets, metadata: dict, horizon_index: int, split: str, 
     return indices
 
 
-# 【核心逻辑138】按批次推理并累积误差与相关，最终测试可保存完整整秒预测。
+# 【核心逻辑155】按批次推理并累积误差与相关，最终测试可保存完整整秒预测。
 def evaluate_model(model, matrix, targets, indices: np.ndarray, columns: np.ndarray,
                    trial: dict, metadata: dict, destination: Path | None = None) -> dict:
     """输入冻结模型与明确样本位置，返回bps指标，神经网络仅调用eval模式。"""
@@ -96,7 +86,7 @@ def evaluate_model(model, matrix, targets, indices: np.ndarray, columns: np.ndar
             'zero_prediction_mse_bps2': float(sum_yy / count)}
 
 
-# 【核心逻辑133】在固定训练步数和时间预算内拟合神经网络，保留验证误差最低状态。
+# 【核心逻辑151】在固定训练步数和时间预算内拟合神经网络，保留验证误差最低状态。
 def train_neural(trial: dict, config: dict, metadata: dict, matrix, targets, output: Path, deadline: float) -> dict:
     """均匀抽取全部训练日期的合法秒点，随机种子、列顺序和标准化随检查点保存。"""
     seed = trial['seed']
@@ -158,7 +148,7 @@ def train_neural(trial: dict, config: dict, metadata: dict, matrix, targets, out
             'validation_history': history, 'columns': columns.tolist()}
 
 
-# 【核心逻辑139】用相同训练候选与固定验证集拟合树模型，明确记录训练抽样规模。
+# 【核心逻辑156】用相同训练候选与固定验证集拟合树模型，明确记录训练抽样规模。
 def train_lightgbm(trial: dict, config: dict, metadata: dict, matrix, targets, output: Path, deadline: float) -> dict:
     """最多使用预设训练秒点数量，验证早停决定树数，目标仍以bps表达。"""
     import lightgbm as lgb
@@ -198,7 +188,7 @@ def train_lightgbm(trial: dict, config: dict, metadata: dict, matrix, targets, o
             'training_rows': len(indices), 'seconds': time.time() - started, 'columns': columns.tolist()}
 
 
-# 【核心逻辑129】运行预先列出的模型队列，到截止时间前冻结选择并测试最佳模型。
+# 【核心逻辑149】运行预先列出的模型队列，到截止时间前冻结选择并测试最佳模型。
 def run_model_experiments(config_path: Path) -> None:
     """队列按验证期MSE选每周期赢家，所有测试结果在选择结束后统一生成。"""
     root = Path(__file__).resolve().parents[3]
@@ -272,7 +262,7 @@ def run_model_experiments(config_path: Path) -> None:
     print('MODEL_EXPERIMENTS_COMPLETE', flush=True)
 
 
-# 【核心逻辑132】在独立进程中执行一个已列明候选，结果原子发布后退出。
+# 【核心逻辑150】在独立进程中执行一个已列明候选，结果原子发布后退出。
 def run_single_trial(config_path: Path, index: int) -> None:
     """使用共享矩阵和固定期限，训练失败保持原异常供父进程记录。"""
     root = Path(__file__).resolve().parents[3]

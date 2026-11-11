@@ -1,0 +1,12 @@
+# 180秒序列模型。入口 scripts/train_sequence180.py。
+# 输入旧冻结146列，仅训练拟合前缀选48列，Float32值与缺失通道共96列。
+# 输出选列清单及120秒GRU/TCN三种子模型与完整验证预测。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/sequence180_gpu_20261110_v1
+selected_features: 48
+history_s: 120
+batch_size: 256
+learning_rate: 0.0003
+max_epochs: 20
+patience: 4
+nonoverlap_phases_s: [0, 60, 120]

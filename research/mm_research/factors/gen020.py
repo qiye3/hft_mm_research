@@ -101,4 +101,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         sources[f"utcslot_{name}_ratio_20d"] = values / pl.when(mean > 0).then(mean)
         sources[f"utcslot_{name}_zscore_20d"] = (values - mean) / pl.when(standard > 0).then(standard)
         sources[f"utcslot_{name}_q90flag_20d"] = (values > quantile).cast(pl.Float64)
-    return rolling_factors(sources, (5, 10, 30, 100), "mean", config["min_fraction"])
+    return rolling_factors(sources, config["aggregation_windows_s"], "mean", config["min_fraction"])

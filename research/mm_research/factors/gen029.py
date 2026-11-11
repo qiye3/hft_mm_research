@@ -24,4 +24,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         sources[f'regime_{name}_mean_shift_1s5s'] = (recent_mean - mean) / standard
         sources[f'regime_{name}_var_shift_1s5s'] = recent_variance / pl.when(variance > 0).then(variance) - 1
         sources[f'regime_{name}_cusum_shift_1s5s'] = (values.rolling_sum(10, min_samples=8) - count * mean) / (standard * count.sqrt())
-    return rolling_factors(sources, (5, 10, 30, 100), 'mean', config['min_fraction'])
+    return rolling_factors(sources, config["aggregation_windows_s"], 'mean', config['min_fraction'])

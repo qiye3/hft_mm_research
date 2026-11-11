@@ -48,7 +48,7 @@ LinearSignal::Term LinearSignal::parse_term(const std::string& name, double coef
     throw std::invalid_argument("unsupported realtime model column: " + name);
 }
 
-// 【核心逻辑161】保存模型系数与可供独立公式对照的100ms输入文件。
+// 【核心逻辑178】保存模型系数与可供独立公式对照的100ms输入文件。
 LinearSignal::LinearSignal(const std::filesystem::path& model, const std::filesystem::path& samples) {
     std::ifstream input{model};
     std::string name;
@@ -92,7 +92,7 @@ LinearSignal::LinearSignal(const std::filesystem::path& model, const std::filesy
     samples_ << ",inference_update,prediction_bps\n";
 }
 
-// 【核心逻辑170】按固定采样位置统计有效压力，跨缺失和午夜保持滑动。
+// 【核心逻辑187】按固定采样位置统计有效压力，跨缺失和午夜保持滑动。
 double LinearSignal::pressure_mean(int source, int window) const {
     const auto& history = pressure_[source];
     const auto count = std::min(static_cast<int>(history.size()), window);
@@ -108,7 +108,7 @@ double LinearSignal::pressure_mean(int source, int window) const {
     return valid >= static_cast<int>(std::ceil(window * min_fraction_)) ? sum / valid : missing;
 }
 
-// 【核心逻辑169】读取框架实际盘口，更新源窗口，再以冻结系数进行当前时刻推理。
+// 【核心逻辑186】读取框架实际盘口，更新源窗口，再以冻结系数进行当前时刻推理。
 double LinearSignal::sample(std::int64_t timestamp, hbt::HashMapMarketDepth& depth,
                             std::int64_t last_book_timestamp, double buy_quantity, double sell_quantity) {
     if (first_sample_ == 0) {

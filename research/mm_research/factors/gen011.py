@@ -21,4 +21,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         "spread_contract_flag_100ms": (change < 0).cast(pl.Float64),
         "spread_flip_flag_100ms": (change.sign() * change.shift(1).sign() == -1).cast(pl.Float64),
     }
-    return rolling_factors(sources, (5, 10, 30, 100), "mean", config["min_fraction"])
+    return rolling_factors(sources, config["aggregation_windows_s"], "mean", config["min_fraction"])

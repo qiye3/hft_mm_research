@@ -23,7 +23,7 @@ class LatestFactorTests(unittest.TestCase):
         for number in range(31, 38):
             batch = f'gen{number:03d}'
             module = factor_module(batch)
-            config = {'tick_size': .1, 'min_fraction': .8}
+            config = {'tick_size': .1, 'min_fraction': .8, "aggregation_windows_s": [5, 10, 30, 100], "mean_diff_windows_s": [[3, 10], [5, 20], [5, 50], [10, 50], [10, 100], [20, 100]]}
             expressions = module.factor_expressions(config)
             inputs = module.source_expressions(config) if number in [31, 34, 37] else expressions
             columns = sorted({name for expression in inputs.values() for name in expression.meta.root_names()})
@@ -56,8 +56,8 @@ class LatestFactorTests(unittest.TestCase):
                               'timestamp_ns': np.arange(200, dtype=np.int64) * 100_000_000,
                               'date': ['2026-07-25'] * 200, 'book_segment_id': [0] * 200,
                               'mid_price': [100., 101.] * 100, 'imbalance_5': [-1., 1.] * 100})
-        inputs = information_sources({})
-        formulas = factor_module('gen034').factor_expressions({'min_fraction': .8})
+        inputs = information_sources({"aggregation_windows_s": [5, 10, 30, 100]})
+        formulas = factor_module('gen034').factor_expressions({'min_fraction': .8, "aggregation_windows_s": [5, 10, 30, 100], "mean_diff_windows_s": [[3, 10], [5, 20], [5, 50], [10, 50], [10, 100], [20, 100]]})
         selected = ['info_trade_aggr_sign_100ms_cond_entropy_lag1_5s', 'info_trade_aggr_sign_100ms_mi_lag2_5s']
         derived = table.with_columns([expression.alias(name) for name, expression in inputs.items()])
         actual = derived.select([formulas[name].alias(name) for name in selected])
@@ -76,8 +76,8 @@ class LatestFactorTests(unittest.TestCase):
                               'timestamp_ns': np.arange(1500, dtype=np.int64) * 100_000_000,
                               'date': ['2026-07-25'] * 1500, 'book_segment_id': [0] * 1500,
                               'mid_price': np.ones(1500), 'imbalance_5': np.zeros(1500)}).fill_nan(None)
-        derived = table.with_columns([expression.alias(name) for name, expression in information_sources({}).items()])
-        formulas = factor_module('gen034').factor_expressions({'min_fraction': .8})
+        derived = table.with_columns([expression.alias(name) for name, expression in information_sources({"aggregation_windows_s": [5, 10, 30, 100]}).items()])
+        formulas = factor_module('gen034').factor_expressions({'min_fraction': .8, "aggregation_windows_s": [5, 10, 30, 100], "mean_diff_windows_s": [[3, 10], [5, 20], [5, 50], [10, 50], [10, 100], [20, 100]]})
         actual = derived.select([expression.alias(name) for name, expression in formulas.items()]).tail(1)
         window = states[-1000:]
         counts = np.array([(window == value).sum() for value in [-1, 0, 1]])
@@ -113,7 +113,7 @@ class LatestFactorTests(unittest.TestCase):
                               'date': ['2026-07-25'] * 1200, 'book_segment_id': [0] * 1200,
                               'imbalance_5': values, 'trade_imbalance_100ms': values,
                               'trade_imbalance_1s': values, 'return_100ms_bps': response})
-        expressions = factor_module('gen036').factor_expressions({'min_fraction': .8})
+        expressions = factor_module('gen036').factor_expressions({'min_fraction': .8, "aggregation_windows_s": [5, 10, 30, 100], "mean_diff_windows_s": [[3, 10], [5, 20], [5, 50], [10, 50], [10, 100], [20, 100]]})
         actual = table.select([expressions[name].alias(name) for name in ['book_obi_l5_lag_beta_5s', 'book_obi_l5_lag_corr_5s', 'book_obi_l5_lag_asym_beta_5s']])
         np.testing.assert_allclose(actual.tail(200).to_numpy(), np.tile([2., 1., 0.], (200, 1)), atol=1e-10)
 
@@ -142,7 +142,7 @@ class LatestFactorTests(unittest.TestCase):
                 table = keys.with_columns(pl.lit(1.).alias(name))
                 write_parquet(table.lazy(), folder / f'{name}.parquet', {'kind': 'feature', 'dataset': dataset, 'definition': {}})
             name = 'intrasec_count_hhi_1s_sec_mean_5s'
-            compute_factor_chunk({'config': {'tick_size': .1, 'min_fraction': .8, 'write_threads': 1, 'output_interval_ns': 1_000_000_000},
+            compute_factor_chunk({'config': {'tick_size': .1, 'min_fraction': .8, 'write_threads': 1, 'output_interval_ns': 1_000_000_000, "aggregation_windows_s": [5, 10, 30, 100], "mean_diff_windows_s": [[3, 10], [5, 20], [5, 50], [10, 50], [10, 100], [20, 100]]},
                                   'features': str(folder), 'dates': [dates[1]], 'batch': 'gen037', 'names': [name],
                                   'staging': str(folder / 'staging'), 'index': 0,
                                   'metadata': {name: {'kind': 'factor', 'dataset': dataset, 'definition': {}}}})

@@ -49,11 +49,11 @@ struct EventStatistics {
 // 从原生订单簿读取状态，逐条统计本地行情，并按配置提取深度快照。
 class MarketObserver {
 public:
-    // 【核心逻辑147】以 5 或 10 档和非负纳秒间隔初始化观察状态。
+    // 【核心逻辑164】以 5 或 10 档和非负纳秒间隔初始化观察状态。
     explicit MarketObserver(std::size_t depth_levels, std::int64_t snapshot_interval_ns);
-    // 【核心逻辑159】接收已经应用到 depth 的本地事件，累计计数并按间隔刷新快照。
+    // 【核心逻辑176】接收已经应用到 depth 的本地事件，累计计数并按间隔刷新快照。
     void on_event(const hbt::Event& event, const hbt::HashMapMarketDepth& depth);
-    // 【核心逻辑154】主动保存当前盘口，回放结束时用它补齐最后一个观察点。
+    // 【核心逻辑171】主动保存当前盘口，回放结束时用它补齐最后一个观察点。
     void capture(const hbt::Event& event, const hbt::HashMapMarketDepth& depth);
     // 【非核心】取得统计的只读引用，首尾时间表示本地接收顺序中的事件边界。
     [[nodiscard]] const EventStatistics& statistics() const noexcept;

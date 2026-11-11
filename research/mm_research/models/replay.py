@@ -19,9 +19,15 @@ from mm_research.features.trades import trade_expressions
 from mm_research.models.dataset import RAW_COLUMNS
 
 
-# 【核心逻辑183】从实时记录重新计算原始压力及因子，独立核对C++系数推理。
+# 【核心逻辑200】从实时记录重新计算原始压力及因子，独立核对C++系数推理。
 def audit_realtime_signal(samples: Path, model: dict, lot_size: float) -> dict:
     """同一原生行情输入用Polars重新计算，核对窗口、预热、null和最终bps预测。"""
+    factor_parameters = {
+        "min_fraction": model["min_fraction"],
+        "tick_size": .1,
+        "aggregation_windows_s": [10, 60, 180, 600],
+        "mean_diff_windows_s": [[10, 60], [60, 180], [180, 600]],
+    }
     floats = ["mid_price", "buy_volume", "sell_volume", "prediction_bps", *RAW_COLUMNS]
     floats += [f"{side}_depth_{depth}" for side in ["bid", "ask"] for depth in [1, 5, 10]]
     floats += [f"input_{name}" for name in model["columns"]]
@@ -38,7 +44,7 @@ def audit_realtime_signal(samples: Path, model: dict, lot_size: float) -> dict:
         trade_1s.alias("trade_imbalance_1s"),
         ((pl.col("mid_price") / pl.col("mid_price").shift(10) - 1) * 10_000).alias("return_1s_bps"),
     )
-    expressions = {**gen001.factor_expressions({"min_fraction": model["min_fraction"]}), **gen002.factor_expressions({"min_fraction": model["min_fraction"]})}
+    expressions = {**gen001.factor_expressions(factor_parameters), **gen002.factor_expressions(factor_parameters)}
     reference = reference.with_columns([
         expressions[name].alias(name) for name in model["columns"] if name not in RAW_COLUMNS
     ])
@@ -86,7 +92,7 @@ def compare_research_inputs(root: Path, samples: Path, model_config: dict, date:
     return results
 
 
-# 【核心逻辑141】在最终测试日对照原生固定报价与实时线性模型报价，并独立核对账本。
+# 【核心逻辑158】在最终测试日对照原生固定报价与实时线性模型报价，并独立核对账本。
 def run_linear_replay(config_path: Path) -> dict:
     """使用同一完整L2日、官方成交、费率、延迟和仓位预算，模型系数保持冻结。"""
     root = Path(__file__).resolve().parents[3]

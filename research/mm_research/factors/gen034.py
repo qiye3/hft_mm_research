@@ -30,7 +30,7 @@ def source_expressions(config: dict) -> dict[str, pl.Expr]:
         'info_book_obi_l5_sign_100ms': book,
     }
     counts = {}
-    for (name, state), seconds in product(sources.items(), [5, 10, 30, 100]):
+    for (name, state), seconds in product(sources.items(), config["aggregation_windows_s"]):
         window = seconds * 10
         for index, value in enumerate(STATES):
             indicator = (state == value).fill_null(False).cast(pl.Int64)
@@ -48,7 +48,7 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
     """只有计数阶段使用100ms位置，整秒位置上的熵计算与逐事件计算结果一致。"""
     expressions = {}
     sources = ['info_mid_move_sign_100ms', 'info_trade_aggr_sign_100ms', 'info_book_obi_l5_sign_100ms']
-    for name, seconds in product(sources, [5, 10, 30, 100]):
+    for name, seconds in product(sources, config["aggregation_windows_s"]):
         window = seconds * 10
         counts = [pl.col(f'{name}_count_{seconds}s_{index}') for index in range(3)]
         enough = pl.sum_horizontal(counts) >= math.ceil(window * config['min_fraction'])

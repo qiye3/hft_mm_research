@@ -554,3 +554,7 @@ workers: 1
 merge_workers: 3
 write_threads: 3
 output_interval_ns: 1000000000
+
+aggregation_windows_s: [10, 60, 180, 600]
+mean_diff_windows_s: [[10, 60], [60, 180], [180, 600]]
+reuse_factor_versions: []

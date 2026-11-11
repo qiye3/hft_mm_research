@@ -20,4 +20,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
             sources[f'book_{side}_marginal_density_l{first}_{last}'] = density
         bid, ask = densities['bid'], densities['ask']
         sources[f'book_marginal_density_asym_l{first}_{last}'] = (bid - ask) / pl.when(bid + ask > 0).then(bid + ask)
-    return rolling_factors(sources, (5, 10, 30, 100), 'mean', config['min_fraction'])
+    return rolling_factors(sources, config["aggregation_windows_s"], 'mean', config['min_fraction'])

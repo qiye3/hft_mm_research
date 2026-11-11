@@ -1,0 +1,48 @@
+# 多期限研究配置。入口 scripts/run_multihorizon.py；各阶段读取上一阶段的冻结产物。
+# 输入正式100ms Features、1s Factors与标准行情，输出E0—E5独立研究目录。
+experiment_id: multihorizon_20261109_v1
+output: workspace/results/multihorizon_20261109_v1
+source_config: config/models/comparison.yaml
+feature_folder: workspace/data/features/server_531d_v1
+standard_folder: workspace/data/standard/server_market_v1
+factors_per_group: 4
+quote_max_age_ms: 2000
+prediction_latency_ns: 1000000
+seed: 42
+train_stride_s: 5
+training_threads: 6
+inference_chunk_rows: 32768
+lightgbm:
+  num_leaves: 31
+  learning_rate: 0.03
+  n_estimators: 800
+  min_data_in_leaf: 200
+  early_stopping_rounds: 50
+mlp:
+  hidden_dims: [128, 128]
+  dropout: 0.1
+  batch_size: 8192
+  max_epochs: 50
+  patience: 5
+  learning_rate: 0.001
+tau_candidates_s: [[3, 30], [5, 60], [10, 120]]
+execution:
+  initial_equity_usdt: 10000
+  risk_unit_btc: 0.002
+  max_position_units: 2
+  maker_fee: 0.0002
+  taker_fee: 0.0005
+  minimum_notional_usdt: 100
+  quantity_step_btc: 0.001
+  tick_size: 0.1
+  entry_latency_ns: 1000000
+  response_latency_ns: 500000
+  max_hold_s: 300
+  risk_lambdas: [0.1, 1.0, 10.0]
+  cost_buffers_bps: [0.0, 0.5, 1.0]
+  rebalance_intervals_s: [1, 5]
+  fixed_holds_s: [1, 5, 10, 30, 60, 120, 300]
+  replay_manifest: workspace/data/normalized/linear_2026-10-21/manifest.json
+  replay_binary: workspace/results/strategies_20261109/build/strategy_replay
+  funding_archive: workspace/results/strategies_20261109/funding_2026-10.csv
+stop_at: '2026-11-10T08:00:00+08:00'

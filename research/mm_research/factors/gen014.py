@@ -43,4 +43,4 @@ def source_expressions(config: dict, initial_events: dict | None = None) -> dict
 def factor_expressions(config: dict) -> dict[str, pl.Expr]:
     """输入预处理的九个年龄列，避免为短输出区间重复滚动全历史。"""
     sources = {name: pl.col(name) for name in source_expressions(config)}
-    return rolling_factors(sources, (5, 10, 30, 100), "mean", config["min_fraction"])
+    return rolling_factors(sources, config["aggregation_windows_s"], "mean", config["min_fraction"])

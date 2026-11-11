@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "about": "Target IDs for HTML v5 file-tree and detail annotations. Create entries in hft_alpha_annotations_v5.json.",
+  "about": "2026-11-10当前架构及历史批注定位，节点ID保持稳定。",
   "targets": [
     {
       "target": "file:src/apps/replay_probe.cpp",
@@ -165,158 +165,158 @@
     {
       "target": "node:source",
       "kind": "node",
-      "label": "01 · 原始历史行情"
+      "label": "原始行情与标准上游"
     },
     {
       "target": "section:source:输入",
       "kind": "section",
-      "label": "原始历史行情 / 输入"
+      "label": "原始行情与标准上游 / 输入"
     },
     {
       "target": "note:source:输入:0",
       "kind": "note",
-      "label": "原始历史行情 / 输入 / 第1条",
-      "text": "BTCUSDT 永续合约逐价位 L2 快照与增量：side、price、amount、timestamp、local_timestamp。"
+      "label": "原始行情与标准上游 / 输入 / 第1条",
+      "text": "BTCUSDT永续普通成交使用Binance官方日档，已核验镜像可用于下载。"
     },
     {
       "target": "note:source:输入:1",
       "kind": "note",
-      "label": "原始历史行情 / 输入 / 第2条",
-      "text": "普通成交使用Binance官方USD-M日档ZIP，字段为id、price、qty、time、is_buyer_maker。"
+      "label": "原始行情与标准上游 / 输入 / 第2条",
+      "text": "盘口由Hugging Face Crypto Lake 20档与网盘25档来源按日期清单衔接；2025-10-01为来源切换边界。"
     },
     {
       "target": "note:source:输入:2",
       "kind": "note",
-      "label": "原始历史行情 / 输入 / 第3条",
-      "text": "合约元数据：报价 Tick、数量步长；费率和资金费率另存版本信息。"
+      "label": "原始行情与标准上游 / 输入 / 第3条",
+      "text": "真实L2增量另从网盘归档取得，供原生交易回放。"
     },
     {
       "target": "section:source:处理",
       "kind": "section",
-      "label": "原始历史行情 / 处理"
+      "label": "原始行情与标准上游 / 处理"
     },
     {
       "target": "note:source:处理:0",
       "kind": "note",
-      "label": "原始历史行情 / 处理 / 第1条",
-      "text": "按数据来源和 UTC 交易日期归档，核对字段、快照和合约标识。"
+      "label": "原始行情与标准上游 / 处理 / 第1条",
+      "text": "data/standard.py保留来源实际20或25档、交易所时间与逐行质量标签。"
     },
     {
       "target": "note:source:处理:1",
       "kind": "note",
-      "label": "原始历史行情 / 处理 / 第2条",
-      "text": "原始档案保留完整深度。前十档是研究观察窗口，不能只保留这些事件用于盘口重建。"
+      "label": "原始行情与标准上游 / 处理 / 第2条",
+      "text": "研究可见时间统一为交易所时间加20ms；官方成交编号跳跃保留来源语义。"
     },
     {
       "target": "section:source:输出",
       "kind": "section",
-      "label": "原始历史行情 / 输出"
+      "label": "原始行情与标准上游 / 输出"
     },
     {
       "target": "note:source:输出:0",
       "kind": "note",
-      "label": "原始历史行情 / 输出 / 第1条",
-      "text": "可追溯原始压缩文件和每日两份标准行情Parquet，输入身份记录文件位置、大小与修改时刻。"
+      "label": "原始行情与标准上游 / 输出 / 第1条",
+      "text": "workspace/data/standard/server_market_v1/snapshots/日期.parquet和trades/日期.parquet。"
     },
     {
       "target": "section:source:验收",
       "kind": "section",
-      "label": "原始历史行情 / 验收"
+      "label": "原始行情与标准上游 / 验收"
     },
     {
       "target": "note:source:验收:0",
       "kind": "note",
-      "label": "原始历史行情 / 验收 / 第1条",
-      "text": "七月30天标准数据包含65,244,225条快照和88,548,524条官方普通成交。"
+      "label": "原始行情与标准上游 / 验收 / 第1条",
+      "text": "核对日期、交易对、价格数量单位、盘口顺序、成交内容与来源质量；正式范围为531个UTC日。"
     },
     {
       "target": "section:source:注意",
       "kind": "section",
-      "label": "原始历史行情 / 注意"
+      "label": "原始行情与标准上游 / 注意"
     },
     {
       "target": "note:source:注意:0",
       "kind": "note",
-      "label": "原始历史行情 / 注意 / 第1条",
-      "text": "统一固定20ms行情延迟。七月30天快照平均接收延迟2.356ms、成交9.846ms，20ms用于均值附近假设，原成交采集有长尾和少量负延迟。"
+      "label": "原始行情与标准上游 / 注意 / 第1条",
+      "text": "快照只能说明观察时刻的盘口，精确事件OFI与队列回放需要原始L2事件。"
     },
     {
       "target": "section:source:扩展",
       "kind": "section",
-      "label": "原始历史行情 / 扩展"
+      "label": "原始行情与标准上游 / 扩展"
     },
     {
       "target": "note:source:扩展:0",
       "kind": "note",
-      "label": "原始历史行情 / 扩展 / 第1条",
-      "text": "逐期补充真实交易规则、账户费用、资金费用和辅助市场数据。"
+      "label": "原始行情与标准上游 / 扩展 / 第1条",
+      "text": "费率、标记价和资金费按执行实验显式归档，缺少辅助行情的因子组保留待数据状态。"
     },
     {
       "target": "node:npz",
       "kind": "node",
-      "label": "02 · C++事件缓存（回放支路）"
+      "label": "逐事件L2与回放缓存"
     },
     {
       "target": "section:npz:输入",
       "kind": "section",
-      "label": "C++事件缓存（回放支路） / 输入"
+      "label": "逐事件L2与回放缓存 / 输入"
     },
     {
       "target": "note:npz:输入:0",
       "kind": "note",
-      "label": "C++事件缓存（回放支路） / 输入 / 第1条",
-      "text": "原始快照、逐价位更新、逐笔成交、交易所事件时间和本地接收时间。"
+      "label": "逐事件L2与回放缓存 / 输入 / 第1条",
+      "text": "真实L2初始快照、逐价格档更新及普通成交；合约Tick与Lot规则。"
     },
     {
       "target": "section:npz:处理",
       "kind": "section",
-      "label": "C++事件缓存（回放支路） / 处理"
+      "label": "逐事件L2与回放缓存 / 处理"
     },
     {
       "target": "note:npz:处理:0",
       "kind": "note",
-      "label": "C++事件缓存（回放支路） / 处理 / 第1条",
-      "text": "转换为 hftbacktest-cpp 的 Event 事件，分别处理交易所时间和本地时间。"
+      "label": "逐事件L2与回放缓存 / 处理 / 第1条",
+      "text": "scripts/prepare_l2_archive.py准备归档并登记来源，data/engine.py与engine_inputs.py转换原生事件。"
     },
     {
       "target": "note:npz:处理:1",
       "kind": "note",
-      "label": "C++事件缓存（回放支路） / 处理 / 第2条",
-      "text": "按已验证的顺序路由 Local 与 Exchange 两侧事件；构造分片清单和事件计数。"
+      "label": "逐事件L2与回放缓存 / 处理 / 第2条",
+      "text": "事件保留交易所与Local两侧时间，按框架顺序路由；盘口清除、快照和增量使用真实事件标记。"
     },
     {
       "target": "note:npz:处理:2",
       "kind": "note",
-      "label": "C++事件缓存（回放支路） / 处理 / 第3条",
-      "text": "统一为纳秒；处理快照重置、增量和跨分片事件顺序。"
+      "label": "逐事件L2与回放缓存 / 处理 / 第3条",
+      "text": "保留盘口重建需要的深层事件，观察深度在读取状态时配置。"
     },
     {
       "target": "section:npz:输出",
       "kind": "section",
-      "label": "C++事件缓存（回放支路） / 输出"
+      "label": "逐事件L2与回放缓存 / 输出"
     },
     {
       "target": "note:npz:输出:0",
       "kind": "note",
-      "label": "C++事件缓存（回放支路） / 输出 / 第1条",
-      "text": "workspace/data/normalized/.../events-*.npz和manifest.json，供C++行情回放与订单仿真使用。"
+      "label": "逐事件L2与回放缓存 / 输出 / 第1条",
+      "text": "workspace/results/multihorizon_20261109_v1/l2/event_cache/日期/{source,events}/及对应manifest。"
     },
     {
       "target": "note:npz:输出:1",
       "kind": "note",
-      "label": "标准化事件缓存 / 输出 / 第2条",
-      "text": "同一份 NPZ 既供 A 离线特征提取，也供 B 策略历史回放。"
+      "label": "逐事件L2与回放缓存 / 输出 / 第2条",
+      "text": "通用回放产物也可位于workspace/data/normalized/。"
     },
     {
       "target": "section:npz:验收",
       "kind": "section",
-      "label": "C++事件缓存（回放支路） / 验收"
+      "label": "逐事件L2与回放缓存 / 验收"
     },
     {
       "target": "note:npz:验收:0",
       "kind": "note",
-      "label": "C++事件缓存（回放支路） / 验收 / 第1条",
-      "text": "事件数量与来源对账；本地/交易所事件不重复计算成研究观察。"
+      "label": "逐事件L2与回放缓存 / 验收 / 第1条",
+      "text": "来源与事件计数核对，重建盘口与独立快照对照；逐日验收结果独立保存。"
     },
     {
       "target": "note:npz:验收:1",
@@ -327,311 +327,311 @@
     {
       "target": "section:npz:注意",
       "kind": "section",
-      "label": "C++事件缓存（回放支路） / 注意"
+      "label": "逐事件L2与回放缓存 / 注意"
     },
     {
       "target": "note:npz:注意:0",
       "kind": "note",
-      "label": "C++事件缓存（回放支路） / 注意 / 第1条",
-      "text": "B 可以与 A 在不同运行中读取相同 NPZ；不代表 B 直接消费 A 生成的特征矩阵。"
+      "label": "逐事件L2与回放缓存 / 注意 / 第1条",
+      "text": "Python快照研究直接从标准Parquet进入A1，逐事件缓存供B支路和事件级校验。"
     },
     {
       "target": "section:npz:扩展",
       "kind": "section",
-      "label": "C++事件缓存（回放支路） / 扩展"
+      "label": "逐事件L2与回放缓存 / 扩展"
     },
     {
       "target": "note:npz:扩展:0",
       "kind": "note",
-      "label": "C++事件缓存（回放支路） / 扩展 / 第1条",
-      "text": "按需增加数据适配器；暂不替换引擎 NPZ 读取器。"
+      "label": "逐事件L2与回放缓存 / 扩展 / 第1条",
+      "text": "增加回放日期时复用明确来源归档与缓存定义。"
     },
     {
       "target": "node:core",
       "kind": "node",
-      "label": "S3 · 共享事件状态与最终特征契约"
+      "label": "时钟、质量与特征定义"
     },
     {
       "target": "section:core:输入",
       "kind": "section",
-      "label": "共享事件状态与最终特征契约 / 输入"
+      "label": "时钟、质量与特征定义 / 输入"
     },
     {
       "target": "note:core:输入:0",
       "kind": "note",
-      "label": "共享事件状态与最终特征契约 / 输入 / 第1条",
-      "text": "离线研究读取标准快照和官方成交，C++状态由原生L2事件回放维护。"
+      "label": "时钟、质量与特征定义 / 输入 / 第1条",
+      "text": "共享的交易对、Tick/Lot、20ms行情可见延迟、特征定义和质量标记。"
     },
     {
       "target": "section:core:处理",
       "kind": "section",
-      "label": "共享事件状态与最终特征契约 / 处理"
+      "label": "时钟、质量与特征定义 / 处理"
     },
     {
       "target": "note:core:处理:0",
       "kind": "note",
-      "label": "共享事件状态与最终特征契约 / 处理 / 第1条",
-      "text": "保留 M0 原生引擎和现有 ResearchSampler，按 Local 可见事件更新盘口、OFI、成交数量和金额等中间变量。"
+      "label": "时钟、质量与特征定义 / 处理 / 第1条",
+      "text": "Features按100ms计算，Factors在UTC整秒输出；窗口跨午夜连续，缺失位置保留并按80%有效观测处理。"
     },
     {
       "target": "note:core:处理:1",
       "kind": "note",
-      "label": "共享事件状态与最终特征契约 / 处理 / 第2条",
-      "text": "完整探索性特征在 Python/Polars 实现。模型确定后，将最终入选特征的实时计算移植到 C++，结合已有事件状态供策略回放调用。"
+      "label": "时钟、质量与特征定义 / 处理 / 第2条",
+      "text": "标签单独检查整个未来区间的盘口质量和来源边界；特征滚动不因质量区段变化反复清空。"
     },
     {
       "target": "section:core:输出",
       "kind": "section",
-      "label": "共享事件状态与最终特征契约 / 输出"
+      "label": "时钟、质量与特征定义 / 输出"
     },
     {
       "target": "note:core:输出:0",
       "kind": "note",
-      "label": "共享事件状态与最终特征契约 / 输出 / 第1条",
-      "text": "每日分组特征Parquet；模型入选后提供同口径C++实时特征。"
+      "label": "时钟、质量与特征定义 / 输出 / 第1条",
+      "text": "输入版本、列顺序、窗口、缺失处理、标准化及预测可用时刻，随各模型工件保存。"
     },
     {
       "target": "section:core:验收",
       "kind": "section",
-      "label": "共享事件状态与最终特征契约 / 验收"
+      "label": "时钟、质量与特征定义 / 验收"
     },
     {
       "target": "note:core:验收:0",
       "kind": "note",
-      "label": "共享事件状态与最终特征契约 / 验收 / 第1条",
-      "text": "在相同事件和采样时刻逐行比较入选特征，核对公式、窗口边界、预热、缺失处理、质量标记、标准化参数和特征顺序，并记录数值容差。"
+      "label": "时钟、质量与特征定义 / 验收 / 第1条",
+      "text": "同一历史输入对照公式、窗口端点、跨日、预热、时间可见性与预测数值。"
     },
     {
       "target": "section:core:注意",
       "kind": "section",
-      "label": "共享事件状态与最终特征契约 / 注意"
+      "label": "时钟、质量与特征定义 / 注意"
     },
     {
       "target": "note:core:注意:0",
       "kind": "note",
-      "label": "共享事件状态与最终特征契约 / 注意 / 第1条",
-      "text": "研究与最终C++都需使用一致的可见时钟和真实质量边界。当前普通成交编号空缺不参与质量判断，固定延迟为20ms。"
+      "label": "时钟、质量与特征定义 / 注意 / 第1条",
+      "text": "1s统一模型对照与当前180秒研究各自保留分期、标签和配置，结果在各自口径内比较。"
     },
     {
       "target": "section:core:扩展",
       "kind": "section",
-      "label": "共享事件状态与最终特征契约 / 扩展"
+      "label": "时钟、质量与特征定义 / 扩展"
     },
     {
       "target": "note:core:扩展:0",
       "kind": "note",
-      "label": "共享事件状态与最终特征契约 / 扩展 / 第1条",
-      "text": "新候选因子优先在 Polars 研究，数据字段不足时再补充必要的事件中间变量。"
+      "label": "时钟、质量与特征定义 / 扩展 / 第1条",
+      "text": "模型入选后，仅将需要的实时特征与推理迁入C++，逐行对齐Python结果。"
     },
     {
       "target": "node:a1",
       "kind": "node",
-      "label": "A1 · 标准行情与100ms基础变量"
+      "label": "100ms采样与base特征组"
     },
     {
       "target": "section:a1:输入",
       "kind": "section",
-      "label": "标准行情与base组采样 / 输入"
+      "label": "100ms采样与base特征组 / 输入"
     },
     {
       "target": "note:a1:输入:0",
       "kind": "note",
-      "label": "标准行情与base组采样 / 输入 / 第1条",
-      "text": "官方普通成交和网盘25档快照标准Parquet，100ms间隔、20ms延迟与1秒盘口年龄门限。"
+      "label": "100ms采样与base特征组 / 输入 / 第1条",
+      "text": "按日期的标准盘口、普通成交、Tick/Lot与固定20ms可见延迟。"
     },
     {
       "target": "section:a1:处理",
       "kind": "section",
-      "label": "标准行情与base组采样 / 处理"
+      "label": "100ms采样与base特征组 / 处理"
     },
     {
       "target": "note:a1:处理:0",
       "kind": "note",
-      "label": "标准行情与base组采样 / 处理 / 第1条",
-      "text": "features/snapshot.py向后对齐前10档，features/trades.py把成交归入(t-100ms,t]。"
+      "label": "100ms采样与base特征组 / 处理 / 第1条",
+      "text": "features/base.py组织采样，snapshot.py对齐已可见盘口，trades.py构造100ms成交桶。"
     },
     {
       "target": "note:a1:处理:1",
       "kind": "note",
-      "label": "标准行情与base组采样 / 处理 / 第2条",
-      "text": "features/base.py关联盘口与成交，分别建立book_segment_id与trade_segment_id。"
+      "label": "100ms采样与base特征组 / 处理 / 第2条",
+      "text": "正常无成交记录为零，真实异常或缺失按质量语义置null，保留网格位置。"
     },
     {
       "target": "section:a1:输出",
       "kind": "section",
-      "label": "标准行情与base组采样 / 输出"
+      "label": "100ms采样与base特征组 / 输出"
     },
     {
       "target": "note:a1:输出:0",
       "kind": "note",
-      "label": "标准行情与base组采样 / 输出 / 第1条",
-      "text": "58个base字段及样本键，基础列进入同一份每日特征Parquet。"
+      "label": "100ms采样与base特征组 / 输出 / 第1条",
+      "text": "workspace/data/features/server_531d_v1/基础列名.parquet，每个文件覆盖全部531天。"
     },
     {
       "target": "section:a1:验收",
       "kind": "section",
-      "label": "标准行情与base组采样 / 验收"
+      "label": "100ms采样与base特征组 / 验收"
     },
     {
       "target": "note:a1:验收:0",
       "kind": "note",
-      "label": "标准行情与base组采样 / 验收 / 第1条",
-      "text": "features/validation.py使用独立数组抽查盘口并逐网格核对成交笔数、数量和金额。"
+      "label": "100ms采样与base特征组 / 验收 / 第1条",
+      "text": "盘口档位与标准快照对照，成交量按整数Lot核算，检查跨午夜和异常区间。"
     },
     {
       "target": "section:a1:注意",
       "kind": "section",
-      "label": "标准行情与base组采样 / 注意"
+      "label": "100ms采样与base特征组 / 注意"
     },
     {
       "target": "note:a1:注意:0",
       "kind": "note",
-      "label": "标准行情与base组采样 / 注意 / 第1条",
-      "text": "模拟可见时间和原始采集接收时间分别管理，前者当前固定20ms。"
+      "label": "100ms采样与base特征组 / 注意 / 第1条",
+      "text": "Features上游仅需标准盘口和成交，100ms分桶属于Features计算。"
     },
     {
       "target": "section:a1:扩展",
       "kind": "section",
-      "label": "标准行情与base组采样 / 扩展"
+      "label": "100ms采样与base特征组 / 扩展"
     },
     {
       "target": "note:a1:扩展:0",
       "kind": "note",
-      "label": "标准行情与base组采样 / 扩展 / 第1条",
-      "text": "基础采样定义变化时建立新特征版本。"
+      "label": "100ms采样与base特征组 / 扩展 / 第1条",
+      "text": "新增基础字段按实际因子依赖加入相应特征组。"
     },
     {
       "target": "node:a2",
       "kind": "node",
-      "label": "A2 · 全日期单变量Features"
+      "label": "按类别组织的Features"
     },
     {
       "target": "section:a2:输入",
       "kind": "section",
-      "label": "基础列与特征组共同保存 / 输入"
+      "label": "按类别组织的Features / 输入"
     },
     {
       "target": "note:a2:输入:0",
       "kind": "note",
-      "label": "基础列与特征组共同保存 / 输入 / 第1条",
-      "text": "现有特征文件中的base列，或标准行情新生成的base组。"
+      "label": "按类别组织的Features / 输入 / 第1条",
+      "text": "共同来源定义的基础变量与各特征组需要的标准逐笔字段。"
     },
     {
       "target": "section:a2:处理",
       "kind": "section",
-      "label": "基础列与特征组共同保存 / 处理"
+      "label": "按类别组织的Features / 处理"
     },
     {
       "target": "note:a2:处理:0",
       "kind": "note",
-      "label": "基础列与特征组共同保存 / 处理 / 第1条",
-      "text": "GROUPS注册base:v2、book:v1、trades:v1、returns:v1。"
+      "label": "按类别组织的Features / 处理 / 第1条",
+      "text": "book.py、returns.py、trade_size.py、trade_distribution.py与order_flow.py分别负责相应类别。"
     },
     {
       "target": "note:a2:处理:1",
       "kind": "note",
-      "label": "基础列与特征组共同保存 / 处理 / 第2条",
-      "text": "基础列和衍生列共同保存，新增组时计算需要的组并保留已有其他组。"
+      "label": "按类别组织的Features / 处理 / 第2条",
+      "text": "通过transform.py组织依赖，使用Polars原生rolling、shift和表达式计算。"
     },
     {
       "target": "note:a2:处理:2",
       "kind": "note",
-      "label": "基础列与特征组共同保存 / 处理 / 第3条",
-      "text": "组版本、依赖、模型可选列和各组有效行数内嵌mm_research元数据。"
+      "label": "按类别组织的Features / 处理 / 第3条",
+      "text": "读取共享锁、写入独占锁，临时文件原子发布，锁文件位于.locks/。"
     },
     {
       "target": "section:a2:输出",
       "kind": "section",
-      "label": "基础列与特征组共同保存 / 输出"
+      "label": "按类别组织的Features / 输出"
     },
     {
       "target": "note:a2:输出:0",
       "kind": "note",
-      "label": "基础列与特征组共同保存 / 输出 / 第1条",
-      "text": "features/market_groups_v2/日期.parquet。当前完整文件81列，默认模型选择16个衍生列，base另有47个模型可选列。"
+      "label": "按类别组织的Features / 输出 / 第1条",
+      "text": "每个Feature一个全日期Parquet，按时间戳与模型输入关联。"
     },
     {
       "target": "section:a2:验收",
       "kind": "section",
-      "label": "基础列与特征组共同保存 / 验收"
+      "label": "按类别组织的Features / 验收"
     },
     {
       "target": "note:a2:验收:0",
       "kind": "note",
-      "label": "基础列与特征组共同保存 / 验收 / 第1条",
-      "text": "读取时检查来源和组定义一致性，文件更新使用版本目录锁及单文件原子替换。"
+      "label": "按类别组织的Features / 验收 / 第1条",
+      "text": "比较独立窗口计算、前缀因果性、跨午夜连续性与缺失样本规则。"
     },
     {
       "target": "section:a2:注意",
       "kind": "section",
-      "label": "基础列与特征组共同保存 / 注意"
+      "label": "按类别组织的Features / 注意"
     },
     {
       "target": "note:a2:注意:0",
       "kind": "note",
-      "label": "基础列与特征组共同保存 / 注意 / 第1条",
-      "text": "book检查当前盘口，trades检查5秒成交窗口，returns检查5秒盘口历史。"
+      "label": "按类别组织的Features / 注意 / 第1条",
+      "text": "snapshot.py和trade_events.py中的模块示例保留用途标记；精确事件OFI依赖真实L2。"
     },
     {
       "target": "section:a2:扩展",
       "kind": "section",
-      "label": "基础列与特征组共同保存 / 扩展"
+      "label": "按类别组织的Features / 扩展"
     },
     {
       "target": "note:a2:扩展:0",
       "kind": "note",
-      "label": "基础列与特征组共同保存 / 扩展 / 第1条",
-      "text": "事件OFI按独立数据能力和组定义接入。"
+      "label": "按类别组织的Features / 扩展 / 第1条",
+      "text": "Features保存可复用基础表达，较复杂后处理与多窗口组合归Factors模块。"
     },
     {
       "target": "node:a3",
       "kind": "node",
-      "label": "A3 · 独立标签与按列读取"
+      "label": "独立标签与四分区关联"
     },
     {
       "target": "section:a3:输入",
       "kind": "section",
-      "label": "独立标签与按组读取 / 输入"
+      "label": "独立标签与四分区关联 / 输入"
     },
     {
       "target": "note:a3:输入:0",
       "kind": "note",
-      "label": "独立标签与按组读取 / 输入 / 第1条",
-      "text": "features/market_groups_v2/日期.parquet中的Mid、book_valid和book_segment_id。"
+      "label": "独立标签与四分区关联 / 输入 / 第1条",
+      "text": "当前与精确未来时刻Mid、整个预测区间的盘口质量，以及2025-10-01来源边界。"
     },
     {
       "target": "section:a3:处理",
       "kind": "section",
-      "label": "独立标签与按组读取 / 处理"
+      "label": "独立标签与四分区关联 / 处理"
     },
     {
       "target": "note:a3:处理:0",
       "kind": "note",
-      "label": "独立标签与按组读取 / 处理 / 第1条",
-      "text": "targets/midprice.py生成100ms、500ms、1s、5s的bps主标签及Ticks、USDT辅助标签。"
+      "label": "独立标签与四分区关联 / 处理 / 第1条",
+      "text": "允许正常跨午夜取未来行情，最多读取后续300秒；失效盘口、已标注缺口和来源切换阻断相关标签。"
     },
     {
       "target": "note:a3:处理:1",
       "kind": "note",
-      "label": "独立标签与按组读取 / 处理 / 第2条",
-      "text": "未来窗口要求精确时间对齐、同日、盘口连续有效。"
+      "label": "独立标签与四分区关联 / 处理 / 第2条",
+      "text": "当前主标签为10000×log(Mid(t+h)/Mid(t))，同时保留ticks、USDT辅助单位。"
     },
     {
       "target": "note:a3:处理:2",
       "kind": "note",
-      "label": "独立标签与按组读取 / 处理 / 第3条",
-      "text": "load_samples()/load_xy()按symbol、date、timestamp_ns一对一关联，筛选所选组及label_valid。"
+      "label": "独立标签与四分区关联 / 处理 / 第3条",
+      "text": "当前Train截至2026-03-22，val_dev截至05-14，val_select截至07-06；其后至10-21为历史回看Test。"
     },
     {
       "target": "section:a3:输出",
       "kind": "section",
-      "label": "独立标签与按组读取 / 输出"
+      "label": "独立标签与四分区关联 / 输出"
     },
     {
       "target": "note:a3:输出:0",
       "kind": "note",
-      "label": "独立标签与按组读取 / 输出 / 第1条",
-      "text": "labels/market_mid_groups_v2/horizon=周期/日期.parquet，内嵌来源、base依赖、周期和有效行数。"
+      "label": "独立标签与四分区关联 / 输出 / 第1条",
+      "text": "七周期整秒标签、有效标记、目标时间戳和质量汇总；模型X/y显式固定列顺序。"
     },
     {
       "target": "note:a3:输出:1",
@@ -642,504 +642,504 @@
     {
       "target": "section:a3:验收",
       "kind": "section",
-      "label": "独立标签与按组读取 / 验收"
+      "label": "独立标签与四分区关联 / 验收"
     },
     {
       "target": "note:a3:验收:0",
       "kind": "note",
-      "label": "独立标签与按组读取 / 验收 / 第1条",
-      "text": "当前30天分组产物与1s标签共25,663,197条默认可用样本。"
+      "label": "独立标签与四分区关联 / 验收 / 第1条",
+      "text": "精确未来时点、跨日质量、来源边界、单位与分区隔离一致。"
     },
     {
       "target": "section:a3:注意",
       "kind": "section",
-      "label": "独立标签与按组读取 / 注意"
+      "label": "独立标签与四分区关联 / 注意"
     },
     {
       "target": "note:a3:注意:0",
       "kind": "note",
-      "label": "独立标签与按组读取 / 注意 / 第1条",
-      "text": "标签跨日及跨盘口区段时无效，训练标准化参数按训练区间拟合。"
+      "label": "独立标签与四分区关联 / 注意 / 第1条",
+      "text": "1s旧基线使用独立的server_mid_1s_v1及旧分期，保留历史结果对应口径。"
     },
     {
       "target": "section:a3:扩展",
       "kind": "section",
-      "label": "独立标签与按组读取 / 扩展"
+      "label": "独立标签与四分区关联 / 扩展"
     },
     {
       "target": "note:a3:扩展:0",
       "kind": "note",
-      "label": "独立标签与按组读取 / 扩展 / 第1条",
-      "text": "扩展预测周期、候选组和最终入选特征的C++逐行对照。"
+      "label": "独立标签与四分区关联 / 扩展 / 第1条",
+      "text": "评价同时比较10—180、60—180和120—180秒后段收益。"
     },
     {
       "target": "node:a4",
       "kind": "node",
-      "label": "A4 · Factors与Evaluation · Gen001"
+      "label": "四档Factors与独立Evaluation"
     },
     {
       "target": "section:a4:输入",
       "kind": "section",
-      "label": "单因子 Alpha 研究 / 输入"
+      "label": "四档Factors与独立Evaluation / 输入"
     },
     {
       "target": "note:a4:输入:0",
       "kind": "note",
-      "label": "单因子 Alpha 研究 / 输入 / 第1条",
-      "text": "固定训练/验证日期的特征、多个 horizon 的未来中间价变化。"
+      "label": "四档Factors与独立Evaluation / 输入 / 第1条",
+      "text": "531天100ms基础Features；逐事件OFI及缺辅助行情的组按可用来源范围管理。"
     },
     {
       "target": "section:a4:处理",
       "kind": "section",
-      "label": "单因子 Alpha 研究 / 处理"
+      "label": "四档Factors与独立Evaluation / 处理"
     },
     {
       "target": "note:a4:处理:0",
       "kind": "note",
-      "label": "单因子 Alpha 研究 / 处理 / 第1条",
-      "text": "按日期计算 Time-series IC；比较分组未来变化（主单位 bps，Ticks/USDT 为辅助）、跨日符号稳定性和预测衰减。"
+      "label": "四档Factors与独立Evaluation / 处理 / 第1条",
+      "text": "外层窗口为10/60/180/600秒，短长差比较10/60、60/180、180/600三组相邻组合。"
     },
     {
       "target": "note:a4:处理:1",
       "kind": "note",
-      "label": "单因子 Alpha 研究 / 处理 / 第2条",
-      "text": "对 OBI、OFI、主动成交失衡做控制变量/增量预测试验。"
+      "label": "四档Factors与独立Evaluation / 处理 / 第2条",
+      "text": "按完整100ms输入滚动，80%有效观测，UTC整秒物化Float64输出。"
     },
     {
       "target": "note:a4:处理:2",
       "kind": "note",
-      "label": "单因子 Alpha 研究 / 处理 / 第3条",
-      "text": "分盘口价差、波动、流动性等状态研究；保留失败结论与假设。"
+      "label": "四档Factors与独立Evaluation / 处理 / 第3条",
+      "text": "按实际依赖保留历史与状态锚点，使用持久分块检查点；完成发布后释放临时块。"
     },
     {
       "target": "section:a4:输出",
       "kind": "section",
-      "label": "单因子 Alpha 研究 / 输出"
+      "label": "四档Factors与独立Evaluation / 输出"
     },
     {
       "target": "note:a4:输出:0",
       "kind": "note",
-      "label": "单因子 Alpha 研究 / 输出 / 第1条",
-      "text": "factor_metrics.parquet、daily_ic.parquet、horizon_decay 与 feature_selection.json。"
+      "label": "四档Factors与独立Evaluation / 输出 / 第1条",
+      "text": "workspace/data/factors/server_factors_multiwindow_1s_v2/因子名.parquet。"
     },
     {
       "target": "section:a4:验收",
       "kind": "section",
-      "label": "单因子 Alpha 研究 / 验收"
+      "label": "四档Factors与独立Evaluation / 验收"
     },
     {
       "target": "note:a4:验收:0",
       "kind": "note",
-      "label": "单因子 Alpha 研究 / 验收 / 第1条",
-      "text": "在训练/验证区间完成预先指定的对照；结果按日可复现；筛选过程不看最终测试集。"
+      "label": "四档Factors与独立Evaluation / 验收 / 第1条",
+      "text": "全日期整秒网格、窗口独立参考、分块一致性与前缀因果性；组间比较固定共同样本。"
     },
     {
       "target": "section:a4:注意",
       "kind": "section",
-      "label": "单因子 Alpha 研究 / 注意"
+      "label": "四档Factors与独立Evaluation / 注意"
     },
     {
       "target": "note:a4:注意:0",
       "kind": "note",
-      "label": "单因子 Alpha 研究 / 注意 / 第1条",
-      "text": "整体 IC 很高不等于经济上可交易；相关窗口的统计推断需分块或按日处理。"
+      "label": "四档Factors与独立Evaluation / 注意 / 第1条",
+      "text": "新四档生产状态见任务输出；相同定义文件可通过符号链接复用。旧100ms因子与试跑目录已清理。"
     },
     {
       "target": "section:a4:扩展",
       "kind": "section",
-      "label": "单因子 Alpha 研究 / 扩展"
+      "label": "四档Factors与独立Evaluation / 扩展"
     },
     {
       "target": "note:a4:扩展:0",
       "kind": "note",
-      "label": "单因子 Alpha 研究 / 扩展 / 第1条",
-      "text": "条件 Alpha、非线性交互、事件时间预测。"
+      "label": "四档Factors与独立Evaluation / 扩展 / 第1条",
+      "text": "窗口选择仅用Train内180秒日均Rank IC及前向稳定性，冻结后进入两个验证区间和历史回看。"
     },
     {
       "target": "node:a5",
       "kind": "node",
-      "label": "A5 · 模型训练与样本外预测"
+      "label": "多期限模型与180秒GPU基线"
     },
     {
       "target": "section:a5:输入",
       "kind": "section",
-      "label": "模型训练与样本外预测 / 输入"
+      "label": "多期限模型与180秒GPU基线 / 输入"
     },
     {
       "target": "note:a5:输入:0",
       "kind": "note",
-      "label": "模型训练与样本外预测 / 输入 / 第1条",
-      "text": "冻结的特征集合、标签、按日期划分的 Train/Validation/Test。"
+      "label": "多期限模型与180秒GPU基线 / 输入 / 第1条",
+      "text": "1s统一对照使用comparison.yaml；当前多期限与180秒实验分别有独立配置和输出。"
     },
     {
       "target": "section:a5:处理",
       "kind": "section",
-      "label": "模型训练与样本外预测 / 处理"
+      "label": "多期限模型与180秒GPU基线 / 处理"
     },
     {
       "target": "note:a5:处理:0",
       "kind": "note",
-      "label": "模型训练与样本外预测 / 处理 / 第1条",
-      "text": "从零预测、历史收益基线开始，再拟合 Ridge；确有增量时引入 LightGBM。"
+      "label": "多期限模型与180秒GPU基线 / 处理 / 第1条",
+      "text": "选列、标准化和填补参数仅使用训练数据；对照固定训练行与评价时间戳。"
     },
     {
       "target": "note:a5:处理:1",
       "kind": "note",
-      "label": "模型训练与样本外预测 / 处理 / 第2条",
-      "text": "标准化只在训练集拟合；验证集用于选参数；最后测试集仅使用一次。"
+      "label": "多期限模型与180秒GPU基线 / 处理 / 第2条",
+      "text": "180秒批次按固定5秒位置抽样，训练末尾14天作内部早停并隔离300秒，两段Validation用于外部比较。"
     },
     {
       "target": "note:a5:处理:2",
       "kind": "note",
-      "label": "模型训练与样本外预测 / 处理 / 第3条",
-      "text": "记录逐日 IC、预测误差、极端组未来变化及不同 horizon 结果。"
+      "label": "多期限模型与180秒GPU基线 / 处理 / 第3条",
+      "text": "按模型和种子独立训练，分块预测；GPU与CPU任务受队列并发及内存限制。"
     },
     {
       "target": "section:a5:输出",
       "kind": "section",
-      "label": "模型训练与样本外预测 / 输出"
+      "label": "多期限模型与180秒GPU基线 / 输出"
     },
     {
       "target": "note:a5:输出:0",
       "kind": "note",
-      "label": "模型训练与样本外预测 / 输出 / 第1条",
-      "text": "模型权重、标准化参数、feature_schema、model_id、样本外 predictions.parquet、训练与评价报告。"
+      "label": "多期限模型与180秒GPU基线 / 输出 / 第1条",
+      "text": "workspace/results/models/comparison_2026-11-09_v2/保存25模型统一对照。"
     },
     {
       "target": "section:a5:验收",
       "kind": "section",
-      "label": "模型训练与样本外预测 / 验收"
+      "label": "多期限模型与180秒GPU基线 / 验收"
     },
     {
       "target": "note:a5:验收:0",
       "kind": "note",
-      "label": "模型训练与样本外预测 / 验收 / 第1条",
-      "text": "模型相对简单基线是否有可信增量有明确结论；记录完整日期/数据/模型版本。"
+      "label": "多期限模型与180秒GPU基线 / 验收 / 第1条",
+      "text": "相同输入和样本比较误差与日级IC；冻结后评价历史Test，记录实际训练预算。"
     },
     {
       "target": "section:a5:注意",
       "kind": "section",
-      "label": "模型训练与样本外预测 / 注意"
+      "label": "多期限模型与180秒GPU基线 / 注意"
     },
     {
       "target": "note:a5:注意:0",
       "kind": "note",
-      "label": "模型训练与样本外预测 / 注意 / 第1条",
-      "text": "未来一秒标签每 100ms 生成，边界需清除重叠区间；禁止先全样本筛特征再声称 OOS。"
+      "label": "多期限模型与180秒GPU基线 / 注意 / 第1条",
+      "text": "1s统一对照的完整输入LightGBM历史测试IC为0.25029；此数值属于1s旧分期。"
     },
     {
       "target": "section:a5:扩展",
       "kind": "section",
-      "label": "模型训练与样本外预测 / 扩展"
+      "label": "多期限模型与180秒GPU基线 / 扩展"
     },
     {
       "target": "note:a5:扩展:0",
       "kind": "note",
-      "label": "模型训练与样本外预测 / 扩展 / 第1条",
-      "text": "MLP、序列模型、滚动再训练；需要时按需使用 GPU。"
+      "label": "多期限模型与180秒GPU基线 / 扩展 / 第1条",
+      "text": "新窗口、旧窗口与组合输入按相同180秒目标比较，保留非重叠采样和种子差异。"
     },
     {
       "target": "node:a6",
       "kind": "node",
-      "label": "A6 · 冻结模型及交付工件"
+      "label": "冻结模型、预测与可用时间"
     },
     {
       "target": "section:a6:输入",
       "kind": "section",
-      "label": "冻结模型及交付工件 / 输入"
+      "label": "冻结模型、预测与可用时间 / 输入"
     },
     {
       "target": "note:a6:输入:0",
       "kind": "note",
-      "label": "冻结模型及交付工件 / 输入 / 第1条",
-      "text": "最终入选特征、feature_schema、特征与标签版本、bps 输出单位、horizon、标准化参数、模型参数和训练日期。"
+      "label": "冻结模型、预测与可用时间 / 输入 / 第1条",
+      "text": "模型权重、输入版本、特征顺序、目标单位、训练边界、缺失和标准化参数。"
     },
     {
       "target": "section:a6:处理",
       "kind": "section",
-      "label": "冻结模型及交付工件 / 处理"
+      "label": "冻结模型、预测与可用时间 / 处理"
     },
     {
       "target": "note:a6:处理:0",
       "kind": "note",
-      "label": "冻结模型及交付工件 / 处理 / 第1条",
-      "text": "导出 Ridge 系数/截距或兼容的模型工件；附带模型实际可用的时间口径。"
+      "label": "冻结模型、预测与可用时间 / 处理 / 第1条",
+      "text": "models/runner.py和replay.py连接已支持的线性模型与C++实时输入。"
     },
     {
       "target": "note:a6:处理:1",
       "kind": "note",
-      "label": "冻结模型及交付工件 / 处理 / 第2条",
-      "text": "模型冻结后将入选特征移植至 C++，对相同历史数据逐行检查特征定义、窗口、预热、缺失处理、标准化及顺序，再比较 Python/C++ 的 bps 预测。"
+      "label": "冻结模型、预测与可用时间 / 处理 / 第2条",
+      "text": "strategies/signals.py及multihorizon/execution.py导出冻结信号；未来标签是否有效不参与信号是否可交易的筛选。"
     },
     {
       "target": "section:a6:输出",
       "kind": "section",
-      "label": "冻结模型及交付工件 / 输出"
+      "label": "冻结模型、预测与可用时间 / 输出"
     },
     {
       "target": "note:a6:输出:0",
       "kind": "note",
-      "label": "冻结模型及交付工件 / 输出 / 第1条",
-      "text": "models/alpha_v1/：模型参数、特征顺序、标准化参数、元数据及校验结果。"
+      "label": "冻结模型、预测与可用时间 / 输出 / 第1条",
+      "text": "模型权重与元数据、完整整秒预测、逐日signal文件和冻结选择清单。"
     },
     {
       "target": "section:a6:验收",
       "kind": "section",
-      "label": "冻结模型及交付工件 / 验收"
+      "label": "冻结模型、预测与可用时间 / 验收"
     },
     {
       "target": "note:a6:验收:0",
       "kind": "note",
-      "label": "冻结模型及交付工件 / 验收 / 第1条",
-      "text": "B2 逐行复现 Python 的入选特征，B3 对相同特征复现 bps 预测；所用特征、目标和模型版本一致。"
+      "label": "冻结模型、预测与可用时间 / 验收 / 第1条",
+      "text": "列顺序、标准化、时钟和输出单位一致；预测只能在可用时刻之后被执行策略读取。"
     },
     {
       "target": "section:a6:注意",
       "kind": "section",
-      "label": "冻结模型及交付工件 / 注意"
+      "label": "冻结模型、预测与可用时间 / 注意"
     },
     {
       "target": "note:a6:注意:0",
       "kind": "note",
-      "label": "冻结模型及交付工件 / 注意 / 第1条",
-      "text": "研究使用的未来标签 y 在 B 流程绝不能作为实时输入。"
+      "label": "冻结模型、预测与可用时间 / 注意 / 第1条",
+      "text": "复杂模型的原生C++全特征与推理移植按实际入选模型逐项实施。"
     },
     {
       "target": "section:a6:扩展",
       "kind": "section",
-      "label": "冻结模型及交付工件 / 扩展"
+      "label": "冻结模型、预测与可用时间 / 扩展"
     },
     {
       "target": "note:a6:扩展:0",
       "kind": "note",
-      "label": "冻结模型及交付工件 / 扩展 / 第1条",
-      "text": "模型注册、按日期版本、滚动重训练工作流。"
+      "label": "冻结模型、预测与可用时间 / 扩展 / 第1条",
+      "text": "保留相同输入下Python/C++逐行特征与预测对照。"
     },
     {
       "target": "node:b1",
       "kind": "node",
-      "label": "B1 · C++ 历史行情回放"
+      "label": "原生事件驱动行情回放"
     },
     {
       "target": "section:b1:输入",
       "kind": "section",
-      "label": "C++ 历史行情回放 / 输入"
+      "label": "原生事件驱动行情回放 / 输入"
     },
     {
       "target": "note:b1:输入:0",
       "kind": "note",
-      "label": "C++ 历史行情回放 / 输入 / 第1条",
-      "text": "独立测试日期的 NPZ 行情；M0 已验证的回放配置。"
+      "label": "原生事件驱动行情回放 / 输入 / 第1条",
+      "text": "已验收日期的事件manifest、Tick/Lot、费用、订单延迟和队列模型。"
     },
     {
       "target": "section:b1:处理",
       "kind": "section",
-      "label": "C++ 历史行情回放 / 处理"
+      "label": "原生事件驱动行情回放 / 处理"
     },
     {
       "target": "note:b1:处理:0",
       "kind": "note",
-      "label": "C++ 历史行情回放 / 处理 / 第1条",
-      "text": "按本地时间驱动策略观察；Exchange 侧提供模拟撮合与订单事件。"
+      "label": "原生事件驱动行情回放 / 处理 / 第1条",
+      "text": "复用回放器与TradingEngine，按本地可见时钟读取盘口，并处理Exchange订单事件。"
     },
     {
       "target": "note:b1:处理:1",
       "kind": "note",
-      "label": "C++ 历史行情回放 / 处理 / 第2条",
-      "text": "测试日必须保持独立，不能参与之前筛选模型和调交易参数。"
+      "label": "原生事件驱动行情回放 / 处理 / 第2条",
+      "text": "replay_probe用于行情观察，strategy_replay与curve_replay分别连接冻结信号和收益曲线策略。"
     },
     {
       "target": "section:b1:输出",
       "kind": "section",
-      "label": "C++ 历史行情回放 / 输出"
+      "label": "原生事件驱动行情回放 / 输出"
     },
     {
       "target": "note:b1:输出:0",
       "kind": "note",
-      "label": "C++ 历史行情回放 / 输出 / 第1条",
-      "text": "逐事件市场状态、策略可读取的 BBO/L2 和 Trades。"
+      "label": "原生事件驱动行情回放 / 输出 / 第1条",
+      "text": "逐事件市场状态、活动订单、部分成交、库存与回报时间。"
     },
     {
       "target": "section:b1:验收",
       "kind": "section",
-      "label": "C++ 历史行情回放 / 验收"
+      "label": "原生事件驱动行情回放 / 验收"
     },
     {
       "target": "note:b1:验收:0",
       "kind": "note",
-      "label": "C++ 历史行情回放 / 验收 / 第1条",
-      "text": "与 A 同源数据对应；无标签泄漏；回放与 M0 标准一致。"
+      "label": "原生事件驱动行情回放 / 验收 / 第1条",
+      "text": "行情计数和盘口重建可对账，成交与订单状态来自第三方原生模块。"
     },
     {
       "target": "section:b1:注意",
       "kind": "section",
-      "label": "C++ 历史行情回放 / 注意"
+      "label": "原生事件驱动行情回放 / 注意"
     },
     {
       "target": "note:b1:注意:0",
       "kind": "note",
-      "label": "C++ 历史行情回放 / 注意 / 第1条",
-      "text": "A 与 B 是两次不同运行；中间靠模型工件衔接。"
+      "label": "原生事件驱动行情回放 / 注意 / 第1条",
+      "text": "每轮回放按指定数据日与冻结模型登记，历史Test的使用记录独立保存。"
     },
     {
       "target": "section:b1:扩展",
       "kind": "section",
-      "label": "C++ 历史行情回放 / 扩展"
+      "label": "原生事件驱动行情回放 / 扩展"
     },
     {
       "target": "note:b1:扩展:0",
       "kind": "note",
-      "label": "C++ 历史行情回放 / 扩展 / 第1条",
-      "text": "时间上允许先用预计算 OOS 预测快速迭代执行参数，最终用完整 C++ 链路复核。"
+      "label": "原生事件驱动行情回放 / 扩展 / 第1条",
+      "text": "按日期批次执行队列与延迟敏感性实验。"
     },
     {
       "target": "node:b2",
       "kind": "node",
-      "label": "B2 · C++ 实时特征更新"
+      "label": "实时基础状态与线性特征"
     },
     {
       "target": "section:b2:输入",
       "kind": "section",
-      "label": "C++ 实时特征更新 / 输入"
+      "label": "实时基础状态与线性特征 / 输入"
     },
     {
       "target": "note:b2:输入:0",
       "kind": "note",
-      "label": "C++ 实时特征更新 / 输入 / 第1条",
-      "text": "Local 盘口与成交事件、最终入选特征定义、基础变量口径、窗口、质量处理和标准化参数。"
+      "label": "实时基础状态与线性特征 / 输入 / 第1条",
+      "text": "Local盘口、已收到成交、模型声明的窗口、有效比例与列顺序。"
     },
     {
       "target": "section:b2:处理",
       "kind": "section",
-      "label": "C++ 实时特征更新 / 处理"
+      "label": "实时基础状态与线性特征 / 处理"
     },
     {
       "target": "note:b2:处理:0",
       "kind": "note",
-      "label": "C++ 实时特征更新 / 处理 / 第1条",
-      "text": "复用 A2 的事件状态与基础累计，模型冻结后按 Polars 定义实现入选特征的实时计算。"
+      "label": "实时基础状态与线性特征 / 处理 / 第1条",
+      "text": "research_sampler.cpp提取盘口、成交和OFI中间量；order_flow.hpp计算相邻BBO的事件OFI。"
     },
     {
       "target": "note:b2:处理:1",
       "kind": "note",
-      "label": "C++ 实时特征更新 / 处理 / 第2条",
-      "text": "按策略决策时钟提供向量；注意滚动预热和数据有效性。"
+      "label": "实时基础状态与线性特征 / 处理 / 第2条",
+      "text": "linear_signal.cpp每100ms更新支持的压力源和滚动窗口，每1s更新预测。"
     },
     {
       "target": "section:b2:输出",
       "kind": "section",
-      "label": "C++ 实时特征更新 / 输出"
+      "label": "实时基础状态与线性特征 / 输出"
     },
     {
       "target": "note:b2:输出:0",
       "kind": "note",
-      "label": "C++ 实时特征更新 / 输出 / 第1条",
-      "text": "当前有效特征向量 X(t)，特征顺序与训练时的 schema 一致。"
+      "label": "实时基础状态与线性特征 / 输出 / 第1条",
+      "text": "支持的线性模型输入与实时预测，或完整信号序列的当前可用记录。"
     },
     {
       "target": "section:b2:验收",
       "kind": "section",
-      "label": "C++ 实时特征更新 / 验收"
+      "label": "实时基础状态与线性特征 / 验收"
     },
     {
       "target": "note:b2:验收:0",
       "kind": "note",
-      "label": "C++ 实时特征更新 / 验收 / 第1条",
-      "text": "对相同历史数据逐行比对 Python/C++ 入选特征，包括公式、时钟、窗口端点、预热、缺失值、质量标记、标准化和特征顺序。"
+      "label": "实时基础状态与线性特征 / 验收 / 第1条",
+      "text": "同一输入下逐行比较Python/C++特征、预热、窗口和预测。"
     },
     {
       "target": "section:b2:注意",
       "kind": "section",
-      "label": "C++ 实时特征更新 / 注意"
+      "label": "实时基础状态与线性特征 / 注意"
     },
     {
       "target": "note:b2:注意:0",
       "kind": "note",
-      "label": "C++ 实时特征更新 / 注意 / 第1条",
-      "text": "训练可用预计算 X，而策略正式验证必须以当时 Local 状态计算。"
+      "label": "实时基础状态与线性特征 / 注意 / 第1条",
+      "text": "当前四档600秒研究因子并未全部迁入实时线性模块；实时能力按模型工件支持范围使用。"
     },
     {
       "target": "section:b2:扩展",
       "kind": "section",
-      "label": "C++ 实时特征更新 / 扩展"
+      "label": "实时基础状态与线性特征 / 扩展"
     },
     {
       "target": "note:b2:扩展:0",
       "kind": "note",
-      "label": "C++ 实时特征更新 / 扩展 / 第1条",
-      "text": "更频繁决策、触发式采样、推理性能优化。"
+      "label": "实时基础状态与线性特征 / 扩展 / 第1条",
+      "text": "按最终入选模型移植额外实时特征与推理。"
     },
     {
       "target": "node:b3",
       "kind": "node",
-      "label": "B3 · A + B 在此合流：C++ 预测"
+      "label": "在可用时刻接入模型信号"
     },
     {
       "target": "section:b3:输入",
       "kind": "section",
-      "label": "A + B 在此合流：C++ 预测 / 输入"
+      "label": "在可用时刻接入模型信号 / 输入"
     },
     {
       "target": "note:b3:输入:0",
       "kind": "note",
-      "label": "A + B 在此合流：C++ 预测 / 输入 / 第1条",
-      "text": "B2 入选特征、A6 冻结模型及标准化参数，目标单位统一为 bps，horizon 明确。"
+      "label": "在可用时刻接入模型信号 / 输入 / 第1条",
+      "text": "A6冻结工件或信号序列、B1当时可见行情、模型与目标版本。"
     },
     {
       "target": "section:b3:处理",
       "kind": "section",
-      "label": "A + B 在此合流：C++ 预测 / 处理"
+      "label": "在可用时刻接入模型信号 / 处理"
     },
     {
       "target": "note:b3:处理:0",
       "kind": "note",
-      "label": "A + B 在此合流：C++ 预测 / 处理 / 第1条",
-      "text": "C++ 策略初始化时加载 A6 导出的模型和预处理参数，校验特征 schema、模型版本以及训练/测试区间。"
+      "label": "在可用时刻接入模型信号 / 处理 / 第1条",
+      "text": "PredictionSeries仅返回当前时刻已完成推理且未过期的信号。"
     },
     {
       "target": "note:b3:处理:1",
       "kind": "note",
-      "label": "A + B 在此合流：C++ 预测 / 处理 / 第2条",
-      "text": "每个决策时刻用当前可见 X(t) 预测未来 1s Mid 的 bps 变化，记录样本时间与可用时间。"
+      "label": "在可用时刻接入模型信号 / 处理 / 第2条",
+      "text": "单期限策略读取选定目标，曲线策略读取1/10/30/60/120/180/300秒累计预测。"
     },
     {
       "target": "note:b3:处理:2",
       "kind": "note",
-      "label": "A + B 在此合流：C++ 预测 / 处理 / 第3条",
-      "text": "使用独立固定样本检验 Python 与 C++ 推理值一致。"
+      "label": "在可用时刻接入模型信号 / 处理 / 第3条",
+      "text": "当前多期限输入使用上一完整秒信息，并显式记录1ms计算延迟。"
     },
     {
       "target": "section:b3:输出",
       "kind": "section",
-      "label": "A + B 在此合流：C++ 预测 / 输出"
+      "label": "在可用时刻接入模型信号 / 输出"
     },
     {
       "target": "note:b3:输出:0",
       "kind": "note",
-      "label": "A + B 在此合流：C++ 预测 / 输出 / 第1条",
-      "text": "pred_mid_1s_bps、sample_ts、available_ts、model_id。"
+      "label": "在可用时刻接入模型信号 / 输出 / 第1条",
+      "text": "可用预测、信息时刻、目标周期与模型ID；决策时按当前价格换算价格变化。"
     },
     {
       "target": "section:b3:验收",
       "kind": "section",
-      "label": "A + B 在此合流：C++ 预测 / 验收"
+      "label": "在可用时刻接入模型信号 / 验收"
     },
     {
       "target": "note:b3:验收:0",
       "kind": "note",
-      "label": "A + B 在此合流：C++ 预测 / 验收 / 第1条",
-      "text": "指定相同 X 输入，预测和 A6 一致；零未来数据依赖。"
+      "label": "在可用时刻接入模型信号 / 验收 / 第1条",
+      "text": "信号不会提前使用，缺失或过期按明确规则处理，预测生成不读取未来标签作为输入。"
     },
     {
       "target": "section:b3:注意",
       "kind": "section",
-      "label": "A + B 在此合流：C++ 预测 / 注意"
+      "label": "在可用时刻接入模型信号 / 注意"
     },
     {
       "target": "note:b3:注意:0",
       "kind": "note",
-      "label": "A + B 在此合流：C++ 预测 / 注意 / 第1条",
-      "text": "B 不能读取未来收益 y；模型只在初始化/切换版本时加载，不需要每 100ms 从 Python 进程重新取模型。"
+      "label": "在可用时刻接入模型信号 / 注意 / 第1条",
+      "text": "当前180秒模型使用对数bps标签，策略中的价格与风险换算沿用该批次工件定义。"
     },
     {
       "target": "note:b3:注意:1",
@@ -1150,250 +1150,250 @@
     {
       "target": "section:b3:扩展",
       "kind": "section",
-      "label": "A + B 在此合流：C++ 预测 / 扩展"
+      "label": "在可用时刻接入模型信号 / 扩展"
     },
     {
       "target": "note:b3:扩展:0",
       "kind": "note",
-      "label": "A + B 在此合流：C++ 预测 / 扩展 / 第1条",
-      "text": "LightGBM/C++ 推理、模型版本切换、推理延迟敏感性。"
+      "label": "在可用时刻接入模型信号 / 扩展 / 第1条",
+      "text": "增加原生模型推理时继续复用相同时间和单位契约。"
     },
     {
       "target": "node:b4",
       "kind": "node",
-      "label": "B4 · 仓位与入退场决策"
+      "label": "信号、持续性与目标库存"
     },
     {
       "target": "section:b4:输入",
       "kind": "section",
-      "label": "仓位与入退场决策 / 输入"
+      "label": "信号、持续性与目标库存 / 输入"
     },
     {
       "target": "note:b4:输入:0",
       "kind": "note",
-      "label": "仓位与入退场决策 / 输入 / 第1条",
-      "text": "未来一秒预测变化、当前持仓、报价/费用、风险上限和信号有效期。"
+      "label": "信号、持续性与目标库存 / 输入 / 第1条",
+      "text": "单期限或收益曲线预测、价差和费用、实际仓位、活动及在途订单。"
     },
     {
       "target": "section:b4:处理",
       "kind": "section",
-      "label": "仓位与入退场决策 / 处理"
+      "label": "信号、持续性与目标库存 / 处理"
     },
     {
       "target": "note:b4:处理:0",
       "kind": "note",
-      "label": "仓位与入退场决策 / 处理 / 第1条",
-      "text": "根据预测幅度与预期交易成本决定入场、保持、减仓或退出。"
+      "label": "信号、持续性与目标库存 / 处理 / 第1条",
+      "text": "strategies/与multihorizon/persistence.py比较固定退出及信号保持。"
     },
     {
       "target": "note:b4:处理:1",
       "kind": "note",
-      "label": "仓位与入退场决策 / 处理 / 第2条",
-      "text": "第一版只用固定单位仓位与阈值/持仓时间规则，避免过度优化。"
+      "label": "信号、持续性与目标库存 / 处理 / 第2条",
+      "text": "multihorizon/inventory.py研究库存、资金费用和风险参数。"
     },
     {
       "target": "section:b4:输出",
       "kind": "section",
-      "label": "仓位与入退场决策 / 输出"
+      "label": "信号、持续性与目标库存 / 输出"
     },
     {
       "target": "note:b4:输出:0",
       "kind": "note",
-      "label": "仓位与入退场决策 / 输出 / 第1条",
-      "text": "target_position_btc、方向、目标数量、动作原因。"
+      "label": "信号、持续性与目标库存 / 输出 / 第1条",
+      "text": "目标仓位、交易方向、数量、动作原因和冻结策略参数。"
     },
     {
       "target": "section:b4:验收",
       "kind": "section",
-      "label": "仓位与入退场决策 / 验收"
+      "label": "信号、持续性与目标库存 / 验收"
     },
     {
       "target": "note:b4:验收:0",
       "kind": "note",
-      "label": "仓位与入退场决策 / 验收 / 第1条",
-      "text": "在每个决策点可解释为什么交易；仓位限制遵守；阈值仅在验证区间确定。"
+      "label": "信号、持续性与目标库存 / 验收 / 第1条",
+      "text": "参数选择分区明确，实际仓位与潜在未成交风险共同受限。"
     },
     {
       "target": "section:b4:注意",
       "kind": "section",
-      "label": "仓位与入退场决策 / 注意"
+      "label": "信号、持续性与目标库存 / 注意"
     },
     {
       "target": "note:b4:注意:0",
       "kind": "note",
-      "label": "仓位与入退场决策 / 注意 / 第1条",
-      "text": "预测标签 y 是价格变化，不是实际可赚收益；需考虑价差、手续费和持有期。"
+      "label": "信号、持续性与目标库存 / 注意 / 第1条",
+      "text": "独立机会样本与主策略分别保存，执行价值代理与原生实际账本分开评价。"
     },
     {
       "target": "section:b4:扩展",
       "kind": "section",
-      "label": "仓位与入退场决策 / 扩展"
+      "label": "信号、持续性与目标库存 / 扩展"
     },
     {
       "target": "note:b4:扩展:0",
       "kind": "note",
-      "label": "仓位与入退场决策 / 扩展 / 第1条",
-      "text": "动态仓位、风险预算、基于状态的信号阈值。"
+      "label": "信号、持续性与目标库存 / 扩展 / 第1条",
+      "text": "按固定案例矩阵比较主动、被动、混合执行与成本敏感性。"
     },
     {
       "target": "node:b5",
       "kind": "node",
-      "label": "B5 · 挂撤单与成交模拟"
+      "label": "原生挂撤单与成交账本"
     },
     {
       "target": "section:b5:输入",
       "kind": "section",
-      "label": "挂撤单与成交模拟 / 输入"
+      "label": "原生挂撤单与成交账本 / 输入"
     },
     {
       "target": "note:b5:输入:0",
       "kind": "note",
-      "label": "挂撤单与成交模拟 / 输入 / 第1条",
-      "text": "目标仓位与交易任务、当前本地盘口、未完成订单、费用和延迟配置。"
+      "label": "原生挂撤单与成交账本 / 输入 / 第1条",
+      "text": "冻结策略、活动订单、Tick/Lot、Maker/Taker费率、延迟和队列模型。"
     },
     {
       "target": "section:b5:处理",
       "kind": "section",
-      "label": "挂撤单与成交模拟 / 处理"
+      "label": "原生挂撤单与成交账本 / 处理"
     },
     {
       "target": "note:b5:处理:0",
       "kind": "note",
-      "label": "挂撤单与成交模拟 / 处理 / 第1条",
-      "text": "按执行规则挂单、撤单、等待回报；复用原引擎队列与成交机制。"
+      "label": "原生挂撤单与成交账本 / 处理 / 第1条",
+      "text": "通过原生公开接口发单、撤单、等待确认和处理部分成交。"
     },
     {
       "target": "note:b5:处理:1",
       "kind": "note",
-      "label": "挂撤单与成交模拟 / 处理 / 第2条",
-      "text": "在途订单依然占用仓位预算；撤单发出不等于成功。"
+      "label": "原生挂撤单与成交账本 / 处理 / 第2条",
+      "text": "撤单请求发出后继续计算在途风险，风险减仓和收尾平仓使用原生IOC。"
     },
     {
       "target": "section:b5:输出",
       "kind": "section",
-      "label": "挂撤单与成交模拟 / 输出"
+      "label": "原生挂撤单与成交账本 / 输出"
     },
     {
       "target": "note:b5:输出:0",
       "kind": "note",
-      "label": "挂撤单与成交模拟 / 输出 / 第1条",
-      "text": "orders.csv、fills.csv、真实模拟持仓与交易成本。"
+      "label": "原生挂撤单与成交账本 / 输出 / 第1条",
+      "text": "每案例orders、fills、持仓及权益记录，资金费用按归档来源另行对账。"
     },
     {
       "target": "section:b5:验收",
       "kind": "section",
-      "label": "挂撤单与成交模拟 / 验收"
+      "label": "原生挂撤单与成交账本 / 验收"
     },
     {
       "target": "note:b5:验收:0",
       "kind": "note",
-      "label": "挂撤单与成交模拟 / 验收 / 第1条",
-      "text": "重复回报不重计；部分成交、撤单竞态、库存硬上限等测试通过。"
+      "label": "原生挂撤单与成交账本 / 验收 / 第1条",
+      "text": "成交数量、费用、现金、库存和期末权益独立核对，失败与不完整案例明确记录。"
     },
     {
       "target": "section:b5:注意",
       "kind": "section",
-      "label": "挂撤单与成交模拟 / 注意"
+      "label": "原生挂撤单与成交账本 / 注意"
     },
     {
       "target": "note:b5:注意:0",
       "kind": "note",
-      "label": "挂撤单与成交模拟 / 注意 / 第1条",
-      "text": "历史 L2 无逐笔真实排队位置；成交是假设模型结果，不可当作实盘成交。"
+      "label": "原生挂撤单与成交账本 / 注意 / 第1条",
+      "text": "队列与延迟为实验假设，按案例配置保存；真实L2输入保持来源和验收信息。"
     },
     {
       "target": "section:b5:扩展",
       "kind": "section",
-      "label": "挂撤单与成交模拟 / 扩展"
+      "label": "原生挂撤单与成交账本 / 扩展"
     },
     {
       "target": "note:b5:扩展:0",
       "kind": "note",
-      "label": "挂撤单与成交模拟 / 扩展 / 第1条",
-      "text": "主动/被动订单选择、延迟/队列/手续费敏感性。"
+      "label": "原生挂撤单与成交账本 / 扩展 / 第1条",
+      "text": "继续用相同账本接口比较不同模型与执行规则。"
     },
     {
       "target": "node:b6",
       "kind": "node",
-      "label": "B6 · 样本外 PnL 与归因"
+      "label": "预测、执行与收益归因"
     },
     {
       "target": "section:b6:输入",
       "kind": "section",
-      "label": "样本外 PnL 与归因 / 输入"
+      "label": "预测、执行与收益归因 / 输入"
     },
     {
       "target": "note:b6:输入:0",
       "kind": "note",
-      "label": "样本外 PnL 与归因 / 输入 / 第1条",
-      "text": "最终冻结模型、测试期交易回报、订单和权益流水、历史费率及资金费用口径。"
+      "label": "预测、执行与收益归因 / 输入 / 第1条",
+      "text": "模型预测及分区、订单与成交、实际库存、手续费、资金费和期末估值。"
     },
     {
       "target": "section:b6:处理",
       "kind": "section",
-      "label": "样本外 PnL 与归因 / 处理"
+      "label": "预测、执行与收益归因 / 处理"
     },
     {
       "target": "note:b6:处理:0",
       "kind": "note",
-      "label": "样本外 PnL 与归因 / 处理 / 第1条",
-      "text": "计算费用后净 PnL、回撤、成交率、库存、Markout 等。"
+      "label": "预测、执行与收益归因 / 处理 / 第1条",
+      "text": "evaluation/汇总因子分布、逐日IC、固定训练阈值分组和诊断图。"
     },
     {
       "target": "note:b6:处理:1",
       "kind": "note",
-      "label": "样本外 PnL 与归因 / 处理 / 第2条",
-      "text": "比较无 Alpha 基线与 Alpha 策略，区分预测、持仓方向、执行费用和逆向选择。"
+      "label": "预测、执行与收益归因 / 处理 / 第2条",
+      "text": "models/comparison_metrics.py按共同样本作日级配对比较；multihorizon/evaluation.py评价收益曲线。"
     },
     {
       "target": "note:b6:处理:2",
       "kind": "note",
-      "label": "样本外 PnL 与归因 / 处理 / 第3条",
-      "text": "进行日期、延迟、队列模型和费率敏感性检查。"
+      "label": "预测、执行与收益归因 / 处理 / 第3条",
+      "text": "strategies/analysis.py与multihorizon/report.py汇总交易权益、成本、持续性及案例状态。"
     },
     {
       "target": "section:b6:输出",
       "kind": "section",
-      "label": "样本外 PnL 与归因 / 输出"
+      "label": "预测、执行与收益归因 / 输出"
     },
     {
       "target": "note:b6:输出:0",
       "kind": "note",
-      "label": "样本外 PnL 与归因 / 输出 / 第1条",
-      "text": "独立测试区间的策略绩效、交易归因报告、策略实验配置与版本。"
+      "label": "预测、执行与收益归因 / 输出 / 第1条",
+      "text": "workspace/results/内按实验分目录保存报告、指标、模型和账本，项目docs保存阅读与复现说明。"
     },
     {
       "target": "section:b6:验收",
       "kind": "section",
-      "label": "样本外 PnL 与归因 / 验收"
+      "label": "预测、执行与收益归因 / 验收"
     },
     {
       "target": "note:b6:验收:0",
       "kind": "note",
-      "label": "样本外 PnL 与归因 / 验收 / 第1条",
-      "text": "账本可核对；OOS 无后验调参；研究报告明确收益来源、成本假设和局限。"
+      "label": "预测、执行与收益归因 / 验收 / 第1条",
+      "text": "对照固定输入与样本，指标区分频率、周期、分区及费用口径，最终权益可由账本复算。"
     },
     {
       "target": "section:b6:注意",
       "kind": "section",
-      "label": "样本外 PnL 与归因 / 注意"
+      "label": "预测、执行与收益归因 / 注意"
     },
     {
       "target": "note:b6:注意:0",
       "kind": "note",
-      "label": "样本外 PnL 与归因 / 注意 / 第1条",
-      "text": "模拟回放不包含自己的真实市场冲击；资金费率、强平/保证金规则缺失时必须显式说明。"
+      "label": "预测、执行与收益归因 / 注意 / 第1条",
+      "text": "历史Test已被前期查看，报告按历史回看解释；单因子未来Mid分组价差与实际交易损益分别记录。"
     },
     {
       "target": "section:b6:扩展",
       "kind": "section",
-      "label": "样本外 PnL 与归因 / 扩展"
+      "label": "预测、执行与收益归因 / 扩展"
     },
     {
       "target": "note:b6:扩展:0",
       "kind": "note",
-      "label": "样本外 PnL 与归因 / 扩展 / 第1条",
-      "text": "滚动样本外评估、多期信号、多策略对照、跨合约。"
+      "label": "预测、执行与收益归因 / 扩展 / 第1条",
+      "text": "后续封存数据用于新的泛化确认，扩展实验继续复用相同评价与账本。"
     },
     {
       "target": "file:src/apps/extract_research.cpp",
@@ -1454,8 +1454,8 @@
     {
       "target": "note:source:处理:2",
       "kind": "note",
-      "label": "原始历史行情 / 处理 / 第3条",
-      "text": "标准上游保存原始行情粒度；研究使用交易所时间加20ms固定行情延迟，统一从market_v2进入100ms采样。"
+      "label": "原始行情与标准上游 / 处理 / 第3条",
+      "text": "研究默认读取前10档；快照与逐事件L2各自保留来源，跨来源核查写入独立记录。"
     },
     {
       "target": "note:source:验收:1",
@@ -1466,8 +1466,8 @@
     {
       "target": "note:source:注意:1",
       "kind": "note",
-      "label": "原始历史行情 / 注意 / 第2条",
-      "text": "只有快照时无法恢复两次快照之间遗漏的完整事件路径。精确逐价位事件 OFI、队列变化和完整挂撤单路径需要原始事件或已有中间变量。"
+      "label": "原始行情与标准上游 / 注意 / 第2条",
+      "text": "固定20ms是当前研究假设，订单提交与响应延迟由执行配置另行指定。"
     },
     {
       "target": "note:source:注意:2",
@@ -1484,8 +1484,8 @@
     {
       "target": "note:a3:处理:3",
       "kind": "note",
-      "label": "独立标签与按组读取 / 处理 / 第4条",
-      "text": "普通成交编号空缺保持原样。各组按自身数据依赖恢复，价格标签检查盘口路径。"
+      "label": "独立标签与四分区关联 / 处理 / 第4条",
+      "text": "每个分区末端剔除300秒，核对目标时刻；上一完整秒因子用于当前秒决策。"
     },
     {
       "target": "note:a3:处理:4",
@@ -1526,8 +1526,8 @@
     {
       "target": "note:a5:输出:1",
       "kind": "note",
-      "label": "模型训练与样本外预测 / 输出 / 第2条",
-      "text": "模型主输出与预测评估统一使用 bps，目标周期与标签版本随模型工件保存。"
+      "label": "多期限模型与180秒GPU基线 / 输出 / 第2条",
+      "text": "multihorizon_20261109_v1/e1/保存多期限模型；target180_gpu_20261110_v1与sequence180_gpu_20261110_v1保存专用GPU实验。"
     },
     {
       "target": "note:b3:输出:1",
@@ -1611,8 +1611,8 @@
     {
       "target": "note:b2:处理:2",
       "kind": "note",
-      "label": "C++ 实时特征更新 / 处理 / 第3条",
-      "text": "src/mm/features/order_flow.hpp 提供 BboState 与 calculate_bbo_ofi()，接收连续有效的前后 BBO，输出事件 OFI，ResearchSampler 已实际调用。"
+      "label": "实时基础状态与线性特征 / 处理 / 第3条",
+      "text": "冻结预测支路按可用时间读取；其预测历史与当前行情状态各自登记。"
     },
     {
       "target": "note:b2:代码:0",
@@ -1847,8 +1847,8 @@
     {
       "target": "note:a1:处理:2",
       "kind": "note",
-      "label": "标准行情与base组采样 / 处理 / 第3条",
-      "text": "本日计算读取已有前日标准行情，缺少前日成交时屏蔽日初未完整覆盖的窗口。"
+      "label": "100ms采样与base特征组 / 处理 / 第3条",
+      "text": "输出中间价、双侧深度、成交方向与数量、质量等基础列供后续组复用。"
     },
     {
       "target": "section:a1:代码",
@@ -2068,6 +2068,315 @@
       "target": "file:config/strategy/baseline_mm.yaml",
       "kind": "file",
       "label": "config/strategy/baseline_mm.yaml"
+    },
+    {
+      "target": "file:config/evaluation/multiwindow_20261110.yaml",
+      "kind": "file",
+      "label": "config/evaluation/multiwindow_20261110.yaml"
+    },
+    {
+      "target": "file:config/factors/multiwindow_20261110.yaml",
+      "kind": "file",
+      "label": "config/factors/multiwindow_20261110.yaml"
+    },
+    {
+      "target": "file:config/models/comparison.yaml",
+      "kind": "file",
+      "label": "config/models/comparison.yaml"
+    },
+    {
+      "target": "file:config/models/sequence180_gpu_20261110.yaml",
+      "kind": "file",
+      "label": "config/models/sequence180_gpu_20261110.yaml"
+    },
+    {
+      "target": "file:config/models/target180_gpu_20261110.yaml",
+      "kind": "file",
+      "label": "config/models/target180_gpu_20261110.yaml"
+    },
+    {
+      "target": "file:config/research/multiwindow_20261110.yaml",
+      "kind": "file",
+      "label": "config/research/multiwindow_20261110.yaml"
+    },
+    {
+      "target": "file:config/targets/multiwindow_20261110.yaml",
+      "kind": "file",
+      "label": "config/targets/multiwindow_20261110.yaml"
+    },
+    {
+      "target": "file:research/mm_research/data/engine.py",
+      "kind": "file",
+      "label": "research/mm_research/data/engine.py"
+    },
+    {
+      "target": "file:research/mm_research/data/engine_inputs.py",
+      "kind": "file",
+      "label": "research/mm_research/data/engine_inputs.py"
+    },
+    {
+      "target": "file:research/mm_research/factors/gen014.py",
+      "kind": "file",
+      "label": "research/mm_research/factors/gen014.py"
+    },
+    {
+      "target": "file:research/mm_research/factors/gen037.py",
+      "kind": "file",
+      "label": "research/mm_research/factors/gen037.py"
+    },
+    {
+      "target": "file:research/mm_research/features/trade_distribution.py",
+      "kind": "file",
+      "label": "research/mm_research/features/trade_distribution.py"
+    },
+    {
+      "target": "file:research/mm_research/features/trade_size.py",
+      "kind": "file",
+      "label": "research/mm_research/features/trade_size.py"
+    },
+    {
+      "target": "file:research/mm_research/models/comparison.py",
+      "kind": "file",
+      "label": "research/mm_research/models/comparison.py"
+    },
+    {
+      "target": "file:research/mm_research/models/comparison_contract.py",
+      "kind": "file",
+      "label": "research/mm_research/models/comparison_contract.py"
+    },
+    {
+      "target": "file:research/mm_research/models/comparison_metrics.py",
+      "kind": "file",
+      "label": "research/mm_research/models/comparison_metrics.py"
+    },
+    {
+      "target": "file:research/mm_research/models/comparison_report.py",
+      "kind": "file",
+      "label": "research/mm_research/models/comparison_report.py"
+    },
+    {
+      "target": "file:research/mm_research/models/inventory.py",
+      "kind": "file",
+      "label": "research/mm_research/models/inventory.py"
+    },
+    {
+      "target": "file:research/mm_research/models/replay.py",
+      "kind": "file",
+      "label": "research/mm_research/models/replay.py"
+    },
+    {
+      "target": "file:research/mm_research/models/runner.py",
+      "kind": "file",
+      "label": "research/mm_research/models/runner.py"
+    },
+    {
+      "target": "file:research/mm_research/models/sequence180.py",
+      "kind": "file",
+      "label": "research/mm_research/models/sequence180.py"
+    },
+    {
+      "target": "file:research/mm_research/models/target180.py",
+      "kind": "file",
+      "label": "research/mm_research/models/target180.py"
+    },
+    {
+      "target": "file:research/mm_research/models/tree180.py",
+      "kind": "file",
+      "label": "research/mm_research/models/tree180.py"
+    },
+    {
+      "target": "file:research/mm_research/multihorizon/data.py",
+      "kind": "file",
+      "label": "research/mm_research/multihorizon/data.py"
+    },
+    {
+      "target": "file:research/mm_research/multihorizon/evaluation.py",
+      "kind": "file",
+      "label": "research/mm_research/multihorizon/evaluation.py"
+    },
+    {
+      "target": "file:research/mm_research/multihorizon/execution.py",
+      "kind": "file",
+      "label": "research/mm_research/multihorizon/execution.py"
+    },
+    {
+      "target": "file:research/mm_research/multihorizon/inventory.py",
+      "kind": "file",
+      "label": "research/mm_research/multihorizon/inventory.py"
+    },
+    {
+      "target": "file:research/mm_research/multihorizon/models.py",
+      "kind": "file",
+      "label": "research/mm_research/multihorizon/models.py"
+    },
+    {
+      "target": "file:research/mm_research/multihorizon/persistence.py",
+      "kind": "file",
+      "label": "research/mm_research/multihorizon/persistence.py"
+    },
+    {
+      "target": "file:research/mm_research/multihorizon/report.py",
+      "kind": "file",
+      "label": "research/mm_research/multihorizon/report.py"
+    },
+    {
+      "target": "file:research/mm_research/strategies/analysis.py",
+      "kind": "file",
+      "label": "research/mm_research/strategies/analysis.py"
+    },
+    {
+      "target": "file:research/mm_research/strategies/experiments.py",
+      "kind": "file",
+      "label": "research/mm_research/strategies/experiments.py"
+    },
+    {
+      "target": "file:research/mm_research/strategies/signals.py",
+      "kind": "file",
+      "label": "research/mm_research/strategies/signals.py"
+    },
+    {
+      "target": "file:research/mm_research/targets/dataset.py",
+      "kind": "file",
+      "label": "research/mm_research/targets/dataset.py"
+    },
+    {
+      "target": "file:scripts/build_features.py",
+      "kind": "file",
+      "label": "scripts/build_features.py"
+    },
+    {
+      "target": "file:scripts/build_labels.py",
+      "kind": "file",
+      "label": "scripts/build_labels.py"
+    },
+    {
+      "target": "file:scripts/finalize_factor_windows.py",
+      "kind": "file",
+      "label": "scripts/finalize_factor_windows.py"
+    },
+    {
+      "target": "file:scripts/prepare_l2_archive.py",
+      "kind": "file",
+      "label": "scripts/prepare_l2_archive.py"
+    },
+    {
+      "target": "file:scripts/run_multihorizon.py",
+      "kind": "file",
+      "label": "scripts/run_multihorizon.py"
+    },
+    {
+      "target": "file:scripts/train_sequence180.py",
+      "kind": "file",
+      "label": "scripts/train_sequence180.py"
+    },
+    {
+      "target": "file:scripts/train_target180.py",
+      "kind": "file",
+      "label": "scripts/train_target180.py"
+    },
+    {
+      "target": "file:src/apps/curve_replay.cpp",
+      "kind": "file",
+      "label": "src/apps/curve_replay.cpp"
+    },
+    {
+      "target": "file:src/apps/strategy_replay.cpp",
+      "kind": "file",
+      "label": "src/apps/strategy_replay.cpp"
+    },
+    {
+      "target": "file:src/mm/detail/trading_engine.hpp",
+      "kind": "file",
+      "label": "src/mm/detail/trading_engine.hpp"
+    },
+    {
+      "target": "file:src/mm/linear_signal.cpp",
+      "kind": "file",
+      "label": "src/mm/linear_signal.cpp"
+    },
+    {
+      "target": "file:src/mm/linear_signal.hpp",
+      "kind": "file",
+      "label": "src/mm/linear_signal.hpp"
+    },
+    {
+      "target": "file:src/mm/strategies/curve_policy.cpp",
+      "kind": "file",
+      "label": "src/mm/strategies/curve_policy.cpp"
+    },
+    {
+      "target": "file:src/mm/strategies/curve_policy.hpp",
+      "kind": "file",
+      "label": "src/mm/strategies/curve_policy.hpp"
+    },
+    {
+      "target": "file:src/mm/strategies/execution_policy.cpp",
+      "kind": "file",
+      "label": "src/mm/strategies/execution_policy.cpp"
+    },
+    {
+      "target": "file:src/mm/strategies/execution_policy.hpp",
+      "kind": "file",
+      "label": "src/mm/strategies/execution_policy.hpp"
+    },
+    {
+      "target": "file:tests/test_model_comparison.py",
+      "kind": "file",
+      "label": "tests/test_model_comparison.py"
+    },
+    {
+      "target": "note:core:处理:2",
+      "kind": "note",
+      "label": "时钟、质量与特征定义 / 处理 / 第3条",
+      "text": "当前四档与多期限实验使用上一完整秒的输入，并记录1ms计算延迟。"
+    },
+    {
+      "target": "note:a4:处理:3",
+      "kind": "note",
+      "label": "四档Factors与独立Evaluation / 处理 / 第4条",
+      "text": "Evaluation比较分布、Pearson/Rank IC、训练阈值分组、四分区共同样本、多周期与后段收益。"
+    },
+    {
+      "target": "note:a4:输出:1",
+      "kind": "note",
+      "label": "四档Factors与独立Evaluation / 输出 / 第2条",
+      "text": "workspace/results/evaluation/对应版本，以及factor_windows_20261110_v1的生产验收与报告。"
+    },
+    {
+      "target": "note:a5:输入:1",
+      "kind": "note",
+      "label": "多期限模型与180秒GPU基线 / 输入 / 第2条",
+      "text": "180秒序列模型仅按拟合前缀选48列，读取120秒历史，附加缺失通道。"
+    },
+    {
+      "target": "note:a5:注意:1",
+      "kind": "note",
+      "label": "多期限模型与180秒GPU基线 / 注意 / 第2条",
+      "text": "当前GPU批次尚未接入新四档1206因子，新因子增量需要独立对照。"
+    },
+    {
+      "target": "note:a6:处理:2",
+      "kind": "note",
+      "label": "冻结模型、预测与可用时间 / 处理 / 第3条",
+      "text": "记录样本信息时间、计算延迟和预测可用时间；旧模型与新模型产物独立归档。"
+    },
+    {
+      "target": "note:b4:处理:2",
+      "kind": "note",
+      "label": "信号、持续性与目标库存 / 处理 / 第3条",
+      "text": "curve_policy.cpp在五档库存与分段预测上求目标，execution_policy.cpp管理风险退出与委托等待。"
+    },
+    {
+      "target": "note:b5:处理:2",
+      "kind": "note",
+      "label": "原生挂撤单与成交账本 / 处理 / 第3条",
+      "text": "失败案例单独保留状态与日志，其他案例独立继续。"
+    },
+    {
+      "target": "note:b6:注意:1",
+      "kind": "note",
+      "label": "预测、执行与收益归因 / 注意 / 第2条",
+      "text": "本页说明截至2026-11-10的代码能力，运行完成度以对应任务状态与报告为准；已有批注保留为历史记录。"
     }
   ]
 }

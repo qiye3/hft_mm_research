@@ -1,0 +1,18 @@
+# GPU树扩展批次，入口为主GPU研究队列。
+# 输入为冻结146列及其训练期预处理，输出180秒XGBoost权重与验证预测。
+tasks:
+- id: xgb_depth6_seed17
+  lane: gpu
+  threads: 2
+  estimated_peak_gib: 8
+  memory_limit_gib: 24
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_tree180.py
+  - config/models/target180_gpu_20261110.yaml
+  - --gpu-lock
+  - /tmp/hft_mm_research_gpu.lock
+  requires_success: []
+  after_finished: []
+  priority: 2

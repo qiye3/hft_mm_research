@@ -944,3 +944,6 @@ tasks:
     workers: 4
     factor_batch_size: 9
   generated_config: workspace/results/factor_recovery_2026-11-08/configs/evaluation_gen035.yaml
+
+
+report_command: [".venv/bin/python", "scripts/collect_night_results.py", "config/research/factor_recovery.yaml"]

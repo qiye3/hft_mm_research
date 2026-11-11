@@ -31,6 +31,6 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
     """调用方先从完整100ms信息生成内层，再筛UTC整秒，外层保持80%有效比例。"""
     expressions = {}
     for name in source_expressions(config):
-        for seconds in [5, 10, 30, 100]:
+        for seconds in config["aggregation_windows_s"]:
             expressions[f'{name}_sec_mean_{seconds}s'] = pl.col(name).rolling_mean(seconds, min_samples=math.ceil(seconds * config['min_fraction'])).cast(pl.Float64)
     return expressions

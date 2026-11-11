@@ -10,7 +10,7 @@ from torch.nn import functional as functional
 class FactorNetwork(nn.Module):
     """共享回归头的MLP、GRU、LSTM、TCN、Transformer与时间线性基线。"""
 
-    # 【核心逻辑135】按具名实验建立网络，所有模型输出一个标准化未来收益。
+    # 【核心逻辑153】按具名实验建立网络，所有模型输出一个标准化未来收益。
     def __init__(self, family: str, features: int, sequence: int, hidden: int):
         """输入模型种类、含缺失标记的列数、历史秒数和隐藏宽度。"""
         super().__init__()
@@ -43,7 +43,7 @@ class FactorNetwork(nn.Module):
             raise ValueError(f'未知深度基线 {family}')
         self.head = nn.Linear(hidden, 1)
 
-    # 【核心逻辑137】从完整过去序列提取最后时点表示，输出当前时点预测。
+    # 【核心逻辑154】从完整过去序列提取最后时点表示，输出当前时点预测。
     def forward(self, history: torch.Tensor) -> torch.Tensor:
         """输入batch×过去秒数×列，序列不含任何未来行，返回batch预测。"""
         if self.family == 'mlp':

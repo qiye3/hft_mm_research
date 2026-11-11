@@ -23,4 +23,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         "trade_idle_to_active_flag_100ms": pl.when(previous.is_not_null() & count.is_not_null()).then(((count > 0) & (previous == 0)).cast(pl.Float64)),
         "trade_active_to_idle_flag_100ms": pl.when(previous.is_not_null() & count.is_not_null()).then(((count == 0) & (previous > 0)).cast(pl.Float64)),
     }
-    return rolling_factors(sources, (5, 10, 30, 100), "mean", config["min_fraction"])
+    return rolling_factors(sources, config["aggregation_windows_s"], "mean", config["min_fraction"])

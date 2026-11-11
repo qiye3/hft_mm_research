@@ -25,4 +25,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         "trade_sell_vwap_prev_mid_dev_bps_100ms": (sell - previous) / previous * 10000,
         "trade_all_vwap_prev_mid_dev_bps_100ms": (total - previous) / previous * 10000,
     }
-    return rolling_factors(sources, (5, 10, 30, 100), "mean", config["min_fraction"])
+    return rolling_factors(sources, config["aggregation_windows_s"], "mean", config["min_fraction"])

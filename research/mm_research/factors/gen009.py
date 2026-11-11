@@ -12,5 +12,5 @@ VERSION = "seconds_v1"
 def factor_expressions(config: dict) -> dict[str, pl.Expr]:
     """输入缺失有效比例和价格步长，外层窗口单位为秒，返回完整因子名及其Polars表达式。"""
     return rolling_factors(
-        divergence_sources(), (5, 10, 20, 50), "mean", config["min_fraction"],
+        divergence_sources(), config["aggregation_windows_s"], "mean", config["min_fraction"],
     )

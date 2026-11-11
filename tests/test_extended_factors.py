@@ -21,9 +21,9 @@ class ExtendedFactorTests(unittest.TestCase):
     def test_names_types_and_prefix_causality(self):
         """所有组36个，参考列只提供事前常数，不涉及未来数据。"""
         for batch in EXTENDED_BATCHES:
-            expressions = factor_module(batch).factor_expressions({"tick_size": 0.1, "min_fraction": 0.8})
+            expressions = factor_module(batch).factor_expressions({"tick_size": 0.1, "min_fraction": 0.8, "aggregation_windows_s": [5, 10, 30, 100], "mean_diff_windows_s": [[3, 10], [5, 20], [5, 50], [10, 50], [10, 100], [20, 100]]})
             self.assertEqual(len(expressions), 36)
-            inputs = factor_module(batch).source_expressions({'tick_size': .1, 'min_fraction': .8}) if batch in ['gen012', 'gen014'] else expressions
+            inputs = factor_module(batch).source_expressions({'tick_size': .1, 'min_fraction': .8, "aggregation_windows_s": [5, 10, 30, 100], "mean_diff_windows_s": [[3, 10], [5, 20], [5, 50], [10, 50], [10, 100], [20, 100]]}) if batch in ['gen012', 'gen014'] else expressions
             columns = sorted({name for expression in inputs.values() for name in expression.meta.root_names()})
             data = {}
             for name in columns:
