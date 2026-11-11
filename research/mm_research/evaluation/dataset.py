@@ -28,6 +28,8 @@ def partition_sample_mask(date: str, config: dict) -> pl.Expr:
     """分界前统一剔除300s，测试期由标签可用性决定样本范围。"""
     if date <= config["train_end"]:
         final_date = config["train_end"]
+    elif date <= config['validation_dev_end']:
+        final_date = config['validation_dev_end']
     elif date <= config["validation_end"]:
         final_date = config["validation_end"]
     else:

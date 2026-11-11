@@ -1,0 +1,730 @@
+# 独立模型训练和评价队列。单个模型失败后记录并跳过，其他模型继续。
+# 共享数据为必需依赖；冻结等待所有训练结束；报告如实列出缺少产物的模型。
+stage: overnight
+output: workspace/results/models/comparison_2026-11-09_v2/execution
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 6
+lane_limits:
+  cpu: 1
+  gpu: 1
+  evaluation: 3
+morning_report_at: null
+report_command:
+- .venv-models/bin/python
+- scripts/run_model_comparison.py
+- config/models/comparison.yaml
+- report
+queue_directory: config/research/comparison_queue
+tasks:
+- id: comparison_prepare
+  lane: cpu
+  command:
+  - .venv/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - prepare
+  threads: 8
+  estimated_peak_gib: 10
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 10
+- id: comparison_linear
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - linear
+  threads: 8
+  estimated_peak_gib: 8
+  memory_limit_gib: 16
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_tree_history
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - tree
+  - --group
+  - history
+  threads: 8
+  estimated_peak_gib: 18
+  memory_limit_gib: 28
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_tree_core
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - tree
+  - --group
+  - core
+  threads: 8
+  estimated_peak_gib: 18
+  memory_limit_gib: 28
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_tree_representatives16
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - tree
+  - --group
+  - representatives16
+  threads: 8
+  estimated_peak_gib: 18
+  memory_limit_gib: 28
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_tree_base90
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - tree
+  - --group
+  - base90
+  threads: 8
+  estimated_peak_gib: 18
+  memory_limit_gib: 28
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_tree_depth_expanded
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - tree
+  - --group
+  - depth_expanded
+  threads: 8
+  estimated_peak_gib: 18
+  memory_limit_gib: 28
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_tree_sequence_expanded
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - tree
+  - --group
+  - sequence_expanded
+  threads: 8
+  estimated_peak_gib: 18
+  memory_limit_gib: 28
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_tree_full
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - tree
+  - --group
+  - full
+  threads: 8
+  estimated_peak_gib: 18
+  memory_limit_gib: 28
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_tree_without_depth
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - tree
+  - --group
+  - without_depth
+  threads: 8
+  estimated_peak_gib: 18
+  memory_limit_gib: 28
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_tree_without_obi
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - tree
+  - --group
+  - without_obi
+  threads: 8
+  estimated_peak_gib: 18
+  memory_limit_gib: 28
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_gru_1
+  lane: gpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - gru
+  - --sequence
+  - '1'
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_gru_30
+  lane: gpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - gru
+  - --sequence
+  - '30'
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_gru_120
+  lane: gpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - gru
+  - --sequence
+  - '120'
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_prepare
+  after_finished: []
+  priority: 10
+- id: comparison_freeze
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - freeze
+  threads: 8
+  estimated_peak_gib: 1
+  memory_limit_gib: 4
+  requires_success:
+  - comparison_prepare
+  after_finished:
+  - comparison_linear
+  - comparison_tree_history
+  - comparison_tree_core
+  - comparison_tree_representatives16
+  - comparison_tree_base90
+  - comparison_tree_depth_expanded
+  - comparison_tree_sequence_expanded
+  - comparison_tree_full
+  - comparison_tree_without_depth
+  - comparison_tree_without_obi
+  - comparison_gru_1
+  - comparison_gru_30
+  - comparison_gru_120
+  priority: 10
+- id: evaluate_ridge_history
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - ridge_history
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_ridge_core
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - ridge_core
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_ridge_representatives16
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - ridge_representatives16
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_ridge_base90
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - ridge_base90
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_ridge_depth_expanded
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - ridge_depth_expanded
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_ridge_sequence_expanded
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - ridge_sequence_expanded
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_ridge_full
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - ridge_full
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_ridge_without_depth
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - ridge_without_depth
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_ridge_without_obi
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - ridge_without_obi
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_ols_base90
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - ols_base90
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_ols_full
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - ols_full
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_lasso_base90
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - lasso_base90
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_lasso_full
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - lasso_full
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_linear
+  after_finished: []
+  priority: 10
+- id: evaluate_lightgbm_history
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - lightgbm_history
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_tree_history
+  after_finished: []
+  priority: 10
+- id: evaluate_lightgbm_core
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - lightgbm_core
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_tree_core
+  after_finished: []
+  priority: 10
+- id: evaluate_lightgbm_representatives16
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - lightgbm_representatives16
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_tree_representatives16
+  after_finished: []
+  priority: 10
+- id: evaluate_lightgbm_base90
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - lightgbm_base90
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_tree_base90
+  after_finished: []
+  priority: 10
+- id: evaluate_lightgbm_depth_expanded
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - lightgbm_depth_expanded
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_tree_depth_expanded
+  after_finished: []
+  priority: 10
+- id: evaluate_lightgbm_sequence_expanded
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - lightgbm_sequence_expanded
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_tree_sequence_expanded
+  after_finished: []
+  priority: 10
+- id: evaluate_lightgbm_full
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - lightgbm_full
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_tree_full
+  after_finished: []
+  priority: 10
+- id: evaluate_lightgbm_without_depth
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - lightgbm_without_depth
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_tree_without_depth
+  after_finished: []
+  priority: 10
+- id: evaluate_lightgbm_without_obi
+  lane: evaluation
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_cpu
+  - --model
+  - lightgbm_without_obi
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_tree_without_obi
+  after_finished: []
+  priority: 10
+- id: evaluate_gru_base90_1s
+  lane: gpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_gpu
+  - --model
+  - gru_base90_1s
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_gru_1
+  after_finished: []
+  priority: 10
+- id: evaluate_gru_base90_30s
+  lane: gpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_gpu
+  - --model
+  - gru_base90_30s
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_gru_30
+  after_finished: []
+  priority: 10
+- id: evaluate_gru_base90_120s
+  lane: gpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - evaluate_gpu
+  - --model
+  - gru_base90_120s
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  requires_success:
+  - comparison_freeze
+  - comparison_gru_120
+  after_finished: []
+  priority: 10
+- id: comparison_report
+  lane: cpu
+  command:
+  - .venv-models/bin/python
+  - scripts/run_model_comparison.py
+  - config/models/comparison.yaml
+  - report
+  threads: 8
+  estimated_peak_gib: 1
+  memory_limit_gib: 4
+  requires_success:
+  - comparison_freeze
+  after_finished:
+  - evaluate_ridge_history
+  - evaluate_ridge_core
+  - evaluate_ridge_representatives16
+  - evaluate_ridge_base90
+  - evaluate_ridge_depth_expanded
+  - evaluate_ridge_sequence_expanded
+  - evaluate_ridge_full
+  - evaluate_ridge_without_depth
+  - evaluate_ridge_without_obi
+  - evaluate_ols_base90
+  - evaluate_ols_full
+  - evaluate_lasso_base90
+  - evaluate_lasso_full
+  - evaluate_lightgbm_history
+  - evaluate_lightgbm_core
+  - evaluate_lightgbm_representatives16
+  - evaluate_lightgbm_base90
+  - evaluate_lightgbm_depth_expanded
+  - evaluate_lightgbm_sequence_expanded
+  - evaluate_lightgbm_full
+  - evaluate_lightgbm_without_depth
+  - evaluate_lightgbm_without_obi
+  - evaluate_gru_base90_1s
+  - evaluate_gru_base90_30s
+  - evaluate_gru_base90_120s
+  priority: 10
+

@@ -10,4 +10,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
     """输入已发布的九个100ms分布特征，输出四档秒窗口均值。"""
     sources = {f'trade_size_{side}_{metric}_100ms': pl.col(f'trade_size_{side}_{metric}_100ms')
                for side in ['buy', 'sell', 'all'] for metric in ['median_qty', 'topdecile_share', 'hhi']}
-    return rolling_factors(sources, (5, 10, 30, 100), 'mean', config['min_fraction'])
+    return rolling_factors(sources, config["aggregation_windows_s"], 'mean', config['min_fraction'])

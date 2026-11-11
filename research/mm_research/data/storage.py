@@ -81,7 +81,8 @@ def write_parquet(table: pl.LazyFrame, filename: Path, metadata: dict) -> None:
 
 
 # 【核心逻辑20】按共同时间键读取选定研究列，并检查输入来自同一数据定义。
-def scan_series(folder: Path, columns: list[str], dates: list[str] | None = None) -> tuple[pl.LazyFrame, dict]:
+def scan_series(folder: Path, columns: list[str], dates: list[str] | None = None,
+                *, start_timestamp_ns: int | None = None) -> tuple[pl.LazyFrame, dict]:
     """输入单变量文件目录、列名和可选日期，返回时间对齐的查询与共同定义。
 
     当前研究仅含BTCUSDT，UTC纳秒时间戳唯一决定样本，日期与资产由首列文件携带。
@@ -93,6 +94,8 @@ def scan_series(folder: Path, columns: list[str], dates: list[str] | None = None
     first_scan = pl.scan_parquet(first)
     if dates is not None:
         first_scan = first_scan.filter(pl.col("date").is_in(dates))
+    if start_timestamp_ns is not None:
+        first_scan = first_scan.filter(pl.col('timestamp_ns') >= start_timestamp_ns)
     # 正式单变量文件由同一完整时间网格按序发布，日期筛选保持顺序和唯一性。
     # 显式声明顺序让Polars采用流式归并，逐次1:1检查会触发全量内存关联。
     table = first_scan.select(*KEY_COLUMNS, columns[0]).set_sorted("timestamp_ns")
@@ -103,6 +106,8 @@ def scan_series(folder: Path, columns: list[str], dates: list[str] | None = None
         values = pl.scan_parquet(filename)
         if dates is not None:
             values = values.filter(pl.col("date").is_in(dates))
+        if start_timestamp_ns is not None:
+            values = values.filter(pl.col('timestamp_ns') >= start_timestamp_ns)
         values = values.select("timestamp_ns", column).set_sorted("timestamp_ns")
         table = table.join(values, on="timestamp_ns", how="left", maintain_order="left")
     return table, reference

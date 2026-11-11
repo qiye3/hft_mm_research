@@ -39,7 +39,7 @@ class FactorTests(unittest.TestCase):
         """组001至006和010各36个，008和009各24个。"""
         counts = []
         for batch in SUPPORTED_BATCHES:
-            expressions = factor_module(batch).factor_expressions({"min_fraction": 0.8, "tick_size": 0.1})
+            expressions = factor_module(batch).factor_expressions({"min_fraction": 0.8, "tick_size": 0.1, "aggregation_windows_s": ([3, 5, 10, 20, 50, 100] if batch == "gen001" else [5, 10, 20, 50]), "mean_diff_windows_s": [[3, 10], [5, 20], [5, 50], [10, 50], [10, 100], [20, 100]]})
             counts.append(len(expressions))
             inputs = sorted({column for expression in expressions.values() for column in expression.meta.root_names()})
             table = pl.DataFrame({column: [1, 2] if column == "trade_count" else [1.0, 2.0] for column in inputs})
@@ -60,13 +60,13 @@ class FactorTests(unittest.TestCase):
             values = np.arange(2400) / 250
             table = pl.DataFrame({
                 "symbol": ["BTCUSDT"] * 2400, "date": [dates[0]] * 1200 + [dates[1]] * 1200,
-                "timestamp_ns": np.arange(2400, dtype=np.int64) * 100_000_000,
+                "timestamp_ns": 1783814400000000000 - 120_000_000_000 + np.arange(2400, dtype=np.int64) * 100_000_000,
             })
             columns = ["imbalance_1", "imbalance_5", "imbalance_10", "trade_imbalance_100ms", "trade_imbalance_1s"]
             for index, column in enumerate(columns):
                 write_parquet(table.with_columns(pl.Series(column, values * (index + 1))).lazy(), root / f"{column}.parquet",
                               {"kind": "feature", "dataset": {"dates": dates}, "definition": {}})
-            config = {"min_fraction": 0.8, "tick_size": 0.1, "write_threads": 2, "output_interval_ns": 1_000_000_000}
+            config = {"min_fraction": 0.8, "tick_size": 0.1, "write_threads": 2, "output_interval_ns": 1_000_000_000, "aggregation_windows_s": [3, 5, 10, 20, 50, 100], "mean_diff_windows_s": [[3, 10], [5, 20], [5, 50], [10, 50], [10, 100], [20, 100]]}
             expressions = factor_module("gen001").factor_expressions(config)
             name = "book_obi_l1_mean_100s"
             compute_factor_chunk({

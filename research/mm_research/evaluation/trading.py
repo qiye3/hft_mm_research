@@ -200,7 +200,7 @@ def audit_equity(directory: Path, summary: dict) -> tuple[np.ndarray, np.ndarray
 
 
 # ==================== 完整日验收与成交质量分析 ====================
-# 【核心逻辑182】核对完整日的一组实验，再按成交量加权计算本地回报后一秒的收益标记。
+# 【核心逻辑199】核对完整日的一组实验，再按成交量加权计算本地回报后一秒的收益标记。
 def analyze_run(directory: Path, manifest: dict) -> dict:
     """为一组已完成的 C++ 回测补充独立核对和短期成交质量统计。
 
@@ -240,5 +240,3 @@ def analyze_run(directory: Path, manifest: dict) -> dict:
     summary["markout_censored"] = int(len(valid) - valid.sum())
     summary["csv_reconciled"] = True
     return summary
-
-

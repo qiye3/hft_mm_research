@@ -29,4 +29,4 @@ def source_expressions(config: dict) -> dict[str, pl.Expr]:
 # 【核心逻辑99】共享隐含价格源，展开四档秒级均值。
 def factor_expressions(config: dict) -> dict[str, pl.Expr]:
     """九个隐含价格偏移各生成5、10、30、100秒均值。"""
-    return rolling_factors({name: pl.col(name) for name in source_expressions(config)}, (5, 10, 30, 100), 'mean', config['min_fraction'])
+    return rolling_factors({name: pl.col(name) for name in source_expressions(config)}, config["aggregation_windows_s"], 'mean', config['min_fraction'])

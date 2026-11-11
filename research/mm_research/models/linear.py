@@ -17,7 +17,7 @@ class LinearStatistics:
     yy: float
 
 
-# 【核心逻辑124】将一个样本块转换为数值稳定的中心化充分统计量。
+# 【核心逻辑128】将一个样本块转换为数值稳定的中心化充分统计量。
 def linear_statistics(matrix: np.ndarray, target: np.ndarray) -> LinearStatistics:
     """输入共同有效的X/y，输出中心化统计，后续精确复用相同训练样本。"""
     mean_x = matrix.mean(axis=0)
@@ -28,7 +28,7 @@ def linear_statistics(matrix: np.ndarray, target: np.ndarray) -> LinearStatistic
                             centered_x.T @ centered_y, float(centered_y @ centered_y))
 
 
-# 【核心逻辑125】使用块均值修正项合并逐日统计，避免大数相减造成精度损失。
+# 【核心逻辑129】使用块均值修正项合并逐日统计，避免大数相减造成精度损失。
 def merge_statistics(left: LinearStatistics, right: LinearStatistics) -> LinearStatistics:
     """返回与直接拼接两块后中心化等价的统计量，内存与日期数量无关。"""
     count = left.samples + right.samples
@@ -51,7 +51,7 @@ def subset_statistics(statistics: LinearStatistics, indices: list[int]) -> Linea
                             statistics.xx[np.ix_(indices, indices)], statistics.xy[indices], statistics.yy)
 
 
-# 【核心逻辑126】训练期标准化后拟合三种线性模型，Lasso使用Gram加速近端梯度。
+# 【核心逻辑130】训练期标准化后拟合三种线性模型，Lasso使用Gram加速近端梯度。
 def fit_linear_model(statistics: LinearStatistics, family: str, alpha: float) -> dict:
     """Ridge目标为均方误差加L2，Lasso目标为半均方误差加L1，截距不惩罚。"""
     scales = np.sqrt(np.maximum(np.diag(statistics.xx) / statistics.samples, 0))
@@ -94,7 +94,7 @@ def fit_linear_model(statistics: LinearStatistics, family: str, alpha: float) ->
     }
 
 
-# 【核心逻辑127】用独立区间统计评价预测误差、相关性与零预测基线。
+# 【核心逻辑131】用独立区间统计评价预测误差、相关性与零预测基线。
 def score_linear_model(statistics: LinearStatistics, model: dict) -> dict:
     """指标与逐行预测等价，常数预测的相关系数明确为空。"""
     coefficients = np.asarray(model["coefficients"])

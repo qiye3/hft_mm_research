@@ -344,6 +344,24 @@
       "updated_at": "2026-11-06T07:25:39.584960+00:00"
     },
     {
+      "id": "codex-doc-library-current-layout-20261106",
+      "target": "node:a2",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "按最新数据组织同步外部文档库、README、研究指南、存储说明和历史报告版本提示。标准文件为standard/版本/{snapshots,trades}/日期.parquet，base和衍生组共同保存在features/版本/日期.parquet，标签位于labels/版本/horizon=周期/日期.parquet。更新四组独立质量、增量复用、示例与当前接口。主文档补充在对话中给出。",
+      "created_at": "2026-11-06T11:38:54.497335+00:00",
+      "updated_at": "2026-11-06T11:38:54.497335+00:00"
+    },
+    {
+      "id": "codex-feature-table-implementation-20261106",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "Features构造表统一按特征组与业务类型组织，在表内增加计算实现列，分别注明Python/Polars与C++。事件OFI逐次计算及100ms累计由C++提供，1s/5s窗口公式在Polars模块。将独立示例改称特征开发示例，说明函数已实现、当前未登记GROUPS，正式接入需要注册组并配置选用。同步Features总览的示例用途说明。",
+      "created_at": "2026-11-06T12:26:47.019202+00:00",
+      "updated_at": "2026-11-06T12:26:47.019202+00:00"
+    },
+    {
       "id": "codex-v5-20261106-simplify-research-helpers",
       "target": "file:research/mm_research/data/dataset.py",
       "author": "Codex",
@@ -402,24 +420,6 @@
       "created_at": "2026-11-06T11:26:54Z",
       "updated_at": "2026-11-06T11:26:54Z",
       "deleted": false
-    },
-    {
-      "id": "codex-doc-library-current-layout-20261106",
-      "target": "node:a2",
-      "author": "Codex",
-      "status": "已解决",
-      "body": "按最新数据组织同步外部文档库、README、研究指南、存储说明和历史报告版本提示。标准文件为standard/版本/{snapshots,trades}/日期.parquet，base和衍生组共同保存在features/版本/日期.parquet，标签位于labels/版本/horizon=周期/日期.parquet。更新四组独立质量、增量复用、示例与当前接口。主文档补充在对话中给出。",
-      "created_at": "2026-11-06T11:38:54.497335+00:00",
-      "updated_at": "2026-11-06T11:38:54.497335+00:00"
-    },
-    {
-      "id": "codex-feature-table-implementation-20261106",
-      "target": "node:a3",
-      "author": "Codex",
-      "status": "已解决",
-      "body": "Features构造表统一按特征组与业务类型组织，在表内增加计算实现列，分别注明Python/Polars与C++。事件OFI逐次计算及100ms累计由C++提供，1s/5s窗口公式在Polars模块。将独立示例改称特征开发示例，说明函数已实现、当前未登记GROUPS，正式接入需要注册组并配置选用。同步Features总览的示例用途说明。",
-      "created_at": "2026-11-06T12:26:47.019202+00:00",
-      "updated_at": "2026-11-06T12:26:47.019202+00:00"
     },
     {
       "id": "codex-v5-20261106-gen001-complete",
@@ -540,6 +540,177 @@
       "body": "完成1秒目标候选筛选与相关性分析。冻结876个已完成评测，训练及验证门槛通过362个，54个代表计算全部388个训练日及92个验证日。逐对有限样本Pearson用于0.85阈值去重，优先保留15个、覆盖8组，19个高相关归并，20个列为备选。Spearman按54列全池共同样本做日等权对照。25k成本因子条件性缺失已与其余组合分离处理。0.70方案保留15个、覆盖10组，与默认重合9个。报告见docs/reports/candidate_selection_2026-11-08/report.md，复现脚本及明细见workspace/results/candidate_selection_2026-11-08/。提交Git待用户指令。",
       "created_at": "2026-11-08T03:56:06.550425+00:00",
       "updated_at": "2026-11-08T03:56:06.550425+00:00"
+    },
+    {
+      "id": "codex-server-switch-20261109",
+      "target": "node:a4",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "当前服务器切换为qiye-rtx3090-10vcpu，SSH入口ssh.zw1.paratera.com:2222，实例用户root@ackcs-00gji3q5。已实测自动挂载原JuiceFS共享盘，容量1TiB、已用约718GiB，原项目、数据与结果目录可直接访问。资源为10vCPU、60GiB内存、RTX3090 24GiB；.venv和.venv-models均可用，CUDA可用。已恢复看板服务并读取1236个完成评测因子。本机SSH、Cursor、钥匙串、监控浮窗及看板连接脚本同步新实例。",
+      "created_at": "2026-11-09T01:48:51.379487+00:00",
+      "updated_at": "2026-11-09T03:12:48.961131+00:00"
+    },
+    {
+      "id": "codex-information-validation-20261109",
+      "target": "node:a4",
+      "author": "Codex",
+      "status": "备注",
+      "body": "2026-11-09已执行P0、A2、C和25日B1。冻结模型IC复算0.271446；七列共同样本中OBI残差方差保留54.94%，旧0%结论未复现。相同百万训练秒的C树模型验证R²为0.064887；B1增加七项100ms路径后ΔR²为0.008277，9个验证日均改善。B0真实L2前五分钟与Features的43列Tick/Lot对账一致。E2当前仅有2026-10-21一个完整事件日，X缺少登记的同步现货数据。结果文档位于/Users/qiye/Desktop/docs/Projects/HFT_MM/Results/research_20261109，复现代码和指标归档于workspace/results/information_validation。",
+      "created_at": "2026-11-09T06:20:54.816206+00:00",
+      "updated_at": "2026-11-09T06:20:54.816206+00:00"
+    },
+    {
+      "id": "codex-unified-model-comparison-2026-11-09",
+      "target": "node:a3",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "正式统一对照已实现。仅读取训练期IC和训练覆盖选列；所有模型共用固定训练抽样和标签时间戳；训练均值填补加缺失通道；边界前300秒隔离及目标时间检查。四天有界只读预取，主线程顺序携带120秒跨日输入，按日写入Float32模型矩阵，正式Factors仍为Float64。线性充分统计、树训练只读磁盘映射和有界GRU序列修复整表复制峰值。独立任务失败隔离，先冻结再评价，报告标记历史Test已被接触。配置分别位于config/models/comparison.yaml和config/research/model_comparison.yaml，当前结果版本comparison_2026-11-09_v2。全局核心编号1—204，详细文件职责见docs/implementation/model_comparison.md。Git等待用户指令。 全部25模型训练与共同样本评价已完成。训练600万、验证7919475、历史测试4403050行。冻结完整199列LightGBM，验证IC 0.24265、历史测试IC 0.25029/R² 6.239%；深度与历史派生合并相对90列日均IC提升0.00754，91/92验证日改善。去组以完整模型为基线，配对IC和MSE共用日期抽样。数据准备匿名峰值3.15GiB，最大任务RSS43.86GiB，无新增OOM。综合报告见docs/reports/model_comparison_2026-11-09/report.md，外部Results第06篇已同步并修订历史口径。",
+      "created_at": "2026-11-09T06:31:10.924684+00:00",
+      "updated_at": "2026-11-09T08:31:48.151927+00:00"
+    },
+    {
+      "id": "codex-strategies-20261109-model-inventory",
+      "target": "node:a6",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "新增models/inventory.py，按实际权重和报告登记290条已训练模型记录，另存历史探索。交易候选冻结为19路信号，含两个夜间批次五周期赢家、线性基线、条件树模型、统一对照赢家及OBI参考；完整整秒推理不按未来标签有效性筛行。模型总览见外部Results/research_20261109/07_已完成模型实验总览.md。",
+      "created_at": "2026-11-09T09:29:36.980820+00:00",
+      "updated_at": "2026-11-09T09:46:02.676356+00:00"
+    },
+    {
+      "id": "codex-strategies-20261109-policy",
+      "target": "node:b4",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "新增src/mm/strategies/execution_policy与src/apps/strategy_replay，读取已冻结bps预测，等待推理延迟后每100ms决策。支持固定报价、单侧被动、Alpha偏移、目标库存和Maker/Taker混合，复用MarketMaker的委托、撤单在途与库存预算。参数由config/strategy/research_20261109.yaml固定。",
+      "created_at": "2026-11-09T09:29:36.980820+00:00",
+      "updated_at": "2026-11-09T09:46:02.676356+00:00"
+    },
+    {
+      "id": "codex-strategies-20261109-native-accounting",
+      "target": "node:b6",
+      "author": "Codex",
+      "status": "备注",
+      "body": "2026-10-21真实L2回放以Maker 2/Taker 5 bps计费，原生保守及Log概率队列对照。逐笔核对现金、费用、最终空仓和全日事件，保存成交后Markout与可执行清算回撤。资金费使用官方费率及分钟标记价代理并保留估值区间。全天信号达不到开仓门槛的组合记录不下单证明，与原生回放区分。已完成200组主矩阵和8组固定做市及执行延迟对照。106组实际回放均亏损，另102组为不下单证明；结果见外部Results/research_20261109/08_真实行情策略收益回测.md。四并行8组耗时159秒，后续默认并发改为4。",
+      "created_at": "2026-11-09T09:29:36.980820+00:00",
+      "updated_at": "2026-11-09T09:46:02.676356+00:00"
+    },
+    {
+      "id": "codex-multihorizon-20261109-night",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "备注",
+      "body": "2026-11-09夜间多期限历史研究使用独立source_snapshot。下载四路预取、L2两路转换、模型训练与分析、已验收日期原生回放并行。校准以65536行分块并使用磁盘临时数组，尾块严格截到有效行数。08:00停止本轮任务并删除临时网盘凭证。今晚仅使用现有历史数据，历史Test标为回看评价。 固定订单机会前置为独立opportunities阶段，与E2/E3并行，复用正式案例ID、文件锁和四路回放名额。机会与动态策略分别使用identity/calibrated风险文件，避免提前机会污染正式风险参数。决策CSV显式声明浮点字段后再归档。 新增watch_research_night.py独立后台守护，协调器最多恢复三次，沿用任务状态与账本。持续性与库存依赖解耦，阶段设时长上限；下载按日期隔离错误。08:00另行停止孤立任务并在finally删除临时凭证。 固定双边基线另设baselines独立队列，覆盖两个验证分区24日、两种队列模型共48例，共享四个回放名额。守护器在训练日全部机会完成后标记缓存可释放，避免磁盘被保留日占满。",
+      "created_at": "2026-11-09T15:10:00Z",
+      "updated_at": "2026-11-09T15:10:00Z"
+    },
+    {
+      "id": "codex-night-funding-20260629",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "2026-11-09库存实验发现Binance 2026-06标记价月档缺少6月29日整日。已取得同一官方来源日档1440分钟，原月档独立保留，来源记录写入e3/funding/supplement_sources.json。inventory.py新增read_mark_prices集中合并明确归档的补充日档，重叠时间报错；execution.py复用该读取逻辑。6月合并后43200行，已恢复库存队列并复用完成案例。少数原生回放触发固定引擎拒绝回报含成交状态的保护，继续隔离失败，保持真实账本校验。",
+      "created_at": "2026-11-09T15:45:00Z",
+      "updated_at": "2026-11-09T15:45:00Z"
+    },
+    {
+      "id": "codex-night-summary-20261110",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "备注",
+      "body": "夜间已完成M0—M4训练、持续性和库存对照，40日L2验收及581组原生回放，31组失败。执行机会汇总因NumPy布尔被保存为Int64而中断。execution.py的collect_opportunities显式输出Python bool，已有opportunities.parquet一次性改为Boolean后，使用现有账本完成M1/M3固定退出价值估计并刷新汇总。未延长08:00回放截止，X3代理及压力矩阵仍未完成。临时凭证删除已核实。",
+      "created_at": "2026-11-10T03:45:00Z",
+      "updated_at": "2026-11-10T03:45:00Z"
+    },
+    {
+      "id": "codex-multiwindow-plan-20261110-a4",
+      "target": "node:a4",
+      "author": "Codex",
+      "status": "待办",
+      "body": "多窗口计划已按用户最新要求收敛为10/60/180/600秒，短长差先用10/60、60/180、180/600三组相邻组合；预测周期仍为1/10/30/60/120/180/300秒，主目标180秒。最大外层600秒的历史上下文和状态尾部按真实依赖计算。再次核对实例为60GiB内存、10vCPU，可用磁盘约354.5GiB。约1200个候选按组生产全531天单因子Parquet，先以14天试跑核实容量，复用相同定义文件，保留60GiB磁盘余量。计划详见外部research_20261109_series/03_多窗口因子与多周期预测评估计划_20261110.md。",
+      "created_at": "2026-11-10T03:58:09+00:00",
+      "updated_at": "2026-11-10T04:10:15+00:00"
+    },
+    {
+      "id": "codex-multiwindow-plan-20261110-a5",
+      "target": "node:a5",
+      "author": "Codex",
+      "status": "待办",
+      "body": "本轮比较四档过去聚合窗口与七个未来预测周期，以Train内180秒日均Rank IC和前向稳定性选择窗口，冻结后评估两个验证区间和历史复核。主标签对数bps及上一完整秒因子加1ms计算延迟保持既定计划，增加10—180/60—180/120—180秒后段收益与跨窗口共同样本。短长差先比较三组相邻粗网格。固定180秒LightGBM对比旧窗口、新窗口及组合。以上为待实施计划。",
+      "created_at": "2026-11-10T03:58:09+00:00",
+      "updated_at": "2026-11-10T04:10:15+00:00"
+    },
+    {
+      "id": "codex-multiwindow-implementation-20261110-a4",
+      "target": "node:a4",
+      "author": "Codex",
+      "status": "备注",
+      "body": "四档计算已实施。35组公式显式配置为10/60/180/600秒，短长差使用三个相邻配对，共1206个因子。分块历史及状态尾部随最大窗口变化，新增持久检查点。各输入列下推历史时间过滤，元数据相同的旧文件通过符号链接复用。四类14天试跑通过，八路全日期生产已启动，CPU实测约99%。",
+      "created_at": "2026-11-10T04:58:02+00:00",
+      "updated_at": "2026-11-10T04:58:02+00:00"
+    },
+    {
+      "id": "codex-multiwindow-implementation-20261110-a5",
+      "target": "node:a5",
+      "author": "Codex",
+      "status": "备注",
+      "body": "七周期对数bps标签已生成。评价加入四分区、一秒因子滞后、同族窗口共同样本和180秒后段收益；OLS修正各评价分区的自变量充分统计。相关、分组和极端分位的小查询已合并，并逐表核对数值。组完成后进入评价，最终脚本验收1206个全日期文件及多周期统计。当前为运行中。",
+      "created_at": "2026-11-10T04:58:02+00:00",
+      "updated_at": "2026-11-10T04:58:02+00:00"
+    },
+    {
+      "id": "codex-target180-gpu-20261110",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "# 180秒GPU模型实验结果\n\n本轮已完成16个模型，包括6个146列MLP、3个48列单时点MLP、3个120秒GRU、3个120秒TCN和1个XGBoost。全部使用未来180秒对数收益bps。Train截至2026-03-22，两段Validation分别截至2026-05-14和2026-07-06。\n\n## 本轮结论\n\n本轮输入是昨日冻结的旧窗口146列，新四档1206因子仍在生产和评估链路中。48列模型只在拟合前缀按180秒相关重新选列，各网络使用17、42、73三个固定种子。\n\n在第二段验证上，146列MLP的三种子平均IC约0.0252—0.0279。48列单时点MLP约0.0176，GRU约0.0130，TCN约0.0202。相对同种子48列单时点MLP，GRU和TCN的日级配对增量均未出现95%区间下界高于0的情况，部分种子显著变差。\n\n当前输入下，增加序列结构没有形成稳定的180秒增量。接下来先完成新四档因子的评价及训练期选窗，再比较新输入，沿用相同标签和分区。\n\n## 第二段验证的配置均值\n\n以下为各配置固定种子的平均，XGBoost只有一个种子。R²以训练期均值预测为基准。\n\n| 配置 | 种子数 | 平均IC | IC种子标准差 | 平均Rank IC | 平均R² |\n| --- | --- | --- | --- | --- | --- |\n| mlp_lr0.0003 | 3 | 0.02519 | 0.00794 | 0.03089 | 0.000190 |\n| mlp_lr0.001 | 3 | 0.02795 | 0.00638 | 0.03336 | 0.000488 |\n| mlp_current | 3 | 0.01764 | 0.00585 | 0.03431 | -0.001190 |\n| gru_120s | 3 | 0.01303 | 0.01251 | 0.03211 | -0.002569 |\n| tcn_120s | 3 | 0.02018 | 0.00680 | 0.02789 | -0.001617 |\n| xgb_depth6 | 1 | 0.01814 | — | 0.03272 | -0.000127 |\n\n\n确定性路径修正\n\nTCN批量使用1024，由扩展队列明确传入并记入每个实验的实际配置。实测PyTorch在确定性模式下进入 `slow_conv_dilated2d` 路径，单批次触发约442,485次GPU内核调用。开启卷积自动调优或关闭未初始化内存填充均未解决。\n\n当前使用三项矩阵乘法表达同一三点因果膨胀卷积，保留原Conv1d权重和偏置，分别读取t-2d、t-d和t。Float64前向及输入、权重、偏置梯度均与独立Conv1d参考一致。相同1024批次的完整训练步耗时从约4.4秒降至0.046秒，仍开启确定性算法。实际后端 `three_linear_causal_v1` 记录在TCN契约中。旧慢速尝试尚未完成，已替换，其队列日志保留。\n\n",
+      "created_at": "2026-11-10T05:33:38.769335+00:00",
+      "updated_at": "2026-11-10T09:34:42.739846+00:00"
+    },
+    {
+      "id": "codex-current-architecture-20261110",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "2026-11-10按当前本地代码更新15个节点正文、输入输出和文件树。覆盖531天标准行情、单列100ms Features、四档1206因子、七周期对数bps标签、四分区、180秒GPU旧输入基线、多期限模型与原生策略账本。实时C++线性推理和冻结复杂预测两条支路分别说明。历史1s对照独立保留口径。原节点ID、已有批注、收起面板和导入导出交互保留。独立目录、仓库及服务器文档同步；实现状态与任务完成度分开记录。",
+      "created_at": "2026-11-10T08:02:46.489637+00:00",
+      "updated_at": "2026-11-10T08:02:46.489637+00:00"
+    },
+    {
+      "id": "codex-multiwindow-evaluation-recovery-20261110",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "备注",
+      "body": "\n\n35组1206因子已全部生成。全量评估中，Gen003在发布统计时碰到任务内存硬上限，Gen005和Gen008的极端收益列在前100条全空、后续出现浮点值时触发Polars类型推断错误。原始因子文件完整保留，失败评估已重新排队。\n\n本次修改如下。\n\n- `evaluation/report.py`明确极端收益三列为Float64，分组表合并后连续化并释放小表对象，完成一个因子后释放对应状态。\n- `evaluation/metrics.py`将2000次日级Bootstrap按100次分块，随机数序列和区间结果与原整块计算逐值一致。\n- `config/evaluation/multiwindow_20261110.yaml`将每批36列改成12列。已核对1206列全部保持每个公式的四档窗口或三个短长配对在同批，共同样本定义不变。\n- 全部日级统计算完后、发布前，保存原子检查点到该组输出的 `.pending/批次首因子/state.pkl`。发布失败后直接恢复统计，避免重复回放和重复计算。完整发布后清理检查点。\n- 部分窗口已完成时，仍读取其有效掩码参与同公式共同样本，防止恢复后的比较行集变化。\n- `tests/test_evaluation_recovery.py`覆盖空值前缀、Bootstrap结果一致、发布中断恢复及部分窗口缓存下的共同样本。\n\n其余运行中的独立任务继续，最终验收依赖已恢复。上述修改不改变因子公式、标签和IC定义。\n\n\n尝试上调运行中旧36列批次的硬限制被容器拒绝。已将恢复及后续任务改为12列，保留现有运行任务，失败项按新设置重跑。\n\n新任务进一步区分两类资源阈值，`allocation_limit_gib: 24`控制数据段虚拟分配余量，`memory_limit_gib: 12`继续监控实际匿名内存。`overnight.py`已支持两个独立参数，未配置分配余量的任务继续使用原阈值。实际子进程继承值已验证。此设置只应用到新启动任务。\n\n评估和最终验收的完整批次声明现保存在 `config/research/multiwindow_queue/`，主配置直接读取，原结果目录内的临时批次YAML已移除。运行主队列即可复现完整生产、评估与验收。\n\n## 后台托管与自动同步\n\n本轮已交给服务器 `scripts/run_research_background.py`，关闭对话或断开SSH后继续执行。该入口接管当前队列，监督进程异常退出时最多恢复3次。每个评估任务失败后最多重试2次，间隔60秒，复用已完成因子和发布检查点。耗尽重试预算的任务保留真实失败记录，其他任务继续，依赖项按状态处理。\n\n`overnight.py`每分钟生成可读进度 `workspace/results/factor_windows_20261110_v1/queue/progress.md`，后台驱动状态位于同目录 `background.json`，后台日志为 `background.log`。全部评估成功后自动执行验收和研究汇总。\n\n本地 `scripts/watch_and_sync_research.py`每5分钟检查终态。电脑在线时，完成后自动取回轻量汇总到项目 `workspace/results/factor_windows_20261110_v1/summary/`，并写入本目录 `07_四档因子与多周期评估结果_20261110.md`。若后台以失败状态结束，则同步诊断和失败清单。本地同步等待上限24小时，日志位于项目 `workspace/results/factor_windows_20261110_v1/result_sync.log`。计算在服务器执行。\n\n查看服务器进度可执行下列命令。\n\n```bash\nssh qiye-rtx3090-10vcpu 'cat /root/shared-nvme/hft_mm_research/workspace/results/factor_windows_20261110_v1/queue/progress.md'\n```\n\n本次托管修改包括 `research/mm_research/overnight.py` 的有限重试及进度报告，新增 `scripts/run_research_background.py`、`scripts/watch_and_sync_research.py`，更新四档队列重试配置，并新增 `tests/test_research_background.py`。启动时的配置状态同步问题已纠正，已重新连接确认后台主进程、监督进程和8组计算任务持续运行。\n\n\n本地旧同步进程已退出，服务器计算未受影响。现改由macOS launchctl管理一次性同步任务 com.qiye.hft.factor-windows-20261110-sync，已确认新进程启动并成功读取服务器运行状态。watch_and_sync_research.py自行记录PID，日志时间包含时区，失败报告使用正常换行。完成后同步轻量报告；本机需保持开机联网。",
+      "created_at": "2026-11-10T12:35:07.453630+00:00",
+      "updated_at": "2026-11-11T00:22:48.466095+00:00"
+    },
+    {
+      "id": "codex-input-comparison-20261110",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "备注",
+      "body": "四档1206因子生产和评价已全部成功，结果已同步。新增models/input_comparison.py、scripts/run_input_comparison.py及Models/Research两份配置，后台比较180/30/60/120秒的旧146列、新64列和组合输入。新列分别按各期限内部拟合前缀日级Rank IC选窗，排除旧同名列，沿用原fit/tune行集和两段验证，MLP三种子加CUDA XGBoost，共48个模型。313—319号为本轮核心逻辑。新增针对时间对齐、选列边界和邮件回执的测试。watch_and_sync_research.py增加加密SMTP成功通知和文件锁回执，授权码读取本机私有文件。旧重复运行的同步服务已停止，新任务使用RunAtLoad及KeepAlive=false，结束后退出。完整安排见Results/research_20261109_series/08_新旧因子四期限模型训练安排_20261110.md。\n\n执行调整：CPU准备两路、GPU两路并行，已实测GPU约40%。180秒旧MLP的seed17/42在调整前已重跑，指标与历史逐值一致；seed73和旧XGBoost改为显式复用，同步权重来源及统一预测字段。先暂停监督器、保留独立计算，再记录配置修订并恢复原状态。180秒12项对照已完成，继续30/60/120秒。详细文件清单已写入08训练安排。\n\n最终54项任务全部成功，48项模型对照完整，missing为空，09结果文档已自动同步。首次后台发信因macOS禁止读取Desktop凭证而失败，已将授权码副本放入本机私有配置目录（目录700、文件600），更新运行时plist路径并重新运行。QQ服务器已接收完成邮件，发送回执落盘，后台任务以0退出。代码改动仍待用户决定提交。",
+      "created_at": "2026-11-11T02:17:05.693440+00:00",
+      "updated_at": "2026-11-11T02:51:20.195817+00:00"
+    },
+    {
+      "id": "codex-forecast-strategy-20261110",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "预测信号策略研究已完成。82项后台任务全部成功，828个日策略案例及36个固定订单日例完成，18个OOF信号折用于训练期校准。开发660例、冻结验证96例、压力72例。828例账本一致且日末空仓。12个独立验证日保守队列净收益S1为-167.047237 USDT、S2为-129.285914、S3为-297.379170，费用前亦负。三日延迟与双规模压力结果已保存。完成报告自动同步并由QQ邮件服务器接受通知。完整参数、案例和压力测试见用户Results/实验总档案_20261111/06_最新信号策略与压力测试.md。核心编号320—329。",
+      "created_at": "2026-11-11T04:29:38.564417+00:00",
+      "updated_at": "2026-11-11T08:24:16.479162+00:00"
+    },
+    {
+      "id": "codex-experiment-archive-20261111",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "全部已做实验已归档到/Users/qiye/Desktop/docs/Projects/HFT_MM/Results/实验总档案_20261111。00为总索引，01—07覆盖数据回放、因子、信息增量、全部模型、多期限曲线、策略及实际配置，08解释明细。32张CSV含1236旧因子、1206四档因子、290条历史模型登记、64条后续模型记录、18个信号折、828策略日例实际执行配置及36固定订单日例。保留历史失败、预算截止、已查看Test与新旧口径差异，早期已清理中间文件按原报告归档。",
+      "created_at": "2026-11-11T08:24:16.479162+00:00",
+      "updated_at": "2026-11-11T08:24:16.479162+00:00"
     }
   ]
 }

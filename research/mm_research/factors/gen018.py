@@ -24,7 +24,7 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
             paired = previous.is_finite() & returns.is_finite() & (boundaries == boundaries.shift(lag))
             left = pl.when(paired).then(previous)
             right = pl.when(paired).then(returns)
-            for seconds in [5, 10, 30, 100]:
+            for seconds in config["aggregation_windows_s"]:
                 window = seconds * 10
                 minimum = math.ceil(window * config["min_fraction"])
                 correlation = pl.rolling_corr(left, right, window_size=window, min_samples=minimum)

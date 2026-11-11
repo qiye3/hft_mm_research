@@ -5,6 +5,7 @@ import datetime as dt
 import json
 import os
 from pathlib import Path
+from collections import Counter
 import resource
 import shlex
 import signal
@@ -44,7 +45,12 @@ def task_processes(pid: int) -> list[int]:
             state = (folder / 'stat').read_text().split(') ', 1)[1].split()[0]
             if state == 'Z':
                 continue
-            children = (folder / 'task' / str(current) / 'children').read_text().split()
+            children = set()
+            for thread in (folder / 'task').iterdir():
+                try:
+                    children.update((thread / 'children').read_text().split())
+                except FileNotFoundError:
+                    continue
         except FileNotFoundError:
             continue
         result.append(current)
@@ -85,7 +91,7 @@ def stop_task(pid: int) -> None:
             pass
 
 
-# 【非核心】用硬匿名分配上限、独立会话和明确线程预算启动一项任务。
+# 【非核心】用虚拟分配上限、独立会话和明确线程预算启动一项任务。
 def start_task(root: Path, folder: Path, task: dict) -> dict:
     """子进程独立记录退出码，监督脚本重启后可重新接管，不依赖原SSH会话。"""
     if 'config_template' in task:
@@ -105,7 +111,8 @@ def start_task(root: Path, folder: Path, task: dict) -> dict:
     for variable in ['http_proxy', 'https_proxy', 'all_proxy', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY']:
         environment.pop(variable, None)
     environment.update(NO_PROXY='*', no_proxy='*')
-    limit = int(task['memory_limit_gib'] * GIB)
+    # 虚拟分配余量与实际匿名内存监控分开，避免分配器保留地址空间触发误停。
+    limit = int(task.get('allocation_limit_gib', task['memory_limit_gib']) * GIB)
 
     # 【非核心】RLIMIT_DATA约束堆与匿名映射，正式文件映射由全局内存监控管理。
     def allocation_limit():
@@ -133,6 +140,55 @@ def load_queue_config(filename: Path) -> dict:
     if len(identifiers) != len(set(identifiers)):
         raise ValueError('夜间队列任务ID重复')
     return config
+
+
+# 【非核心】独立任务有限重试并保留失败记录，恢复依赖因暂时失败而跳过的任务。
+def schedule_retries(state: dict, tasks: dict, now: float) -> None:
+    """重试次数按任务配置，等待时间与历史写入状态文件，重启后继续沿用。"""
+    for name, record in state['tasks'].items():
+        if record['status'] not in ['failed', 'memory_stopped']:
+            continue
+        retries = record.get('retry_count', 0)
+        if retries >= tasks[name].get('max_retries', 0):
+            continue
+        history = record.get('retry_history', [])
+        history.append({
+            'status': record['status'], 'finished_at': record['finished_at'],
+            'exit_code': record.get('exit_code'), 'reason': record.get('reason'),
+            'log': record.get('log'), 'peak_anonymous_bytes': record.get('peak_anonymous_bytes'),
+        })
+        record.update(status='waiting', retry_count=retries + 1, retry_history=history,
+                      retry_at=now + tasks[name]['retry_delay_seconds'])
+        print(f'安排重试 {name} {retries + 1}', flush=True)
+    failed = {'failed', 'memory_stopped', 'skipped'}
+    for name, record in state['tasks'].items():
+        upstream_skip = record['status'] == 'skipped' and record.get('reason') == '所需上游任务失败'
+        if upstream_skip and all(state['tasks'][parent]['status'] not in failed
+                                 for parent in tasks[name]['requires_success']):
+            state['tasks'][name] = {'status': 'waiting'}
+
+
+# 【非核心】原子发布可读进度与最终失败清单，供脱离对话后的运行检查。
+def write_queue_report(folder: Path, state: dict) -> None:
+    """报告跟随真实任务状态，终止但有失败的队列保留失败标记和日志位置。"""
+    counts = Counter(record['status'] for record in state['tasks'].values())
+    terminal = {'success', 'failed', 'skipped', 'memory_stopped'}
+    ended = all(record['status'] in terminal for record in state['tasks'].values())
+    title = '研究任务运行中'
+    if ended:
+        title = '研究任务全部成功' if counts['success'] == len(state['tasks']) else '研究队列结束，部分任务未成功'
+    updated = dt.datetime.fromtimestamp(state['updated_at'], dt.timezone.utc).isoformat()
+    lines = [f'# {title}', '', f'更新时间 {updated}', '',
+             f"成功 {counts['success']}，运行 {counts['running']}，等待 {counts['waiting']}，"
+             f"失败 {counts['failed']}，内存停止 {counts['memory_stopped']}，跳过 {counts['skipped']}。", '',
+             '## 当前任务', '', '| 任务 | 状态 | 重试次数 | 日志 |', '| --- | --- | --- | --- |']
+    for name, record in state['tasks'].items():
+        if record['status'] == 'success' and not record.get('retry_count', 0):
+            continue
+        lines.append(f"| {name} | {record['status']} | {record.get('retry_count', 0)} | {record.get('log', '')} |")
+    temporary = folder / 'progress.partial.md'
+    temporary.write_text('\n'.join(lines) + '\n')
+    temporary.replace(folder / 'progress.md')
 
 
 # 【核心逻辑24】常驻调度CPU与GPU队列，内存紧张时停止额外任务，独立任务失败后继续运行。
@@ -166,7 +222,7 @@ def run_overnight(config_path: Path) -> None:
                     records[task['id']] = {'status': 'success' if successful else 'failed',
                                             'reason': '原进程已结束，按明确交接产物记录状态'}
                     continue
-                limit = int(task['memory_limit_gib'] * GIB)
+                limit = int(task.get('allocation_limit_gib', task['memory_limit_gib']) * GIB)
                 resource.prlimit(task['adopt_pid'], resource.RLIMIT_DATA, (limit, limit))
                 records[task['id']] = {'status': 'running', 'pid': task['adopt_pid'], 'started_at': time.time(),
                                         'peak_anonymous_bytes': 0, 'adopted': True}
@@ -177,6 +233,7 @@ def run_overnight(config_path: Path) -> None:
     terminal = {'success', 'failed', 'skipped', 'memory_stopped'}
     previous_cpu = None
     previous_time = None
+    previous_report = 0.0
     with (folder / 'resources.jsonl').open('a') as resources:
         while True:
             updated = load_queue_config(config_path)
@@ -241,9 +298,12 @@ def run_overnight(config_path: Path) -> None:
                     stop_task(state['tasks'][victim]['pid'])
                     state['tasks'][victim].update(status='memory_stopped', reason='容器可用内存低于紧急预留', finished_at=time.time())
                     memory = memory_state()
+            schedule_retries(state, tasks, time.time())
             for name, task in sorted(tasks.items(), key=lambda item: item[1]['priority']):
                 record = state['tasks'][name]
                 if record['status'] != 'waiting':
+                    continue
+                if time.time() < record.get('retry_at', 0):
                     continue
                 required = task['requires_success']
                 finished = task['after_finished']
@@ -263,15 +323,21 @@ def run_overnight(config_path: Path) -> None:
                                for active_name, active_record in state['tasks'].items() if active_record['status'] == 'running')
                 if memory['available_bytes'] - reserved < (task['estimated_peak_gib'] + config['start_reserve_gib']) * GIB:
                     continue
-                state['tasks'][name] = start_task(root, folder, task)
+                started = start_task(root, folder, task)
+                started['retry_count'] = record.get('retry_count', 0)
+                started['retry_history'] = record.get('retry_history', [])
+                state['tasks'][name] = started
                 memory = memory_state()
                 print(f'任务开始 {name}', flush=True)
             state['updated_at'] = time.time()
             state['memory'] = memory
             write_json_atomic(status_file, state)
-            report_at = dt.datetime.fromisoformat(config['morning_report_at']).timestamp()
-            if time.time() >= report_at and not state.get('morning_report_attempted', False):
-                report = subprocess.run([str(root / '.venv/bin/python'), 'scripts/collect_night_results.py', str(config_path)], cwd=root)
+            if time.time() - previous_report >= 60:
+                write_queue_report(folder, state)
+                previous_report = time.time()
+            report_at = dt.datetime.fromisoformat(config['morning_report_at']).timestamp() if config['morning_report_at'] is not None else float('inf')
+            if config['report_command'] is not None and time.time() >= report_at and not state.get('morning_report_attempted', False):
+                report = subprocess.run(config['report_command'], cwd=root)
                 state['morning_report_attempted'] = True
                 state['morning_report_written'] = report.returncode == 0
                 state['morning_report_returncode'] = report.returncode
@@ -279,9 +345,11 @@ def run_overnight(config_path: Path) -> None:
             resources.write(json.dumps({'time': time.time(), **memory}) + '\n')
             resources.flush()
             if all(record['status'] in terminal for record in state['tasks'].values()):
+                write_queue_report(folder, state)
                 write_json_atomic(folder / 'completed.json', state)
-                report = subprocess.run([str(root / '.venv/bin/python'), 'scripts/collect_night_results.py', str(config_path)], cwd=root)
-                state['final_report_returncode'] = report.returncode
+                if config['report_command'] is not None:
+                    report = subprocess.run(config['report_command'], cwd=root)
+                    state['final_report_returncode'] = report.returncode
                 write_json_atomic(folder / 'completed.json', state)
                 print('OVERNIGHT_QUEUE_COMPLETE', flush=True)
                 break

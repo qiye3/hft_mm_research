@@ -4,7 +4,9 @@
 
 ## 使用
 
-本机运行 `bash apps/factorboard/deploy/connect.sh`，保持终端打开，然后访问 http://127.0.0.1:8765/ 。服务器服务只监听回环地址，通过已有SSH账号访问。保持原浏览器和地址可继续使用本机分类、笔记和偏好。
+2026-11-09已在新实例核验原JuiceFS共享盘，项目路径保持 `/root/shared-nvme/hft_mm_research`。实例资源为10vCPU、60GiB内存、RTX3090 24GiB显存，两个Python环境均可使用。看板已恢复，当前收录1,236个完成评测因子。
+
+当前连接主机为 `qiye-rtx3090-10vcpu`，SSH地址为 `ssh.zw1.paratera.com:2222`。本机运行 `bash apps/factorboard/deploy/connect.sh`，保持终端打开，然后访问 http://127.0.0.1:8765/ 。服务器服务只监听回环地址，通过已有SSH账号访问。保持原浏览器和地址可继续使用本机分类、笔记和偏好。
 
 服务器上首次启动，或容器重新开机后启动
 

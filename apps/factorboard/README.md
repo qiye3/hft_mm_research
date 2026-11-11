@@ -20,7 +20,7 @@ apps/factorboard/scripts/start.sh
 
 ## 服务器部署
 
-服务器版本读取已有完成评测，覆盖531日、840个因子。使用方式、评估口径和服务管理见 [服务器部署说明](docs/server_deployment.md)。
+服务器版本读取已有完成评测，覆盖531日、1236个因子。使用方式、评估口径和服务管理见 [服务器部署说明](docs/server_deployment.md)。
 
 ```bash
 bash apps/factorboard/deploy/connect.sh

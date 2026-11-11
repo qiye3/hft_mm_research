@@ -21,4 +21,4 @@ def flow_capacity_sources() -> dict[str, pl.Expr]:
 # 【核心逻辑73】展开流量容量比例的四档秒级历史均值。
 def factor_expressions(config: dict) -> dict[str, pl.Expr]:
     """输入有效比例，输出三种深度下九个压力序列的窗口均值。"""
-    return rolling_factors(flow_capacity_sources(), (5, 10, 30, 100), "mean", config["min_fraction"])
+    return rolling_factors(flow_capacity_sources(), config["aggregation_windows_s"], "mean", config["min_fraction"])

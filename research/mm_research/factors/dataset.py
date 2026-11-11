@@ -4,15 +4,16 @@ from concurrent.futures import ThreadPoolExecutor
 from importlib import import_module
 import datetime as dt
 import json
+import pickle
 from pathlib import Path
 import resource
-import tempfile
+import shutil
 import time
 
 import polars as pl
 
 from mm_research.config import load_pipeline_config
-from mm_research.data.storage import KEY_COLUMNS, artifact_ready, file_locks, read_metadata, scan_series, write_parquet
+from mm_research.data.storage import KEY_COLUMNS, SCHEMA_VERSION, artifact_ready, file_locks, read_metadata, scan_series, write_json_atomic, write_parquet
 from mm_research.execution import ordered_process_map
 
 SUPPORTED_BATCHES = ("gen001", "gen002", "gen003", "gen004", "gen005", "gen006", "gen008", "gen009", "gen010")
@@ -48,10 +49,17 @@ def factor_metadata(name: str, batch: str, dataset: dict, config: dict, inputs: 
 
 # 【核心逻辑44】一次读取同组依赖，带前日历史计算所有窗口并保存临时因子块。
 def compute_factor_chunk(task: dict) -> dict:
-    """返回分块实测耗时与峰值RSS，前日网格为最大100秒窗口及一阶差分提供历史。"""
+    """按配置带足里层及外层历史，完整分块和状态原子发布后可用于恢复。"""
+    checkpoint = Path(task['staging']) / f'{task["index"]:04d}' / 'completed.pkl'
+    if checkpoint.exists():
+        with checkpoint.open('rb') as stream:
+            return pickle.load(stream)
     started = time.perf_counter()
     cpu_started = time.process_time()
     config = task["config"]
+    outer_seconds = max([*config['aggregation_windows_s'],
+                         *[pair[1] for pair in config['mean_diff_windows_s']]])
+    outer_ns = outer_seconds * 1_000_000_000
     features = Path(task["features"])
     previous = str(dt.date.fromisoformat(task["dates"][0]) - dt.timedelta(days=1))
     history = [previous, *task["dates"]]
@@ -65,14 +73,15 @@ def compute_factor_chunk(task: dict) -> dict:
                       if column not in KEY_COLUMNS and not column.startswith("_slot_")})
     inputs = [features / f"{column}.parquet" for column in columns]
     with file_locks(inputs, shared=True):
-        source, _ = scan_series(features, columns, history)
         start_ns = int(dt.datetime.fromisoformat(task["dates"][0]).replace(tzinfo=dt.timezone.utc).timestamp()) * 1_000_000_000
+        history_start = None if stateful else start_ns - outer_ns - 101_000_000_000
+        source, _ = scan_series(features, columns, history, start_timestamp_ns=history_start)
         if task["batch"] in ["gen025", "gen034"]:
             # 有界里层最长100秒，加100秒外层；300秒覆盖预热，避免重算整个前日。
-            source = source.filter(pl.col("timestamp_ns") >= start_ns - 300_000_000_000)
+            source = source.filter(pl.col("timestamp_ns") >= start_ns - outer_ns - 101_000_000_000)
         next_state = None
         if stateful:
-            # 分块计算无界里层状态，只携带上一原始位置、状态锚点和120秒滚动尾部。
+            # 无界事件状态携带真实锚点，滚动尾部长度随本轮最大窗口变化。
             previous_state = task["state"]
             raw = source.collect(engine="streaming")
             if previous_state is not None:
@@ -100,12 +109,12 @@ def compute_factor_chunk(task: dict) -> dict:
                 next_state["anchor"] = timestamp - (int(abs(run)) - 1) * 100_000_000 if run else timestamp
             if previous_state is not None:
                 inner = previous_state["tail"].vstack(inner)
-            next_state["tail"] = inner.tail(1200)
+            next_state["tail"] = inner.tail(outer_seconds * 10 + 10)
             source = inner.lazy()
         elif task["batch"] in PRECOMPUTED_BATCHES:
-            # 先共享里层序列，再保留输出之前120秒；全日输入为有界状态提供预热。
+            # 先形成里层状态，再按本轮最长外层窗口截取输出之前的历史。
             source = source.select(*KEY_COLUMNS, *[expression.alias(name) for name, expression in dependencies.items()])
-            source = source.filter(pl.col("timestamp_ns") >= start_ns - 120_000_000_000)
+            source = source.filter(pl.col("timestamp_ns") >= start_ns - outer_ns - 1_000_000_000)
             if task["batch"] in ["gen034", "gen037"]:
                 source = source.filter(pl.col("timestamp_ns") % 1_000_000_000 == 0)
             if task["batch"] in ["gen022", "gen034"]:
@@ -130,13 +139,18 @@ def compute_factor_chunk(task: dict) -> dict:
                 ))
             for completed in pending:
                 completed.result()
-    return {
+    result = {
         "batch": task["batch"], "first_date": task["dates"][0], "last_date": task["dates"][-1],
         "rows": values.height, "wall_seconds": time.perf_counter() - started,
         "cpu_seconds": time.process_time() - cpu_started,
         "peak_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         "state": next_state,
     }
+    pending = checkpoint.with_suffix('.part')
+    with pending.open('wb') as stream:
+        pickle.dump(result, stream)
+    pending.replace(checkpoint)
+    return result
 
 
 # 【核心逻辑45】按日期顺序连接临时块，原子发布一个因子的全日期Parquet。
@@ -175,6 +189,17 @@ def run_factor_production(config_path: Path, rebuild: bool = False) -> None:
                 slot_reference = factor_module(batch).build_slot_reference(features, output, config, dataset)
                 definitions["slot_reference"] = read_metadata(slot_reference)["definition"]
             metadata = {name: factor_metadata(name, batch, dataset, config, definitions) for name in expressions}
+            # 只复用元数据逐项相同的完整产物，符号链接保留原有来源且避免重复占盘。
+            for name in expressions:
+                filename = output / f'{name}.parquet'
+                if filename.exists():
+                    continue
+                expected = {**metadata[name], 'schema_version': SCHEMA_VERSION}
+                for version in config['reuse_factor_versions']:
+                    existing = root / config['factor_root'] / version / filename.name
+                    if existing.exists() and read_metadata(existing) == expected:
+                        filename.symlink_to(existing.resolve())
+                        break
             names = [name for name in expressions if not artifact_ready(output / f"{name}.parquet", metadata[name], rebuild)]
             if not names:
                 print(f"Factor组复用 {batch}", flush=True)
@@ -185,7 +210,14 @@ def run_factor_production(config_path: Path, rebuild: bool = False) -> None:
             chunks = [state_dates[start:start + chunk_days]
                       for start in range(0, len(state_dates), chunk_days)]
             # 批次锁避免两个生产命令同时计算并发布同一组。输入始终由共享锁保护。
-            with file_locks([output / batch]), tempfile.TemporaryDirectory(prefix=f".{batch}-", dir=output) as temporary:
+            with file_locks([output / batch]):
+                temporary = output / '.chunks' / batch
+                temporary.mkdir(parents=True, exist_ok=True)
+                identity_file = temporary / 'definition.json'
+                identity = {'config': config, 'metadata': metadata}
+                if identity_file.exists() and json.loads(identity_file.read_text()) != identity:
+                    raise ValueError('分块恢复的配置或输入定义发生变化')
+                identity_file.write_text(json.dumps(identity, ensure_ascii=False, sort_keys=True))
                 tasks = [
                     {"config": config, "features": str(features), "batch": batch, "dates": dates,
                      "names": names, "staging": temporary, "index": index, "metadata": metadata,
@@ -209,4 +241,5 @@ def run_factor_production(config_path: Path, rebuild: bool = False) -> None:
                 ]
                 for name in ordered_process_map(merge_factor_chunks, merges, config["merge_workers"], recycle_workers=True):
                     print(f"Factor完成 {name}", flush=True)
-    (output / "runtime.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+                shutil.rmtree(temporary)
+    write_json_atomic(output / 'runtime' / f'{"_".join(config["batches"])}.json', report)

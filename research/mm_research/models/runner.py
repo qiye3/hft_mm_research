@@ -12,7 +12,7 @@ from mm_research.models.dataset import model_day_statistics, predict_model_day, 
 from mm_research.models.linear import fit_linear_model, merge_statistics, score_linear_model, subset_statistics
 
 
-# 【核心逻辑120】仅从训练与验证结果选模型，再对冻结模型报告最终测试指标。
+# 【核心逻辑124】仅从训练与验证结果选模型，再对冻结模型报告最终测试指标。
 def run_linear_baseline(config_path: Path) -> dict:
     """输入模型配置，保存训练列、时间区间、标准化、系数、对照指标及测试预测。"""
     root = Path(__file__).resolve().parents[3]

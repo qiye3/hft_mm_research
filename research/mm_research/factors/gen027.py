@@ -23,4 +23,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         sources[f'trade_{side}_vwap1s_mid_gap_bps'] = (mid - anchor) / mid * 10000
         sources[f'trade_{side}_vwap1s_mom_bps'] = (anchor / pl.when(previous > 0).then(previous) - 1) * 10000
         sources[f'trade_{side}_vwap1s_above_flag'] = (mid > anchor).cast(pl.Float64)
-    return rolling_factors(sources, (5, 10, 30, 100), 'mean', config['min_fraction'])
+    return rolling_factors(sources, config["aggregation_windows_s"], 'mean', config['min_fraction'])

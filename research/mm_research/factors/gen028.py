@@ -32,4 +32,4 @@ def source_expressions(config: dict) -> dict[str, pl.Expr]:
 def factor_expressions(config: dict) -> dict[str, pl.Expr]:
     """Numba状态整段只计算一次，外层滚动从已物化的状态列读取。"""
     sources = {name: pl.col('_breakout_state').struct.field(name) for name in COLUMNS}
-    return rolling_factors(sources, (5, 10, 30, 100), 'mean', config['min_fraction'])
+    return rolling_factors(sources, config["aggregation_windows_s"], 'mean', config['min_fraction'])

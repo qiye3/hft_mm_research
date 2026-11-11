@@ -5,6 +5,12 @@ from pathlib import Path
 import yaml
 
 PIPELINE_FIELDS = {
+    "model_comparison": {
+        "stage", "start_date", "end_date", "feature_folder", "factor_sources", "label_folder",
+        "dataset_output", "output", "train_end", "validation_end", "minimum_train_coverage",
+        "families", "training_rows", "validation_rows", "seed", "threads", "chunk_rows",
+        "ridge_alphas", "lasso_alphas", "tree", "gru", "read_workers",
+    },
     "data_standardize": {
         "stage", "version", "output_root", "dates", "snapshots", "trades",
         "tick_size", "lot_size", "snapshot_silence_ns", "confirmed_snapshot_gaps",
@@ -24,6 +30,7 @@ PIPELINE_FIELDS = {
     "factors": {
         "stage", "feature_root", "feature_version", "factor_root", "factor_version",
         "dates", "batches", "min_fraction", "tick_size", "chunk_days", "workers", "merge_workers", "write_threads", "output_interval_ns",
+        "aggregation_windows_s", "mean_diff_windows_s", "reuse_factor_versions",
     },
     "research": {"stage", "feature_config", "target_config", "factor_config", "evaluation_config", "model_config", "replay_config", "output"},
     "linear_replay": {
@@ -39,8 +46,13 @@ PIPELINE_FIELDS = {
     "evaluation": {
         "stage", "factor_root", "factor_version", "label_root", "label_version", "dates",
         "factors", "horizons_ns", "groups", "output", "train_end", "validation_end", "workers", "output_interval_ns", "purge_ns", "factor_batch_size",
+        "ols_factors",
+        "validation_dev_end", "factor_lag_ns",
     },
 }
+
+# 【非核心】可选字段不强制出现，读取后补默认值。
+OPTIONAL_FIELDS = {"evaluation": {"ols_factors"}}
 
 
 # 【非核心】拒绝配置中的重复键，避免参数被静默覆盖。
@@ -72,8 +84,12 @@ def load_pipeline_config(filename: Path, stage: str) -> dict:
         owner = owners[stage]
         raise ValueError(f"此入口需要{owner}配置")
     required = PIPELINE_FIELDS[stage]
-    missing = required - config.keys()
+    optional = OPTIONAL_FIELDS.get(stage, set())
+    missing = (required - optional) - config.keys()
     unknown = config.keys() - required
     if missing or unknown:
         raise ValueError(f"配置缺少字段{sorted(missing)}，未知字段{sorted(unknown)}")
+    # 【非核心】可选字段在此补默认值，运行代码无需再判空。
+    for field in optional:
+        config.setdefault(field, [])
     return config

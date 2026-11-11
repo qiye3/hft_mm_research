@@ -1,0 +1,116 @@
+# 研究编排阶段，入口 scripts/run_overnight.py 本文件。
+# 输入为冻结模型矩阵和 config/models/ 下的180秒模型配置。
+# 输出为GPU版本目录中的队列状态、日志及各任务声明的模型产物。
+stage: overnight
+output: workspace/results/target180_gpu_20261110_v1/queue
+poll_seconds: 10
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  gpu: 1
+morning_report_at: null
+queue_directory: workspace/results/target180_gpu_20261110_v1/queue_extensions
+report_command: null
+tasks:
+- id: mlp_lr0.0003_seed17
+  lane: gpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_target180.py
+  - config/models/target180_gpu_20261110.yaml
+  - --seed
+  - '17'
+  - --learning-rate
+  - '0.0003'
+  threads: 2
+  estimated_peak_gib: 8
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 0
+- id: mlp_lr0.0003_seed42
+  lane: gpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_target180.py
+  - config/models/target180_gpu_20261110.yaml
+  - --seed
+  - '42'
+  - --learning-rate
+  - '0.0003'
+  threads: 2
+  estimated_peak_gib: 8
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 0
+- id: mlp_lr0.0003_seed73
+  lane: gpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_target180.py
+  - config/models/target180_gpu_20261110.yaml
+  - --seed
+  - '73'
+  - --learning-rate
+  - '0.0003'
+  threads: 2
+  estimated_peak_gib: 8
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 0
+- id: mlp_lr0.001_seed17
+  lane: gpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_target180.py
+  - config/models/target180_gpu_20261110.yaml
+  - --seed
+  - '17'
+  - --learning-rate
+  - '0.001'
+  threads: 2
+  estimated_peak_gib: 8
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 0
+- id: mlp_lr0.001_seed42
+  lane: gpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_target180.py
+  - config/models/target180_gpu_20261110.yaml
+  - --seed
+  - '42'
+  - --learning-rate
+  - '0.001'
+  threads: 2
+  estimated_peak_gib: 8
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 0
+- id: mlp_lr0.001_seed73
+  lane: gpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - -u
+  - scripts/train_target180.py
+  - config/models/target180_gpu_20261110.yaml
+  - --seed
+  - '73'
+  - --learning-rate
+  - '0.001'
+  threads: 2
+  estimated_peak_gib: 8
+  memory_limit_gib: 24
+  requires_success: []
+  after_finished: []
+  priority: 0

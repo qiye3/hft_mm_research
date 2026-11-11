@@ -26,7 +26,7 @@ class TargetTests(unittest.TestCase):
         for seconds in [1, 10, 60, 180, 300]:
             result = build_midprice_labels(context, 0.1, 100_000_000, seconds * 1_000_000_000)
             steps = seconds * 10
-            np.testing.assert_allclose(result[f"y_mid_{seconds}s_bps"].to_numpy()[:-steps], (mid[steps:] / mid[:-steps] - 1) * 10000, atol=1e-10)
+            np.testing.assert_allclose(result[f"y_mid_{seconds}s_bps"].to_numpy()[:-steps], np.log(mid[steps:] / mid[:-steps]) * 10000, atol=1e-10)
             self.assertTrue(result["label_valid"][3000])
             self.assertFalse(result["label_valid"][-1])
 

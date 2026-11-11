@@ -17,7 +17,7 @@
 namespace mm {
 namespace {
 
-// 【核心逻辑174】判断订单的剩余数量是否仍占用方向性库存预算。
+// 【核心逻辑191】判断订单的剩余数量是否仍占用方向性库存预算。
 bool reserves_inventory(const hbt::Order<>& order) {
     /** 输入为框架本地订单，返回它是否仍可能带来新增成交。
      * active 覆盖已接受和部分成交订单，新单尚未确认时由 req=New 识别。
@@ -28,7 +28,7 @@ bool reserves_inventory(const hbt::Order<>& order) {
 
 } // namespace
 
-// 【核心逻辑172】以中间价为中心，将固定半宽的双边报价向外取整到价格档位。
+// 【核心逻辑189】以中间价为中心，将固定半宽的双边报价向外取整到价格档位。
 QuoteTicks fixed_quotes(std::int64_t best_bid, std::int64_t best_ask, std::int64_t half_width, double shift_ticks) {
     /** 输入 best_bid、best_ask 和 half_width 的单位均为 tick。
      * 盘口必须满足买价小于卖价，半宽必须为正，否则抛出 invalid_argument。
@@ -104,11 +104,11 @@ TradingConfig load_trading_config(const std::filesystem::path& filename) {
     return config;
 }
 
-// 【核心逻辑167】保存调用方已校验的策略参数，并关联会话级交易记录器。
+// 【核心逻辑184】保存调用方已校验的策略参数，并关联会话级交易记录器。
 MarketMaker::MarketMaker(const TradingConfig& config, TradeRecorder& recorder)
     : config_(config), recorder_(recorder) {}
 
-// 【核心逻辑176】从框架订单中累计买卖两侧仍需预留的未成交数量。
+// 【核心逻辑193】从框架订单中累计买卖两侧仍需预留的未成交数量。
 std::pair<double, double> MarketMaker::reservations(const hbt::Backtest& backtest) const {
     /** 输入为当前原生回测状态，输出按买方、卖方排列的 BTC 数量对。
      * 使用 leaves_qty 处理部分成交后的剩余风险，供决策检查和权益记录共用。
@@ -130,8 +130,9 @@ std::pair<double, double> MarketMaker::reservations(const hbt::Backtest& backtes
     return {buys, sells};
 }
 
-// 【核心逻辑173】对单侧执行保留、撤单或新增委托，并把新增数量限制在可用库存预算内。
-void MarketMaker::quote_side(hbt::Backtest& backtest, hbt::Side side, std::int64_t target_tick, bool stop) {
+// 【核心逻辑190】对单侧执行保留、撤单或新增委托，并把新增数量限制在可用库存预算内。
+void MarketMaker::quote_side(hbt::Backtest& backtest, hbt::Side side, std::int64_t target_tick, bool stop,
+                            double quantity_budget) {
     /** 输入 side 指定方向，target_tick 是目标价格档位，stop 要求该侧退出。
      * 通过 backtest 提交原生请求并交给 recorder_ 记录，订单状态由框架推进。
      * 已有订单在途时本次直接返回，每侧同时最多保留一笔可能成交的订单。
@@ -151,10 +152,12 @@ void MarketMaker::quote_side(hbt::Backtest& backtest, hbt::Side side, std::int64
     // 减仓方向可跨越零仓位，最远到达相反方向的同一绝对上限。
     const double capacity = config_.max_position - sign * backtest.position(0);
     const auto available_lots = static_cast<std::int64_t>(std::floor(capacity / config_.lot_size + 1e-8));
-    const auto order_lots = static_cast<std::int64_t>(std::llround(config_.order_quantity / config_.lot_size));
+    const auto order_lots = static_cast<std::int64_t>(std::floor(
+        std::min(config_.order_quantity, quantity_budget) / config_.lot_size + 1e-8));
     const double quantity = static_cast<double>(std::max<std::int64_t>(0, std::min(order_lots, available_lots))) * config_.lot_size;
     if (existing != nullptr) {
-        const bool replace = stop || quantity == 0.0 || existing->price_tick != target_tick;
+        const bool replace = stop || quantity == 0.0 || existing->price_tick != target_tick
+                             || existing->leaves_qty > quantity + 1e-10;
         if (replace && existing->cancellable()) {
             const auto order_id = existing->order_id;
             backtest.cancel(0, order_id);
@@ -177,7 +180,7 @@ void MarketMaker::quote_side(hbt::Backtest& backtest, hbt::Side side, std::int64
     recorder_.action("submit", backtest.orders(0).at(order_id), backtest.current_timestamp());
 }
 
-// 【核心逻辑171】更新双边报价，并返回包含在途订单的买卖预留数量。
+// 【核心逻辑188】更新双边报价，并返回包含在途订单的买卖预留数量。
 std::pair<double, double> MarketMaker::on_decision(hbt::Backtest& backtest, bool stop, double alpha_bps) {
     /** 输入 backtest 提供本地可见盘口和实际仓位，stop 表示进入收尾阶段。
      * 输出体现为原生下单或撤单请求，返回的买卖预留量用于决策点风控与权益记录。
@@ -197,12 +200,23 @@ std::pair<double, double> MarketMaker::on_decision(hbt::Backtest& backtest, bool
         }
     }
     // 即使价格阈值尚未触发，也要处理已成交侧的补单和库存方向限制。
-    quote_side(backtest, hbt::Side::Buy, targets_.bid, stop);
-    quote_side(backtest, hbt::Side::Sell, targets_.ask, stop);
+    quote_side(backtest, hbt::Side::Buy, targets_.bid, stop, config_.order_quantity);
+    quote_side(backtest, hbt::Side::Sell, targets_.ask, stop, config_.order_quantity);
     return reservations(backtest);
 }
 
-// 【核心逻辑164】让原生双时钟引擎推进完整行情，在固定决策网格上执行做市并记录账本。
+// 【核心逻辑241】复用单侧原生委托处理，将目标库存转换成有明确数量预算的挂单。
+std::pair<double, double> MarketMaker::quote_targets(hbt::Backtest& backtest,
+        std::optional<std::int64_t> bid, std::optional<std::int64_t> ask,
+        double buy_budget, double sell_budget) {
+    /** 价位为空时只发送撤单，预留量保留至终结回报；预算以BTC表示且按Lot向下取整。 */
+    backtest.clear_inactive_orders(0);
+    quote_side(backtest, hbt::Side::Buy, bid.value_or(0), !bid, buy_budget);
+    quote_side(backtest, hbt::Side::Sell, ask.value_or(0), !ask, sell_budget);
+    return reservations(backtest);
+}
+
+// 【核心逻辑181】让原生双时钟引擎推进完整行情，在固定决策网格上执行做市并记录账本。
 TradingSummary run_baseline(const TradingConfig& config, std::shared_ptr<hbt::EventReaderCache> reader, LinearSignal* signal) {
     /** 输入为有效策略配置及双方共用的行情缓存，缓存也可由测试夹具构造。
      * 输出为 TradingSummary，逐笔订单、成交和权益写入 config.output。
@@ -263,7 +277,7 @@ TradingSummary run_baseline(const TradingConfig& config, std::shared_ptr<hbt::Ev
     return result;
 }
 
-// 【核心逻辑163】从标准事件清单加载共享分片缓存，并启动与测试相同的策略执行链路。
+// 【核心逻辑180】从标准事件清单加载共享分片缓存，并启动与测试相同的策略执行链路。
 TradingSummary run_baseline(const TradingConfig& config) {
     /** 输入 config.source 指向包含 shards 的转换清单，输出完整策略汇总。
      * 文件加载由原生 EventReaderCache 完成，真实数据与内存夹具共用上面的执行实现。

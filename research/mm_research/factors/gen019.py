@@ -21,4 +21,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         sources[f"{name}_extreme_state_thr06"] = pl.when(valid).then(current.sign() * extreme.cast(pl.Float64))
         sources[f"{name}_extreme_entry_thr06"] = pl.when(valid).then(current.sign() * (extreme & (~old_extreme | flip)).cast(pl.Float64))
         sources[f"{name}_extreme_exit_thr06"] = pl.when(valid).then(previous.sign() * (old_extreme & (~extreme | flip)).cast(pl.Float64))
-    return rolling_factors(sources, (5, 10, 30, 100), "sum", config["min_fraction"])
+    return rolling_factors(sources, config["aggregation_windows_s"], "sum", config["min_fraction"])

@@ -158,7 +158,7 @@ void test_cancel_in_flight(const std::filesystem::path& root) {
     require(recorder.summary().submissions == 4, "replace after cancel ack");
 }
 
-// 【非核心】检查携带成交状态的异常撤单拒绝回报在重复记账前中止。
+// 【非核心】已成交订单的撤单拒绝只解除在途请求，旧成交状态不得再次记账。
 void test_partial_cancel_race_regression(const std::filesystem::path& root) {
     auto config = config_for(root, "partial_cancel_race");
     config.entry_latency_ns = 200;
@@ -177,15 +177,11 @@ void test_partial_cancel_race_regression(const std::filesystem::path& root) {
     near(backtest.position(0), 1, "partial before cancellation");
     backtest.cancel(0, 1);
     recorder.action("cancel_request", backtest.orders(0).at(1), backtest.current_timestamp());
-    bool rejected = false;
-    try {
-        backtest.elapse(300);
-    } catch (const std::runtime_error& error) {
-        rejected = std::string(error.what()).find("rejected response carries a fill status") != std::string::npos;
-    }
-    require(rejected, "malformed cancel rejection must stop replay");
-    near(backtest.position(0), 3, "rejection must stop before duplicate fill accounting");
-    require(recorder.summary().fills == 2, "only real fills are recorded before failure");
+    backtest.elapse(300);
+    near(backtest.position(0), 3, "cancel rejection must not duplicate filled inventory");
+    require(recorder.summary().fills == 2, "cancel rejection must not add another fill");
+    require(recorder.summary().rejected == 1, "cancel rejection remains in lifecycle statistics");
+    require(backtest.orders(0).at(1).req == hbt::Status::None, "rejected cancel clears in-flight request");
     recorder.reconcile(backtest.state_values(0));
 
 }

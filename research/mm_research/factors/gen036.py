@@ -25,7 +25,7 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         previous = pressure.shift(1)
         valid = book_transition_allowed() & previous.is_finite() & returns.is_finite()
         left, right = pl.when(valid).then(previous), pl.when(valid).then(returns)
-        for seconds in [5, 10, 30, 100]:
+        for seconds in config["aggregation_windows_s"]:
             window = seconds * 10
             minimum = math.ceil(window * config['min_fraction'])
             enough = valid.fill_null(False).cast(pl.Int64).rolling_sum(window, min_samples=1) >= minimum

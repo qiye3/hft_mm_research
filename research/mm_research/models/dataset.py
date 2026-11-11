@@ -13,9 +13,15 @@ from mm_research.factors.dataset import factor_module
 RAW_COLUMNS = ["imbalance_1", "imbalance_5", "imbalance_10", "trade_imbalance_100ms", "trade_imbalance_1s", "return_1s_bps"]
 
 
-# 【核心逻辑121】从训练期IC选择每组候选，并建立可实时移植的压力模型对照。
+# 【核心逻辑125】从训练期IC选择每组候选，并建立可实时移植的压力模型对照。
 def select_model_columns(root: Path, config: dict) -> tuple[dict, dict]:
     """训练IC只决定输入列，验证期负责选模型参数，最终测试期保持封存。"""
+    factor_parameters = {
+        "min_fraction": config["min_fraction"],
+        "tick_size": .1,
+        "aggregation_windows_s": [10, 60, 180, 600],
+        "mean_diff_windows_s": [[10, 60], [60, 180], [180, 600]],
+    }
     summary = pl.read_parquet(root / config["evaluation_root"] / "summary.parquet").filter(
         (pl.col("split") == "train") & (pl.col("sampling") == "nonoverlap")
         & (pl.col("horizon_ns") == 1_000_000_000) & pl.col("ic_mean").is_finite(),
@@ -24,7 +30,7 @@ def select_model_columns(root: Path, config: dict) -> tuple[dict, dict]:
     selected = []
     pressure_candidates = []
     for batch in config["batches"]:
-        names = list(factor_module(batch).factor_expressions({"min_fraction": config["min_fraction"], "tick_size": 0.1}))
+        names = list(factor_module(batch).factor_expressions(factor_parameters))
         ranked = summary.filter(pl.col("factor").is_in(names)).sort("abs_ic", descending=True)
         candidates = ranked.head(config["factors_per_batch"])["factor"].to_list()
         groups[batch] = candidates
@@ -38,7 +44,7 @@ def select_model_columns(root: Path, config: dict) -> tuple[dict, dict]:
         "train_end": config["train_end"], "realtime_factors": pressure_candidates}
 
 
-# 【核心逻辑123】按时间键关联所选Features、Factors和标签，统一共同有效样本。
+# 【核心逻辑127】按时间键关联所选Features、Factors和标签，统一共同有效样本。
 def load_model_day(root: Path, config: dict, date: str, columns: list[str], stride_ns: int) -> pl.DataFrame:
     """按固定绝对时点抽样，输出有序X/y，缺失值通过明确共同样本筛选处理。"""
     features = root / config["feature_root"] / config["feature_version"]
@@ -63,7 +69,7 @@ def load_model_day(root: Path, config: dict, date: str, columns: list[str], stri
         return table.select(*KEY_COLUMNS, *columns, "y_mid_1s_bps").collect(engine="streaming")
 
 
-# 【核心逻辑122】将一日共同样本归纳为可合并统计，进程间仅传递小型矩阵。
+# 【核心逻辑126】将一日共同样本归纳为可合并统计，进程间仅传递小型矩阵。
 def model_day_statistics(task: tuple) -> tuple:
     """返回日期与充分统计量，训练阶段固定1秒间隔，避免重叠目标重复加权。"""
     root, config, date, columns = task
@@ -73,7 +79,7 @@ def model_day_statistics(task: tuple) -> tuple:
     return date, linear_statistics(matrix, target)
 
 
-# 【核心逻辑128】按冻结模型生成测试期整秒预测，保留各基线共同样本。
+# 【核心逻辑132】按冻结模型生成测试期整秒预测，保留各基线共同样本。
 def predict_model_day(task: tuple) -> dict:
     """保存逐日Parquet，预测只使用当前和历史输入，输出单位统一bps。"""
     root, config, date, columns, models = task

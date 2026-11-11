@@ -10,7 +10,7 @@ import yaml
 from mm_research.data.storage import write_json_atomic
 
 
-# 【核心逻辑140】汇总已成功的分组评估与独立模型结果，生成可直接阅读的夜间报告。
+# 【核心逻辑157】汇总已成功的分组评估与独立模型结果，生成可直接阅读的夜间报告。
 def collect_night_results(config_path: Path) -> None:
     """只纳入状态为success的任务，未完成及失败项在报告中明确列出。"""
     root = Path(__file__).resolve().parents[3]

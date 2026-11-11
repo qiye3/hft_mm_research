@@ -1916,3 +1916,6 @@ tasks:
   after_finished: []
   priority: 10
 queue_directory: config/research/overnight_queue
+
+
+report_command: [".venv/bin/python", "scripts/collect_night_results.py", "config/research/overnight_server.yaml"]

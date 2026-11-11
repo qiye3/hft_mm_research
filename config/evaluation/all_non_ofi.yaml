@@ -852,3 +852,6 @@ workers: 5
 output_interval_ns: 1000000000
 purge_ns: 300000000000
 factor_batch_size: 6
+
+validation_dev_end: "2026-05-14"
+factor_lag_ns: 1000000000

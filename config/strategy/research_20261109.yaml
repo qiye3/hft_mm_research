@@ -1,0 +1,44 @@
+# Strategies研究配置。入口 scripts/run_strategy_research.py，分阶段执行inventory/signals/sweep/report。
+# 输入为冻结模型、正式Features/Factors及指定日原生NPZ，输出为独立实验目录的信号、成交账本和收益统计。
+date: '2026-10-21'
+output: workspace/results/strategies_20261109
+source: workspace/data/normalized/linear_2026-10-21/manifest.json
+binary: workspace/results/strategies_20261109/build/strategy_replay
+initial_capital: 10000
+order_quantity: 0.001
+max_position: 0.01
+maker_fee: 0.0002
+taker_fee: 0.0005
+entry_latency_ns: 1000000
+response_latency_ns: 500000
+prediction_latency_ns: 1000000
+warmup_seconds: 120
+liquidation_buffer_seconds: 20
+decision_interval_ns: 100000000
+# 八组控制实验四任务并行实测159秒，单组72—79秒；后续批次采用四任务并行。
+max_parallel_replays: 4
+# 预测幅度严格小于双边Maker费率下界且策略从空仓开始时，记录不下单证明，单独标明未执行原生回放。
+skip_proven_no_entry: true
+minimum_entry_bps: 0.05
+max_alpha_bps: 5
+queues:
+- risk_adverse
+- log_probability
+modes:
+- passive
+- skew
+- inventory
+- hybrid
+offset_ticks: 0
+order_ttl_ms: 1000
+minimum_hold_seconds: 5
+maximum_hold_seconds: 300
+taker_slippage_ticks: 1
+mechanism_diagnostic: true
+sensitivity_signals:
+- overnight_expanded_v1_1s
+- overnight_expanded_v1_10s
+- overnight_expanded_v1_60s
+offset_sensitivity: [0, 1, 2, 5]
+ttl_sensitivity_ms: [500, 1000, 3000, 10000]
+hold_sensitivity_seconds: [5, 10, 30, 60]

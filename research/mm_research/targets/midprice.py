@@ -53,7 +53,7 @@ def build_midprice_labels(base: pl.DataFrame, tick_size: float, interval_ns: int
     difference = future_mid - pl.col("mid_price")
     return base.select(
         "symbol", "date", "timestamp_ns", valid.alias("label_valid"),
-        pl.when(valid).then((future_mid / pl.col("mid_price") - 1) * 10000).otherwise(None).alias(f"y_mid_{suffix}_bps"),
+        pl.when(valid).then((future_mid / pl.col("mid_price")).log() * 10000).otherwise(None).alias(f"y_mid_{suffix}_bps"),
         pl.when(valid).then(difference / tick_size).otherwise(None).alias(f"y_mid_{suffix}_ticks"),
         pl.when(valid).then(difference).otherwise(None).alias(f"y_mid_{suffix}_usdt"),
         pl.when(valid).then(future_timestamp).otherwise(None).alias("label_end_timestamp_ns"),

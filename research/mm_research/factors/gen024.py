@@ -16,4 +16,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         sources[f'book_depth_bid_abs_l{depth}_100ms'] = bid.abs()
         sources[f'book_depth_ask_abs_l{depth}_100ms'] = ask.abs()
         sources[f'book_depth_gross_minus_net_l{depth}_100ms'] = bid.abs() + ask.abs() - (bid - ask).abs()
-    return rolling_factors(sources, (5, 10, 30, 100), 'mean', config['min_fraction'])
+    return rolling_factors(sources, config["aggregation_windows_s"], 'mean', config['min_fraction'])

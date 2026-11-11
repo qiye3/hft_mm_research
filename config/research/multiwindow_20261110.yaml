@@ -1,0 +1,831 @@
+# 四档因子研究编排，入口 scripts/run_overnight.py 本文件。
+# 输入及子任务产物分别由 config/factors、targets、evaluation 对应的四档配置声明。
+# 本文件输出队列状态和任务日志，完整评估及验收批次位于 multiwindow_queue/。
+stage: overnight
+output: workspace/results/factor_windows_20261110_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 8
+morning_report_at: null
+queue_directory: config/research/multiwindow_queue
+tasks:
+- id: pilot_gen001
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/pilot_gen001.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 14
+  requires_success: []
+  after_finished: []
+  priority: 0
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen001
+    dates:
+    - '2025-11-03'
+    - '2025-11-04'
+    - '2025-11-05'
+    - '2025-11-06'
+    - '2025-11-07'
+    - '2025-11-08'
+    - '2025-11-09'
+    - '2025-11-10'
+    - '2025-11-11'
+    - '2025-11-12'
+    - '2025-11-13'
+    - '2025-11-14'
+    - '2025-11-15'
+    - '2025-11-16'
+    factor_version: pilot_windows_20261110/gen001
+    reuse_factor_versions: []
+    chunk_days: 1
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/pilot_gen001.yaml
+- id: pilot_gen014
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/pilot_gen014.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 14
+  requires_success: []
+  after_finished: []
+  priority: 0
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen014
+    dates:
+    - '2025-11-03'
+    - '2025-11-04'
+    - '2025-11-05'
+    - '2025-11-06'
+    - '2025-11-07'
+    - '2025-11-08'
+    - '2025-11-09'
+    - '2025-11-10'
+    - '2025-11-11'
+    - '2025-11-12'
+    - '2025-11-13'
+    - '2025-11-14'
+    - '2025-11-15'
+    - '2025-11-16'
+    factor_version: pilot_windows_20261110/gen014
+    reuse_factor_versions: []
+    chunk_days: 1
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/pilot_gen014.yaml
+- id: pilot_gen025
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/pilot_gen025.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 14
+  requires_success: []
+  after_finished: []
+  priority: 0
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen025
+    dates:
+    - '2025-11-03'
+    - '2025-11-04'
+    - '2025-11-05'
+    - '2025-11-06'
+    - '2025-11-07'
+    - '2025-11-08'
+    - '2025-11-09'
+    - '2025-11-10'
+    - '2025-11-11'
+    - '2025-11-12'
+    - '2025-11-13'
+    - '2025-11-14'
+    - '2025-11-15'
+    - '2025-11-16'
+    factor_version: pilot_windows_20261110/gen025
+    reuse_factor_versions: []
+    chunk_days: 1
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/pilot_gen025.yaml
+- id: pilot_gen034
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/pilot_gen034.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 14
+  requires_success: []
+  after_finished: []
+  priority: 0
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen034
+    dates:
+    - '2025-11-03'
+    - '2025-11-04'
+    - '2025-11-05'
+    - '2025-11-06'
+    - '2025-11-07'
+    - '2025-11-08'
+    - '2025-11-09'
+    - '2025-11-10'
+    - '2025-11-11'
+    - '2025-11-12'
+    - '2025-11-13'
+    - '2025-11-14'
+    - '2025-11-15'
+    - '2025-11-16'
+    factor_version: pilot_windows_20261110/gen034
+    reuse_factor_versions: []
+    chunk_days: 1
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/pilot_gen034.yaml
+- id: factors_gen001
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen001.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen001
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen001.yaml
+- id: factors_gen002
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen002.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen002
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen002.yaml
+- id: factors_gen003
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen003.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen003
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen003.yaml
+- id: factors_gen004
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen004.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen004
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen004.yaml
+- id: factors_gen005
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen005.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen005
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen005.yaml
+- id: factors_gen006
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen006.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen006
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen006.yaml
+- id: factors_gen008
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen008.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen008
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen008.yaml
+- id: factors_gen009
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen009.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen009
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen009.yaml
+- id: factors_gen010
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen010.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen010
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen010.yaml
+- id: factors_gen011
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen011.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen011
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen011.yaml
+- id: factors_gen012
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen012.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen012
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen012.yaml
+- id: factors_gen013
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen013.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen013
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen013.yaml
+- id: factors_gen014
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen014.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen014
+  after_finished: []
+  priority: 10
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen014
+    chunk_days: 1
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen014.yaml
+- id: factors_gen015
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen015.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen015
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen015.yaml
+- id: factors_gen016
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen016.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen016
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen016.yaml
+- id: factors_gen017
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen017.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen017
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen017.yaml
+- id: factors_gen018
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen018.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 10
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen018
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen018.yaml
+- id: factors_gen019
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen019.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen019
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen019.yaml
+- id: factors_gen020
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen020.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 10
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen020
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen020.yaml
+- id: factors_gen021
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen021.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 10
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen021
+    chunk_days: 1
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen021.yaml
+- id: factors_gen022
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen022.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen022
+    chunk_days: 1
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen022.yaml
+- id: factors_gen023
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen023.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen023
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen023.yaml
+- id: factors_gen024
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen024.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen024
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen024.yaml
+- id: factors_gen025
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen025.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen025
+  after_finished: []
+  priority: 1
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen025
+    chunk_days: 1
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen025.yaml
+- id: factors_gen026
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen026.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen026
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen026.yaml
+- id: factors_gen027
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen027.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen027
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen027.yaml
+- id: factors_gen028
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen028.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 10
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen028
+    chunk_days: 1
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen028.yaml
+- id: factors_gen029
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen029.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen029
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen029.yaml
+- id: factors_gen031
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen031.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen031
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen031.yaml
+- id: factors_gen032
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen032.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen032
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen032.yaml
+- id: factors_gen033
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen033.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen033
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen033.yaml
+- id: factors_gen034
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen034.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen034
+  after_finished: []
+  priority: 10
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen034
+    chunk_days: 1
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen034.yaml
+- id: factors_gen035
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen035.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen035
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen035.yaml
+- id: factors_gen036
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen036.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 10
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen036
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen036.yaml
+- id: factors_gen037
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_factors.py
+  - workspace/results/factor_windows_20261110_v1/configs/gen037.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 16
+  requires_success:
+  - pilot_gen001
+  after_finished: []
+  priority: 20
+  config_template: config/factors/multiwindow_20261110.yaml
+  config_overrides:
+    batches:
+    - gen037
+    chunk_days: 2
+  generated_config: workspace/results/factor_windows_20261110_v1/configs/gen037.yaml
+- id: labels
+  lane: cpu
+  command:
+  - /root/shared-nvme/hft_mm_research/.venv-models/bin/python
+  - scripts/build_labels.py
+  - config/targets/multiwindow_20261110.yaml
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 12
+  requires_success: []
+  after_finished: []
+  priority: 5
+report_command: null

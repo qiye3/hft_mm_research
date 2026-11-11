@@ -16,9 +16,9 @@ namespace mm {
 
 class LinearSignal {
 public:
-    // 【核心逻辑161】读取冻结的原单位系数，并建立实时与Python对照的输入记录。
+    // 【核心逻辑178】读取冻结的原单位系数，并建立实时与Python对照的输入记录。
     LinearSignal(const std::filesystem::path& model, const std::filesystem::path& samples);
-    // 【核心逻辑169】在100ms网格更新原生盘口与窗口，每1s更新预测，其间返回最近有效预测。
+    // 【核心逻辑186】在100ms网格更新原生盘口与窗口，每1s更新预测，其间返回最近有效预测。
     double sample(std::int64_t timestamp, hbt::HashMapMarketDepth& depth,
                   std::int64_t last_book_timestamp, double buy_quantity, double sell_quantity);
 
@@ -36,7 +36,7 @@ private:
     };
     // 【非核心】把已知压力因子名映射到实时源及窗口，未知定义明确失败。
     static Term parse_term(const std::string& name, double coefficient);
-    // 【核心逻辑170】按窗口位置计数，达到模型声明的有效比例才计算均值。
+    // 【核心逻辑187】按窗口位置计数，达到模型声明的有效比例才计算均值。
     double pressure_mean(int source, int window) const;
 
     double intercept_ = 0;

@@ -86,7 +86,7 @@ def build_labels_day(root: Path, config: dict, date: str, rebuild: bool = False)
         filename = folder / f"horizon={horizon_name(horizon)}" / f"{date}.parquet"
         metadata = {
             "kind": "labels", "dataset": dataset, "date": date, "horizon_ns": horizon,
-            "definition": {"version": "cross_day_1s_v1", "output_interval_ns": config["output_interval_ns"],
+            "definition": {"version": "cross_day_log_bps_1s_v2", "output_interval_ns": config["output_interval_ns"],
                            "source_interval_ns": dataset["interval_ns"], "source_boundaries": config["source_boundaries"]},
         }
         labels = build_midprice_labels(context, dataset["tick_size"], dataset["interval_ns"], horizon).filter(

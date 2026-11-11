@@ -1,0 +1,15 @@
+# Models阶段。scripts/run_input_comparison.py按后台队列逐项执行。
+# 输入为旧146列冻结矩阵、已完成的新1206因子及训练前缀日级IC。
+# 输出为各周期新64列缓存、48个GPU模型、两段验证预测和配对增量报告。
+source: workspace/results/multihorizon_20261109_v1
+factor_results: workspace/results/factor_windows_20261110_v1
+output: workspace/results/input_comparison_20261110_v1
+local_cache: /tmp/hft_input_comparison_20261110_v1
+horizons_s: [180, 30, 60, 120]
+new_features: 64
+read_workers: 4
+seeds: [17, 42, 73]
+batch_size: 8192
+max_epochs: 20
+patience: 4
+learning_rate: 0.001

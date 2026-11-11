@@ -1,4 +1,15 @@
-# 高频 Alpha 架构图 v5：批注与 Codex 同步
+# 架构页面与批注使用说明 · 2026-11-11
+
+## 当前版本
+
+本页按2026-11-10本地代码更新。节点正文、输入输出与文件树描述当前已实现链路，各实验的运行完成度查看其workspace/results目录。
+
+- 标准行情覆盖531天，Features按100ms计算，按单变量保存全日期Parquet。
+- 当前四档Factors为10/60/180/600秒，共35组1206项；标签为七周期对数bps，主目标180秒。
+- 1s统一模型对照、当前180秒GPU旧输入基线与新四档生产分别保存版本。
+- C++实时线性模型与复杂模型冻结预测各有接入路径；原生订单、成交和账本复用第三方引擎。
+
+维护源位于hft_mm_research/docs/design/hft_alpha_annotations_ui_v5/，同一套文件同步到外部hft_alpha_annotations_ui_v5/和服务器项目docs目录。每次更新同时维护HTML、批注JSON与定位JSON，保持节点ID和已有批注。历史批注保留当时上下文，当前实现查看节点正文。
 
 ## 用法
 
@@ -48,3 +59,7 @@
 若希望修改 JSON 后自动刷新，可在 HTML 所在目录运行 `python -m http.server 8000`，用 `http://localhost:8000/hft_alpha_workflow_annotations_v5.html` 打开页面。此时刷新页面或点击「同步 Codex 批注」即可读取同目录 JSON。
 
 如希望 Codex 直接修改一个完全独立的 HTML 文件，也可以更新 HTML 内 `id="codex-annotations-seed"` 的 JSON 内容。优先推荐使用独立 JSON 文件，避免修改界面脚本。
+
+## 实验结果归档 · 2026-11-11
+
+全部实验的参数、结果和逐项明细见[实验总档案](/Users/qiye/Desktop/docs/Projects/HFT_MM/Results/实验总档案_20261111/00_总览与阅读顺序.md)。最新信号策略、延迟与规模压力实验已结束，完成状态与研究结论已同步到core节点批注。

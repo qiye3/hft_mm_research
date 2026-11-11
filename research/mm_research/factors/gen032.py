@@ -16,4 +16,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         sources[f'px_{name}_transition_cont_100ms'] = pl.when(valid).then(((direction == previous) & (direction != 0)).cast(pl.Float64))
         sources[f'px_{name}_transition_flip_100ms'] = pl.when(valid).then(((direction == -previous) & (direction != 0)).cast(pl.Float64))
         sources[f'px_{name}_transition_signed_100ms'] = pl.when(valid).then(direction * ((direction != 0) & (previous != 0)).cast(pl.Float64))
-    return rolling_factors(sources, (5, 10, 30, 100), 'mean', config['min_fraction'])
+    return rolling_factors(sources, config["aggregation_windows_s"], 'mean', config['min_fraction'])

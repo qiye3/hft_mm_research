@@ -22,4 +22,4 @@ def factor_expressions(config: dict) -> dict[str, pl.Expr]:
         "quote_ask_only_dir_100ms": ask.sign() * (bid == 0).cast(pl.Float64),
         "quote_bid_ask_comove_100ms": bid.sign() * ask.sign(),
     }
-    return rolling_factors(sources, (5, 10, 30, 100), "mean", config["min_fraction"])
+    return rolling_factors(sources, config["aggregation_windows_s"], "mean", config["min_fraction"])

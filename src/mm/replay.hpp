@@ -54,9 +54,9 @@ struct ReplayResult {
 ReplayConfig load_config(const std::filesystem::path& filename);
 // 【非核心】返回用于检查 BBO、分类计数和深档升入前十档的确定性事件。
 std::vector<hbt::Event> synthetic_events();
-// 【核心逻辑148】根据 source 选择数据来源，返回完整原生回放后的观察结果。
+// 【核心逻辑165】根据 source 选择数据来源，返回完整原生回放后的观察结果。
 ReplayResult run_replay(const ReplayConfig& config, ReplayEventSink* sink = nullptr);
-// 【核心逻辑187】接管内存分片进行双时钟回放，供合成测试检查路由顺序与缓存释放。
+// 【核心逻辑204】接管内存分片进行双时钟回放，供合成测试检查路由顺序与缓存释放。
 ReplayResult run_memory_replay(const ReplayConfig& config,
                                std::vector<std::vector<hbt::Event>> chunks,
                                ReplayEventSink* sink = nullptr);

@@ -63,7 +63,7 @@ def build_snapshot_grid(folder: Path, date: str, interval_ns: int,
 
 
 # ==================== 快照特征模块示例 ====================
-# 【核心逻辑184】计算前十档双侧挂单金额及金额失衡，作为快照特征示例。
+# 【核心逻辑201】计算前十档双侧挂单金额及金额失衡，作为快照特征示例。
 def add_snapshot_notional_features(table: pl.DataFrame) -> pl.DataFrame:
     """输入包含十档价格数量及 book_valid 的网格，返回新增示例特征的表。
 
