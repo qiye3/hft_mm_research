@@ -1,0 +1,24 @@
+tasks:
+- id: prefetch_raw
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_native.py
+  - config/strategy/cost_native_20261111.yaml
+  - prefetch
+  - --exclude-blocks
+  - val_dev_00
+  - val_dev_01
+  - val_select_00
+  - val_select_01
+  threads: 2
+  estimated_peak_gib: 1
+  memory_limit_gib: 3
+  allocation_limit_gib: 16
+  requires_success:
+  - plan
+  after_finished: []
+  lane: network
+  priority: 40
+  max_retries: 2
+  retry_delay_seconds: 60

@@ -28,7 +28,8 @@ ExecutionParameters load_execution_parameters(const std::filesystem::path& filen
         detail::config_number<double>(fields, "quote_half_width_bps"),
         detail::config_number<double>(fields, "minimum_notional_usdt")};
     const bool known_mode = parameters.mode == "fixed" || parameters.mode == "passive"
-        || parameters.mode == "skew" || parameters.mode == "inventory" || parameters.mode == "hybrid";
+        || parameters.mode == "skew" || parameters.mode == "inventory" || parameters.mode == "hybrid"
+        || parameters.mode == "directional" || parameters.mode == "defensive";
     if (!known_mode || (parameters.queue_model != "risk_adverse" && parameters.queue_model != "log_probability")
         || parameters.entry_bps < 0 || parameters.exit_bps < 0 || parameters.exit_bps > parameters.entry_bps
         || parameters.scale_bps <= 0 || parameters.max_alpha_bps <= 0 || parameters.inventory_skew_bps < 0
@@ -193,10 +194,25 @@ std::pair<double, double> ExecutionPolicy::decide(hbt::Backtest& backtest, doubl
     const double entry_gate = parameters_.cost_filter
         ? std::max(parameters_.entry_bps, 2 * config_.maker_fee * 10000 + spread_bps)
         : parameters_.entry_bps;
+    // 强反向Alpha触发实际库存减仓，避免宽报价在持续行情中长期积累风险。
+    if (parameters_.mode == "defensive"
+        && ((sign > 0 && alpha <= -parameters_.exit_bps)
+            || (sign < 0 && alpha >= parameters_.exit_bps))) {
+        reducing_ = true;
+        return liquidate(backtest, false, valid_book);
+    }
+    // 固定持有实验在空仓时按信号IOC开仓，持仓超时沿用上方原生减仓路径。
+    if (parameters_.mode == "directional") {
+        if (sign == 0 && alpha != 0 && std::abs(alpha) >= entry_gate) {
+            take(backtest, alpha > 0 ? hbt::Side::Buy : hbt::Side::Sell,
+                 config_.order_quantity, "alpha_taker");
+        }
+        return maker_.reservations(backtest);
+    }
     const double shifted = std::clamp(alpha - parameters_.inventory_skew_bps * position / config_.max_position,
                                       -parameters_.max_alpha_bps, parameters_.max_alpha_bps);
     double shift_bps = shifted;
-    if (parameters_.mode == "fixed" || parameters_.mode == "passive") {
+    if (parameters_.mode == "fixed" || parameters_.mode == "passive" || parameters_.mode == "defensive") {
         shift_bps = 0;
     }
     // 模型输出为对数收益bps，先转换参考价格，再按当前价格计算报价半宽。
@@ -223,6 +239,12 @@ std::pair<double, double> ExecutionPolicy::decide(hbt::Backtest& backtest, doubl
         } else if (sign < 0 && alpha > -parameters_.exit_bps) {
             bid = backtest.best_bid_tick(0) - parameters_.offset_ticks;
             buy_budget = std::min(config_.order_quantity, -position);
+        }
+    } else if (parameters_.mode == "defensive") {
+        if (alpha >= entry_gate) {
+            ask.reset();
+        } else if (alpha <= -entry_gate) {
+            bid.reset();
         }
     } else if (parameters_.mode == "skew") {
         if (alpha >= entry_gate && sign <= 0) {

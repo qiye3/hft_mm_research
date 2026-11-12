@@ -1,0 +1,18 @@
+# 只读现有交易结果，按训练期事前波动分位解释收益；不改变候选。
+tasks:
+- id: cost_attribution
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_attribution.py
+  - config/strategy/cost_attribution_20261111.yaml
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 7
+  allocation_limit_gib: 32
+  requires_success: []
+  after_finished: []
+  lane: cpu
+  priority: 25
+  max_retries: 2
+  retry_delay_seconds: 60

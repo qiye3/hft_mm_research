@@ -772,6 +772,78 @@
       "body": "全部已做实验已归档到/Users/qiye/Desktop/docs/Projects/HFT_MM/Results/实验总档案_20261111。00为总索引，01—07覆盖数据回放、因子、信息增量、全部模型、多期限曲线、策略及实际配置，08解释明细。32张CSV含1236旧因子、1206四档因子、290条历史模型登记、64条后续模型记录、18个信号折、828策略日例实际执行配置及36固定订单日例。保留历史失败、预算截止、已查看Test与新旧口径差异，早期已清理中间文件按原报告归档。",
       "created_at": "2026-11-11T08:24:16.479162+00:00",
       "updated_at": "2026-11-11T08:24:16.479162+00:00"
+    },
+    {
+      "id": "codex-tradeability-20261111",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "180秒可交易性研究已完成。三个冻结信号、训练OOF固定q90/q95/q99，补齐7—10月历史推理并核对原预测。18个完整区间主动交易案例均净亏，未选中候选。六日36例原生固定挂单均核对最终空仓，等待1秒到3秒提高成交率但加重成交后的不利价格变化。按计划完成机制归因后结束，滚动重训、连续28日原生策略和候选压力测试因筛选未通过而暂缓。入口scripts/run_tradeability.py，四个tradeability研究模块分别负责统计、冻结推理、原生执行和报告。配置config/strategy/tradeability_20261111.yaml及同名research后台配置，结果workspace/results/tradeability_20261111_v1。文档库Results/research_180s_tradeability_20261111/01_研究结果与结论_20261111.md。当前修改等待用户决定提交。",
+      "created_at": "2026-11-11T09:48:15.796214+00:00",
+      "updated_at": "2026-11-11T10:07:48.996357+00:00"
+    },
+    {
+      "id": "codex-optimization-plan-20261111",
+      "target": "node:core",
+      "status": "待办",
+      "body": "已制定180秒研究与持续优化计划：先增加现货成交压力、价格联动和已结束分钟溢价信息，最多28列；五组同样本输入对照，晋级后进行成本筛选、订单价值与连续回放。每假设最多两轮修订，首轮预算24实例小时。计划见docs/design/research_180s_optimization_20261111.md。当前未启动新模型训练，不能把计划节点当作已实现能力。",
+      "author": "Codex",
+      "created_at": "2026-11-11T11:04:08.430918+00:00",
+      "updated_at": "2026-11-11T11:04:08.430918+00:00"
+    },
+    {
+      "id": "codex-cross-market-pilot-20261111",
+      "target": "node:source",
+      "status": "已解决",
+      "body": "已下载并核对2025-06-15、2026-03-15、2026-06-15三个现货样本日。7214275笔成交聚合的数量、金额、主动买入、笔数和有成交秒OHLC与官方1秒K线一致。现货时间微秒、永续指数毫秒，K线必须结束后可用。下一步覆盖检查和正式适配尚未实施；秒线不提供现货L2，Gen030保持未启用。报告见docs/reports/cross_market_pilot_20261111/report.md。",
+      "author": "Codex",
+      "created_at": "2026-11-11T11:04:08.430918+00:00",
+      "updated_at": "2026-11-11T11:04:08.430918+00:00"
+    },
+    {
+      "id": "codex-cross-market-training-20261111",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "直接跨市场实验已完成三组12个GPU模型，旧146列基线复用。现货16列加入XGBoost后，开发IC从0.03095升至0.03715，历史复核从0.01814升至0.02783；单独溢价和MLP未形成稳定的跨设置改善。结果位于workspace/results/cross_market_20261111_v1/summary，用户文档03_跨市场模型实验结果_20261111.md已同步。下一轮优先拆分现货成交压力与价格联动，目前没有训练任务在运行。",
+      "created_at": "2026-11-11T11:23:40.161963+00:00",
+      "updated_at": "2026-11-11T11:44:58.317236+00:00"
+    },
+    {
+      "id": "codex-native-compression-20261111",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "备注",
+      "body": "连接已恢复。4线程有界NPZ压缩已部署，两路原生区间准备并行；每个分区前一块回放并释放新缓存后再准备下一块，避免磁盘堆积。GPU新增h7200 seed42/73双方向四模型及固定seed17规则收益对照已完成，原生连续回放继续运行。profit_research报告改为引用真实冻结规则来源。详情见用户Results/research_180s_optimization_20261111/04文档。未提交Git。",
+      "created_at": "2026-11-11T00:00:00Z",
+      "updated_at": "2026-11-12T01:45:00Z"
+    },
+    {
+      "id": "codex-cost-diagnostics-20261111",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "备注",
+      "body": "新增cost_attribution.py及入口/配置：严格事前600秒波动、方向/月度/信号强弱/失败场景归因、七日块重采样；完整原生回放后自动对齐实际成交差异。核心编号378—380，原档预取377。发现交易偏多头、高波动，复核收益集中6月；保留亏损和缺失窗口样本。详见用户Results/research_180s_optimization_20261111/05文档。未提交Git。 已新增381固定窗口方向对照：复核模型方向14.9713USDT、恒多14.1344USDT，需继续区分择时贡献与多头敞口。清理两组已结束输入缓存50.42GiB，清单保存在storage_cleanup_20261111。",
+      "created_at": "2026-11-12T02:25:00Z",
+      "updated_at": "2026-11-12T03:00:00Z"
+    },
+    {
+      "id": "codex-cost-native-final-20261111",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "费用分类候选全部原生回放完成：13区间、53必要日、49往返；开发净收益5.539285、复核14.990675USDT，Maker2/Taker5bps。382号按真实资金费汇总原生权益、回撤与逐日损益。49笔与快照全部匹配。报告零资金费类型问题已修复，原失败日志及恢复记录保留。当前为30分钟预测/2小时持仓方向候选，未达到200笔等稳定性门槛。详见docs/reports/cost_native_20261111/report.md与用户结果08文档；未提交Git。",
+      "created_at": "2026-11-12T04:00:00Z",
+      "updated_at": "2026-11-12T04:00:00Z"
+    },
+    {
+      "id": "codex-stable-strategy-20261111",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "待办",
+      "body": "收益稳定性研究已实现：383为双方向稳健连续价值模型；384—387为固定种子价值组合、三种退出规则、开发稳定性选择与冻结复核。24例开发筛选按最差月/剔除最好周排序，计真实费用和资金费。inventory.py复用原账本增加信号失效退出与事前波动保护，部分退出锁定至平仓；决策报价与到达报价分离。计划：docs/reports/stable_strategy_20261111/plan.md。结果以workspace/results/stable_strategy_20261111_v1为准，尚未宣称收益改善。",
+      "created_at": "2026-11-12T05:45:32.137974+00:00",
+      "updated_at": "2026-11-12T05:45:32.137974+00:00"
     }
   ]
 }

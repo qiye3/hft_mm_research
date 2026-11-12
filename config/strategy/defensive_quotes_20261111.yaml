@@ -1,0 +1,44 @@
+# Alpha保护的原生做市，真实Maker2/Taker5bps，开发选一套规则后冻结复核。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/defensive_quotes_20261111_v1
+binary_folder: workspace/results/defensive_quotes_20261111_v1/build
+signals: workspace/results/cross_market_ablation_20261111_v1/signals
+thresholds: workspace/results/profit_research_20261111_v1/thresholds.json
+prediction_latency_ns: 1000000
+dates:
+  val_dev:
+  - '2026-03-23'
+  - '2026-03-27'
+  - '2026-04-01'
+  - '2026-04-06'
+  - '2026-04-10'
+  - '2026-04-15'
+  - '2026-04-20'
+  - '2026-04-25'
+  - '2026-04-29'
+  - '2026-05-04'
+  - '2026-05-09'
+  - '2026-05-14'
+  val_select:
+  - '2026-05-15'
+  - '2026-05-19'
+  - '2026-05-24'
+  - '2026-05-29'
+  - '2026-06-02'
+  - '2026-06-07'
+  - '2026-06-12'
+  - '2026-06-17'
+  - '2026-06-21'
+  - '2026-06-26'
+  - '2026-07-01'
+  - '2026-07-06'
+execution:
+  initial_equity_usdt: 10000
+  risk_unit_btc: 0.002
+  max_position_units: 2
+  maker_fee: 0.0002
+  taker_fee: 0.0005
+  minimum_notional_usdt: 100
+  quantity_step_btc: 0.001
+  tick_size: 0.1
+  response_latency_ns: 500000

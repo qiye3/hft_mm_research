@@ -45,7 +45,7 @@ def prepare_engine_day(book: Path, trades: Path, date: str, destination: Path, l
         # 完整日按交易所时间检查，固定延迟后的末尾回报可自然进入下一UTC日。
         events_staging = staging / "events"
         manifest = convert(staging / "book.csv.zst", staging / "trades.csv.zst", date, events_staging,
-                           shard_rows=1_000_000, full_day=False)
+                           shard_rows=1_000_000, full_day=False, compression_workers=4)
         manifest.update(
             full_day_validated=True, timestamp_policy="exchange_timestamp_plus_fixed_latency",
             fixed_market_latency_ns=latency_ns, original_book=str(book), original_trades=str(trades),

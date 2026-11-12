@@ -1,0 +1,5 @@
+# 收益归因；scripts/run_cost_attribution.py读取快照交易账本及已有秒级盘口，输出逐笔诊断和分组CSV。
+source: workspace/results/multihorizon_20261109_v1
+profit_output: workspace/results/cost_classifier_profit_20261111_v1
+case: cost_h1800_q0.9_h7200
+output: workspace/results/cost_attribution_20261111_v1

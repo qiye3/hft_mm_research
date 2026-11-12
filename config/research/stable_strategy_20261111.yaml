@@ -1,0 +1,189 @@
+# 部署问题修复后的完整队列；旧queue保留首次失败，已完成模型直接复用。
+stage: overnight
+queue_directory: config/research/stable_strategy_queue
+output: workspace/results/stable_strategy_20261111_v1/queue_recovered
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 2
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: huber_h1800_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_value_20261111.yaml
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --family
+  - huber
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  lane: gpu
+  priority: 0
+  max_retries: 2
+  retry_delay_seconds: 60
+- id: huber_h1800_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_value_20261111.yaml
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --family
+  - huber
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  lane: gpu
+  priority: 0
+  max_retries: 2
+  retry_delay_seconds: 60
+- id: clipped_h1800_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_value_20261111.yaml
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --family
+  - clipped
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  lane: gpu
+  priority: 0
+  max_retries: 2
+  retry_delay_seconds: 60
+- id: clipped_h1800_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_value_20261111.yaml
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --family
+  - clipped
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  lane: gpu
+  priority: 0
+  max_retries: 2
+  retry_delay_seconds: 60
+- id: huber_h7200_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_value_20261111.yaml
+  - --horizon
+  - '7200'
+  - --side
+  - '1'
+  - --family
+  - huber
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  lane: gpu
+  priority: 0
+  max_retries: 2
+  retry_delay_seconds: 60
+- id: huber_h7200_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_value_20261111.yaml
+  - --horizon
+  - '7200'
+  - --side
+  - '-1'
+  - --family
+  - huber
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  lane: gpu
+  priority: 0
+  max_retries: 2
+  retry_delay_seconds: 60
+- id: clipped_h7200_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_value_20261111.yaml
+  - --horizon
+  - '7200'
+  - --side
+  - '1'
+  - --family
+  - clipped
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  lane: gpu
+  priority: 0
+  max_retries: 2
+  retry_delay_seconds: 60
+- id: clipped_h7200_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_value_20261111.yaml
+  - --horizon
+  - '7200'
+  - --side
+  - '-1'
+  - --family
+  - clipped
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  lane: gpu
+  priority: 0
+  max_retries: 2
+  retry_delay_seconds: 60

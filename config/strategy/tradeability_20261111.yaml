@@ -1,0 +1,45 @@
+# 180秒可交易性研究。入口 scripts/run_tradeability.py，由同名 research 配置后台编排。
+# 输入已有前向OOF、冻结预测、531日市场矩阵和已验收L2。输出尾部统计、九组交易及成交归因。
+source: workspace/results/multihorizon_20261109_v1
+forecast_source: workspace/results/forecast_strategy_20261110_v1
+models: workspace/results/input_comparison_20261110_v1
+output: workspace/results/tradeability_20261111_v1
+standard_folder: workspace/data/standard/server_market_v1
+quantiles: [0.90, 0.95, 0.99]
+horizons_s: [30, 60, 120, 180, 300]
+prediction_latency_ns: 1000000
+bootstrap_repeats: 1000
+seed: 42
+state_lookback_s: 60
+state_min_samples: 48
+state_training_stride_s: 60
+hold_s: 180
+maximum_candidates: 2
+execution:
+  initial_equity_usdt: 10000
+  risk_unit_btc: 0.002
+  max_position_units: 1
+  maker_fee: 0.0002
+  taker_fee: 0.0005
+  minimum_notional_usdt: 100
+  quantity_step_btc: 0.001
+  tick_size: 0.1
+  entry_latency_ns: 1000000
+  response_latency_ns: 500000
+signals:
+- id: h180_old_mlp
+  group: old
+  family: mlp
+  models: [180s_old_mlp_seed17, 180s_old_mlp_seed42, 180s_old_mlp_seed73]
+- id: h180_combined_mlp
+  group: combined
+  family: mlp
+  models: [180s_combined_mlp_seed17, 180s_combined_mlp_seed42, 180s_combined_mlp_seed73]
+- id: h180_combined_xgb
+  group: combined
+  family: xgb
+  models: [180s_combined_xgb_seed17]
+mechanism_dates:
+  val_dev: ['2026-03-23', '2026-04-15', '2026-05-14']
+  val_select: ['2026-05-15', '2026-06-12', '2026-07-06']
+continuous_dates: ['2026-08-01', '2026-08-28']

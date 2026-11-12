@@ -1,0 +1,129 @@
+# 一路CPU低换手对照，与GPU模型及多日原生回放并行。
+stage: overnight
+queue_directory: config/research/trend_research_queue
+output: workspace/results/trend_research_20261111_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 1
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: develop_momentum
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/trend_research_20261111.yaml
+  - trend_develop
+  - --group
+  - momentum
+  threads: 1
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 48
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: develop_reversal
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/trend_research_20261111.yaml
+  - trend_develop
+  - --group
+  - reversal
+  threads: 1
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 48
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 1
+- id: select
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/trend_research_20261111.yaml
+  - trend_select
+  threads: 1
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 48
+  requires_success:
+  - develop_momentum
+  - develop_reversal
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 2
+- id: review_momentum
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/trend_research_20261111.yaml
+  - trend_review
+  - --group
+  - momentum
+  threads: 1
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 3
+- id: review_reversal
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/trend_research_20261111.yaml
+  - trend_review
+  - --group
+  - reversal
+  threads: 1
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 4
+- id: report
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/trend_research_20261111.yaml
+  - trend_report
+  threads: 1
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 48
+  requires_success:
+  - review_momentum
+  - review_reversal
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 5

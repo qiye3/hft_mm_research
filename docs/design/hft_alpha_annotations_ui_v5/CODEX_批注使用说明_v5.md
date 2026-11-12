@@ -63,3 +63,17 @@
 ## 实验结果归档 · 2026-11-11
 
 全部实验的参数、结果和逐项明细见[实验总档案](/Users/qiye/Desktop/docs/Projects/HFT_MM/Results/实验总档案_20261111/00_总览与阅读顺序.md)。最新信号策略、延迟与规模压力实验已结束，完成状态与研究结论已同步到core节点批注。
+
+## 180秒可交易性研究 · 2026-11-11
+
+三个冻结信号已完成尾部、跨月及成本研究。18个完整区间主动交易案例均为负，六日36例原生固定挂单完成成交归因。研究代码位于strategies/tradeability*.py，入口scripts/run_tradeability.py。研究参数和后台队列分别位于strategy与research配置目录。结果文档见[本轮研究结果](/Users/qiye/Desktop/docs/Projects/HFT_MM/Results/research_180s_tradeability_20261111/01_研究结果与结论_20261111.md)。本轮未保留候选，后续滚动训练及连续原生验证按筛选条件暂缓。
+
+## 下一阶段研究计划与首批数据 · 2026-11-11
+
+[180秒实施与持续优化计划](/Users/qiye/zxy_hft/hft_mm_research/docs/design/research_180s_optimization_20261111.md)规定数据、28列候选、模型对照、成本和订单研究的晋级规则。[首批跨市场样本](/Users/qiye/zxy_hft/hft_mm_research/docs/reports/cross_market_pilot_20261111/report.md)已核对完成。core节点记录待办计划，source节点记录已完成的样本核对；全历史生产和新模型尚未启动。
+
+## 跨市场直接模型实验 · 2026-11-11
+
+按用户要求取消独立适配与核对阶段，直接进行三组12个GPU模型对照。说明见[实验入口与分组](/Users/qiye/zxy_hft/hft_mm_research/docs/reports/cross_market_20261111/report.md)。core节点新增运行批注，样本核对笔记作为历史记录保留。
+
+本批12模型已全部完成，现货组XGBoost在两段历史区间的IC均有提高，完整成绩已同步用户结果文档。后台队列正常结束，后续现货分组消融尚未启动。

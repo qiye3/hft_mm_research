@@ -1,0 +1,8 @@
+# Models实验。入口scripts/run_cross_market.py；直接读取官方月档和原训练矩阵。
+# 输出20列实验输入、三组新增输入的12个GPU模型、两段历史验证及配对增量。
+source: workspace/results/multihorizon_20261109_v1
+baseline: workspace/results/input_comparison_20261110_v1/models
+output: workspace/results/cross_market_20261111_v1
+raw_folder: workspace/data/raw/cross_market_monthly
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+windows_s: [10, 60, 180, 600]

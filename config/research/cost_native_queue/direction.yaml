@@ -1,0 +1,20 @@
+# 固定原交易窗口，仅比较多空方向贡献；不重选机会。
+tasks:
+- id: direction_diagnostics
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_attribution.py
+  - config/strategy/cost_attribution_20261111.yaml
+  - --direction-comparison
+  threads: 2
+  estimated_peak_gib: 2
+  memory_limit_gib: 5
+  allocation_limit_gib: 32
+  requires_success:
+  - cost_diagnostics
+  after_finished: []
+  lane: cpu
+  priority: 25
+  max_retries: 2
+  retry_delay_seconds: 60

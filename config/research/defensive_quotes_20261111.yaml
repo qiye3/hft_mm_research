@@ -1,0 +1,645 @@
+# 六路原生Alpha保护实验，与GPU模型分支并行。
+stage: overnight
+queue_directory: config/research/defensive_quotes_queue
+output: workspace/results/defensive_quotes_20261111_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 6
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: build
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_build
+  threads: 1
+  estimated_peak_gib: 2
+  memory_limit_gib: 5
+  allocation_limit_gib: 48
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: prepare
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_prepare
+  threads: 1
+  estimated_peak_gib: 4
+  memory_limit_gib: 7
+  allocation_limit_gib: 48
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 1
+- id: develop_2026-03-23
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-03-23'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 2
+- id: develop_2026-03-27
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-03-27'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 3
+- id: develop_2026-04-01
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-04-01'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 4
+- id: develop_2026-04-06
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-04-06'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 5
+- id: develop_2026-04-10
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-04-10'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 6
+- id: develop_2026-04-15
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-04-15'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 7
+- id: develop_2026-04-20
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-04-20'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 8
+- id: develop_2026-04-25
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-04-25'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 9
+- id: develop_2026-04-29
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-04-29'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 10
+- id: develop_2026-05-04
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-05-04'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 11
+- id: develop_2026-05-09
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-05-09'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 12
+- id: develop_2026-05-14
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-05-14'
+  - --split
+  - val_dev
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - build
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 13
+- id: select
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - develop_2026-03-23
+  - develop_2026-03-27
+  - develop_2026-04-01
+  - develop_2026-04-06
+  - develop_2026-04-10
+  - develop_2026-04-15
+  - develop_2026-04-20
+  - develop_2026-04-25
+  - develop_2026-04-29
+  - develop_2026-05-04
+  - develop_2026-05-09
+  - develop_2026-05-14
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 14
+- id: review_2026-05-15
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-05-15'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 15
+- id: review_2026-05-19
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-05-19'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 16
+- id: review_2026-05-24
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-05-24'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 17
+- id: review_2026-05-29
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-05-29'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 18
+- id: review_2026-06-02
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-06-02'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 19
+- id: review_2026-06-07
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-06-07'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 20
+- id: review_2026-06-12
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-06-12'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 21
+- id: review_2026-06-17
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-06-17'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 22
+- id: review_2026-06-21
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-06-21'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 23
+- id: review_2026-06-26
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-06-26'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 24
+- id: review_2026-07-01
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-07-01'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 25
+- id: review_2026-07-06
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_day
+  - --date
+  - '2026-07-06'
+  - --split
+  - val_select
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 26
+- id: report
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/defensive_quotes_20261111.yaml
+  - defensive_report
+  threads: 1
+  estimated_peak_gib: 3
+  memory_limit_gib: 6
+  allocation_limit_gib: 48
+  requires_success:
+  - review_2026-05-15
+  - review_2026-05-19
+  - review_2026-05-24
+  - review_2026-05-29
+  - review_2026-06-02
+  - review_2026-06-07
+  - review_2026-06-12
+  - review_2026-06-17
+  - review_2026-06-21
+  - review_2026-06-26
+  - review_2026-07-01
+  - review_2026-07-06
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 27

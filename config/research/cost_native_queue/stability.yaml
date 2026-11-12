@@ -1,0 +1,135 @@
+# 使用同一内存调度器并行GPU稳健性实验；GPU训练串行，原生回放优先。
+tasks:
+- id: h7200_seed42_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_h7200_seed42_20261111.yaml
+  - train
+  - --horizon
+  - '7200'
+  - --side
+  - '1'
+  - --seed
+  - '42'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 30
+- id: h7200_seed42_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_h7200_seed42_20261111.yaml
+  - train
+  - --horizon
+  - '7200'
+  - --side
+  - '-1'
+  - --seed
+  - '42'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished:
+  - h7200_seed42_side1
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 30
+- id: h7200_seed42_export
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_h7200_seed42_20261111.yaml
+  - export
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 9
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_seed42_side1
+  - h7200_seed42_side-1
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 31
+- id: h7200_seed73_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_h7200_seed73_20261111.yaml
+  - train
+  - --horizon
+  - '7200'
+  - --side
+  - '1'
+  - --seed
+  - '73'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished:
+  - h7200_seed42_side-1
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 30
+- id: h7200_seed73_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_h7200_seed73_20261111.yaml
+  - train
+  - --horizon
+  - '7200'
+  - --side
+  - '-1'
+  - --seed
+  - '73'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished:
+  - h7200_seed73_side1
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 30
+- id: h7200_seed73_export
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_h7200_seed73_20261111.yaml
+  - export
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 9
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_seed73_side1
+  - h7200_seed73_side-1
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 31

@@ -1,0 +1,244 @@
+# GPU费用后分类与CPU收益实验，和原生Alpha保护分支同时运行。
+stage: overnight
+queue_directory: config/research/cost_classifier_queue
+output: workspace/results/cost_classifier_20261111_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 2
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: model_180_1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_20261111.yaml
+  - train
+  - --horizon
+  - '180'
+  - --side
+  - '1'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 0
+- id: model_180_-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_20261111.yaml
+  - train
+  - --horizon
+  - '180'
+  - --side
+  - '-1'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 1
+- id: model_1800_1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 2
+- id: model_1800_-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 3
+- id: signals
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_20261111.yaml
+  - export
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 9
+  allocation_limit_gib: 96
+  requires_success:
+  - model_180_1
+  - model_180_-1
+  - model_1800_1
+  - model_1800_-1
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 4
+- id: develop_cost_h180
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_profit_20261111.yaml
+  - develop
+  - --group
+  - cost_h180
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - signals
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 5
+- id: develop_cost_h1800
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_profit_20261111.yaml
+  - develop
+  - --group
+  - cost_h1800
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - signals
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 6
+- id: select
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_profit_20261111.yaml
+  - select
+  threads: 2
+  estimated_peak_gib: 2
+  memory_limit_gib: 7
+  allocation_limit_gib: 96
+  requires_success:
+  - develop_cost_h180
+  - develop_cost_h1800
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 7
+- id: review_cost_h180
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_profit_20261111.yaml
+  - review
+  - --group
+  - cost_h180
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 8
+- id: review_cost_h1800
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_profit_20261111.yaml
+  - review
+  - --group
+  - cost_h1800
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 9
+- id: report
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_profit_20261111.yaml
+  - report
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 8
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished:
+  - review_cost_h180
+  - review_cost_h1800
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 10

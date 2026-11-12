@@ -1,0 +1,190 @@
+# 收益优化后台实验，开发选规则后冻结复核。
+stage: overnight
+queue_directory: config/research/profit_research_queue
+output: workspace/results/profit_research_20261111_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 3
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: thresholds
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/profit_research_20261111.yaml
+  - thresholds
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 10
+  allocation_limit_gib: 64
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 0
+- id: develop_flow
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/profit_research_20261111.yaml
+  - develop
+  - --group
+  - flow
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 64
+  requires_success:
+  - thresholds
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 1
+- id: develop_price
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/profit_research_20261111.yaml
+  - develop
+  - --group
+  - price
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 64
+  requires_success:
+  - thresholds
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 2
+- id: develop_spot
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/profit_research_20261111.yaml
+  - develop
+  - --group
+  - spot
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 64
+  requires_success:
+  - thresholds
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 3
+- id: select
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/profit_research_20261111.yaml
+  - select
+  threads: 3
+  estimated_peak_gib: 2
+  memory_limit_gib: 6
+  allocation_limit_gib: 64
+  requires_success:
+  - develop_flow
+  - develop_price
+  - develop_spot
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 4
+- id: review_flow
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/profit_research_20261111.yaml
+  - review
+  - --group
+  - flow
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 64
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 5
+- id: review_price
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/profit_research_20261111.yaml
+  - review
+  - --group
+  - price
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 64
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 6
+- id: review_spot
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/profit_research_20261111.yaml
+  - review
+  - --group
+  - spot
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 9
+  allocation_limit_gib: 64
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 7
+- id: report
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/profit_research_20261111.yaml
+  - report
+  threads: 3
+  estimated_peak_gib: 3
+  memory_limit_gib: 7
+  allocation_limit_gib: 64
+  requires_success: []
+  after_finished:
+  - review_flow
+  - review_price
+  - review_spot
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 8
