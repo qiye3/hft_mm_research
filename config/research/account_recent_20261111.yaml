@@ -1,0 +1,214 @@
+# 四个GPU方向模型+八个开发账户案例，开发冻结后复核。
+stage: overnight
+queue_directory: config/research/account_recent_queue
+output: workspace/results/account_recent_20261111_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 2
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: recent60_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_recent60_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --seed
+  - '17'
+  - --fit-lookback-days
+  - '60'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: gpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: recent60_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_recent60_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --seed
+  - '17'
+  - --fit-lookback-days
+  - '60'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: gpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: recent60_fixed
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_recent_20261111.yaml
+  - screen
+  - --group
+  - recent60_fixed
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: &id001
+  - recent60_side1
+  - recent60_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: recent60_signal
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_recent_20261111.yaml
+  - screen
+  - --group
+  - recent60_signal
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: *id001
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: recent120_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_recent120_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --seed
+  - '17'
+  - --fit-lookback-days
+  - '120'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: gpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: recent120_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_recent120_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --seed
+  - '17'
+  - --fit-lookback-days
+  - '120'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: gpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: recent120_fixed
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_recent_20261111.yaml
+  - screen
+  - --group
+  - recent120_fixed
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: &id002
+  - recent120_side1
+  - recent120_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: recent120_signal
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_recent_20261111.yaml
+  - screen
+  - --group
+  - recent120_signal
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: *id002
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_recent_20261111.yaml
+  - review
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 2
+  requires_success:
+  - recent60_fixed
+  - recent60_signal
+  - recent120_fixed
+  - recent120_signal
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60

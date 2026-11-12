@@ -1,0 +1,47 @@
+# 近期训练模型对应账户实验；30%年化门槛、同一规模网格和1倍敞口限制。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/account_recent_20261111_v1/screening
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+quantities_btc:
+- 0.08
+- 0.1
+groups:
+  recent60_fixed:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_recent60_20261111_v1
+      pattern: h1800_side{side}
+  recent60_signal:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_recent60_20261111_v1
+      pattern: h1800_side{side}
+  recent120_fixed:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_recent120_20261111_v1
+      pattern: h1800_side{side}
+  recent120_signal:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_recent120_20261111_v1
+      pattern: h1800_side{side}
+rules:
+  recent60_fixed:
+    policy: 0
+    minimum_hold_s: 7200
+    max_hold_s: 7200
+  recent60_signal:
+    policy: 4
+    minimum_hold_s: 1800
+    max_hold_s: 7200
+  recent120_fixed:
+    policy: 0
+    minimum_hold_s: 7200
+    max_hold_s: 7200
+  recent120_signal:
+    policy: 4
+    minimum_hold_s: 1800
+    max_hold_s: 7200

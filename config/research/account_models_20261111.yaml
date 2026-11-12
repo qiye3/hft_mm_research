@@ -1,0 +1,222 @@
+# GPU一路训练、CPU两路回放，八个开发案例完成后冻结复核。
+stage: overnight
+queue_directory: config/research/account_models_queue
+output: workspace/results/account_models_20261111_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 2
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: depth3_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_depth3_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --seed
+  - '17'
+  - --depth
+  - '3'
+  - --min-child-weight
+  - '200'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: gpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: depth3_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_depth3_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --seed
+  - '17'
+  - --depth
+  - '3'
+  - --min-child-weight
+  - '200'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: gpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: depth3_fixed
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_models_20261111.yaml
+  - screen
+  - --group
+  - depth3_fixed
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: &id001
+  - depth3_side1
+  - depth3_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: depth3_signal
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_models_20261111.yaml
+  - screen
+  - --group
+  - depth3_signal
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: *id001
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: depth6_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_depth6_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --seed
+  - '17'
+  - --depth
+  - '6'
+  - --min-child-weight
+  - '200'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: gpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: depth6_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_depth6_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --seed
+  - '17'
+  - --depth
+  - '6'
+  - --min-child-weight
+  - '200'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: gpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: depth6_fixed
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_models_20261111.yaml
+  - screen
+  - --group
+  - depth6_fixed
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: &id002
+  - depth6_side1
+  - depth6_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: depth6_signal
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_models_20261111.yaml
+  - screen
+  - --group
+  - depth6_signal
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: *id002
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_models_20261111.yaml
+  - review
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 2
+  requires_success:
+  - depth3_fixed
+  - depth3_signal
+  - depth6_fixed
+  - depth6_signal
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60

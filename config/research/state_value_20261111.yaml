@@ -1,0 +1,210 @@
+stage: overnight
+queue_directory: config/research/state_value_queue
+output: workspace/results/state_value_20261111_v1/queue_recovered
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 2
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: prepare
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_state_value.py
+  - config/models/state_value_20261111.yaml
+  - prepare
+  threads: 4
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: values17
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_state_value.py
+  - config/models/state_value_20261111.yaml
+  - values
+  - --seed
+  - '17'
+  threads: 4
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: values42
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_state_value.py
+  - config/models/state_value_20261111.yaml
+  - values
+  - --seed
+  - '42'
+  threads: 4
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: values73
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_state_value.py
+  - config/models/state_value_20261111.yaml
+  - values
+  - --seed
+  - '73'
+  threads: 4
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - prepare
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: state_payoff17
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stable_strategy.py
+  - config/strategy/state_value_20261111.yaml
+  - screen
+  - --group
+  - state_payoff17
+  threads: 4
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - values17
+  - values42
+  - values73
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: state_payoff_ensemble
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stable_strategy.py
+  - config/strategy/state_value_20261111.yaml
+  - screen
+  - --group
+  - state_payoff_ensemble
+  threads: 4
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - values17
+  - values42
+  - values73
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: state_calibrated_ensemble
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stable_strategy.py
+  - config/strategy/state_value_20261111.yaml
+  - screen
+  - --group
+  - state_calibrated_ensemble
+  threads: 4
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - values17
+  - values42
+  - values73
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: select
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stable_strategy.py
+  - config/strategy/state_value_20261111.yaml
+  - select
+  threads: 4
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - state_payoff17
+  - state_payoff_ensemble
+  - state_calibrated_ensemble
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stable_strategy.py
+  - config/strategy/state_value_20261111.yaml
+  - review
+  threads: 4
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: attribute
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stability_attribution.py
+  - config/strategy/state_value_20261111.yaml
+  threads: 4
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - review
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
