@@ -1,0 +1,8 @@
+# 低换手收益实验，输入长周期组合预测、原到达盘口与资金费。
+# 开发阶段选规则，冻结后完整历史复核，每笔0.002BTC、Taker单侧5bps。
+source: workspace/results/multihorizon_20261109_v1
+models: workspace/results/intraday_20261111_v1
+output: workspace/results/intraday_profit_20261111_v1
+groups: [h1800, h7200]
+quantiles: [0.9, 0.99, 0.999]
+holds_s: [1800, 7200, 14400]

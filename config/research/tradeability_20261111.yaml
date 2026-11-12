@@ -1,0 +1,185 @@
+# 后台任务配置。输入strategy/tradeability配置，输出独立任务状态、日志与可恢复结果。
+stage: overnight
+output: workspace/results/tradeability_20261111_v1/queue_full
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 3
+  gpu: 1
+morning_report_at: null
+queue_directory: config/research/tradeability_queue
+report_command: null
+tasks:
+- id: thresholds
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_tradeability.py
+  - config/strategy/tradeability_20261111.yaml
+  - thresholds
+  threads: 3
+  estimated_peak_gib: 8
+  memory_limit_gib: 16
+  allocation_limit_gib: 48
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: -10
+- id: tail_h180_old_mlp_val_dev
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_tradeability.py
+  - config/strategy/tradeability_20261111.yaml
+  - tail
+  - --signal
+  - h180_old_mlp
+  - --split
+  - val_dev
+  threads: 3
+  estimated_peak_gib: 4
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success:
+  - thresholds
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: tail_h180_old_mlp_val_select
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_tradeability.py
+  - config/strategy/tradeability_20261111.yaml
+  - tail
+  - --signal
+  - h180_old_mlp
+  - --split
+  - val_select
+  threads: 3
+  estimated_peak_gib: 4
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success:
+  - thresholds
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: tail_h180_combined_mlp_val_dev
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_tradeability.py
+  - config/strategy/tradeability_20261111.yaml
+  - tail
+  - --signal
+  - h180_combined_mlp
+  - --split
+  - val_dev
+  threads: 3
+  estimated_peak_gib: 4
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success:
+  - thresholds
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: tail_h180_combined_mlp_val_select
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_tradeability.py
+  - config/strategy/tradeability_20261111.yaml
+  - tail
+  - --signal
+  - h180_combined_mlp
+  - --split
+  - val_select
+  threads: 3
+  estimated_peak_gib: 4
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success:
+  - thresholds
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: tail_h180_combined_xgb_val_dev
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_tradeability.py
+  - config/strategy/tradeability_20261111.yaml
+  - tail
+  - --signal
+  - h180_combined_xgb
+  - --split
+  - val_dev
+  threads: 3
+  estimated_peak_gib: 4
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success:
+  - thresholds
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: tail_h180_combined_xgb_val_select
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_tradeability.py
+  - config/strategy/tradeability_20261111.yaml
+  - tail
+  - --signal
+  - h180_combined_xgb
+  - --split
+  - val_select
+  threads: 3
+  estimated_peak_gib: 4
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success:
+  - thresholds
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: tail_summary_initial
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_tradeability.py
+  - config/strategy/tradeability_20261111.yaml
+  - tail_summary
+  threads: 3
+  estimated_peak_gib: 2
+  memory_limit_gib: 8
+  allocation_limit_gib: 48
+  requires_success:
+  - tail_h180_old_mlp_val_dev
+  - tail_h180_old_mlp_val_select
+  - tail_h180_combined_mlp_val_dev
+  - tail_h180_combined_mlp_val_select
+  - tail_h180_combined_xgb_val_dev
+  - tail_h180_combined_xgb_val_select
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0

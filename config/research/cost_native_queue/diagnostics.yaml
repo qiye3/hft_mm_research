@@ -1,0 +1,51 @@
+# 全交易收益与失败场景分析；原生差异分析等待全部冻结区间成功。
+tasks:
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 7
+  allocation_limit_gib: 32
+  after_finished: &id001 []
+  lane: cpu
+  priority: 25
+  max_retries: 2
+  retry_delay_seconds: 60
+  id: cost_diagnostics
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_attribution.py
+  - config/strategy/cost_attribution_20261111.yaml
+  requires_success:
+  - cost_attribution
+- threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 7
+  allocation_limit_gib: 32
+  after_finished: *id001
+  lane: cpu
+  priority: 25
+  max_retries: 2
+  retry_delay_seconds: 60
+  id: execution_diagnostics
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_attribution.py
+  - config/strategy/cost_attribution_20261111.yaml
+  - --native-output
+  - workspace/results/cost_native_20261111_v1
+  requires_success:
+  - replay_val_dev_00
+  - replay_val_dev_01
+  - replay_val_dev_02
+  - replay_val_dev_03
+  - replay_val_dev_04
+  - replay_val_dev_05
+  - replay_val_dev_06
+  - replay_val_select_00
+  - replay_val_select_01
+  - replay_val_select_02
+  - replay_val_select_03
+  - replay_val_select_04
+  - replay_val_select_05
+  - cost_diagnostics

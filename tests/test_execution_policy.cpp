@@ -26,9 +26,10 @@ void check_prediction_clock(const std::filesystem::path& root) {
 // 【非核心】以真实原生处理器检查Maker成交、IOC退出和两种排队假设的最终平仓。
 void check_native_exit(const std::filesystem::path& root, const std::string& queue,
                        const std::string& mode = "passive", bool cost_filter = false,
-                       double width_bps = 0, double minimum_notional = 0) {
+                       double width_bps = 0, double minimum_notional = 0, bool zero_signal = false) {
     mm::TradingConfig config;
-    config.name = queue + mode + std::to_string(cost_filter) + std::to_string(width_bps) + std::to_string(minimum_notional);
+    config.name = queue + mode + std::to_string(cost_filter) + std::to_string(width_bps)
+                  + std::to_string(minimum_notional) + std::to_string(zero_signal);
     config.source = "memory";
     config.output = root / config.name;
     config.tick_size = 1;
@@ -44,12 +45,26 @@ void check_native_exit(const std::filesystem::path& root, const std::string& que
     config.decision_interval_ns = 100'000'000;
     config.quote_stop_timestamp_ns = 1'500'000'000;
     const auto signals = root / (queue + ".csv");
-    std::ofstream(signals) << "timestamp_ns,prediction_bps\n0,10\n1000000000,10\n2000000000,10\n";
+    double later_alpha = 10;
+    if (mode == "directional") {
+        later_alpha = 0;
+    } else if (mode == "defensive") {
+        later_alpha = -10;
+    }
+    std::ofstream(signals) << "timestamp_ns,prediction_bps\n0," << (zero_signal ? 0 : 10) << "\n1000000000,"
+                          << later_alpha << "\n2000000000," << later_alpha << "\n";
     mm::PredictionSeries prediction{signals};
     mm::ExecutionParameters parameters{mode, queue, 1, .5, 10, 10, 0, cost_filter,
                                        0, 1'000'000'000, 500'000'000, 1000, 1};
     parameters.quote_half_width_bps = width_bps;
     parameters.minimum_notional_usdt = minimum_notional;
+    if (zero_signal) {
+        parameters.entry_bps = 0;
+        parameters.exit_bps = 0;
+    }
+    if (mode == "directional") {
+        parameters.max_hold_ns = 1'100'000'000;
+    }
     std::vector<hbt::Event> events;
     for (const auto [kind, timestamp, price, quantity] : std::vector<std::tuple<std::uint64_t, std::int64_t, double, double>>{
             {hbt::DEPTH_EVENT | hbt::BUY_EVENT, 1'000'000, 99, 2},
@@ -64,10 +79,11 @@ void check_native_exit(const std::filesystem::path& root, const std::string& que
     }
     const auto result = mm::run_execution_replay(config, parameters, prediction,
         hbt::EventReaderCache::from_chunks({events}, 2));
-    const bool no_fill = cost_filter || width_bps >= 1000 || minimum_notional >= 1000;
+    const bool no_fill = zero_signal || cost_filter || width_bps >= 1000 || minimum_notional >= 1000;
     require_execution(result.fills == (no_fill ? 0 : 2), "cost gate or quote width entry/exit mismatch");
     require_execution(result.position == 0, "native exit left inventory");
-    require_execution(std::abs(result.fees - (no_fill ? 0 : .297)) < 1e-9, "Maker/Taker fees inconsistent");
+    const double expected_fees = mode == "directional" ? .4 : .297;
+    require_execution(std::abs(result.fees - (no_fill ? 0 : expected_fees)) < 1e-9, "Maker/Taker fees inconsistent");
     require_execution(result.max_abs_position <= 3, "risk budget exceeded");
 }
 
@@ -83,5 +99,9 @@ int main() {
     check_native_exit(root, "risk_adverse", "hybrid", true);
     check_native_exit(root, "risk_adverse", "passive", false, 1000);
     check_native_exit(root, "risk_adverse", "passive", false, 0, 1000);
+    check_native_exit(root, "risk_adverse", "directional");
+    check_native_exit(root, "risk_adverse", "directional", false, 0, 1000);
+    check_native_exit(root, "risk_adverse", "directional", false, 0, 0, true);
+    check_native_exit(root, "risk_adverse", "defensive");
     std::filesystem::remove_all(root);
 }

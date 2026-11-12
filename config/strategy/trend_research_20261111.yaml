@@ -1,0 +1,16 @@
+# 低换手趋势/反转的费用后对照，过去窗口与未来持有严格区分。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/trend_research_20261111_v1
+families:
+- momentum
+- reversal
+lookbacks_s:
+- 3600
+- 14400
+- 86400
+entry_bps:
+- 50.0
+- 150.0
+holds_s:
+- 21600
+- 86400

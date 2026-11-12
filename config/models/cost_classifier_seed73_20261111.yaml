@@ -1,0 +1,13 @@
+# 冻结模型参数的随机种子稳健性实验，训练30分钟费用后分类器的买卖两个方向。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/cost_classifier_seed73_20261111_v1
+macro_source: workspace/results/intraday_20261111_v1
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+spot_inputs: workspace/results/cross_market_ablation_20261111_v1/spot/inputs/180s
+horizons_s:
+- 1800
+quantiles:
+- 0.9
+- 0.99
+- 0.999
+profit_output: workspace/results/cost_classifier_seed73_profit_20261111_v1

@@ -1,0 +1,10 @@
+# 低换手模型实验，入口scripts/run_intraday.py。原高频矩阵加现货和18列过去状态。
+# 输出真实30分钟/2小时目标、六个模型和三种子预测，直接进入费用后交易评价。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/intraday_20261111_v1
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+spot_inputs: workspace/results/cross_market_ablation_20261111_v1/spot/inputs/180s
+state_windows_s: [60, 300, 900, 1800, 3600, 14400]
+horizons_s: [1800, 7200]
+quantiles: [0.9, 0.99, 0.999]
+profit_output: workspace/results/intraday_profit_20261111_v1

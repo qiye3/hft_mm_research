@@ -1,0 +1,127 @@
+tasks:
+- id: h7200_seed42_develop
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_h7200_seed42_profit_20261111.yaml
+  - develop
+  - --group
+  - cost_h7200
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_seed42_export
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 32
+- id: h7200_seed42_review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_h7200_seed42_profit_20261111.yaml
+  - review
+  - --group
+  - cost_h7200
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_seed42_export
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 32
+- id: h7200_seed42_report
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_h7200_seed42_profit_20261111.yaml
+  - report
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_seed42_develop
+  - h7200_seed42_review
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 32
+- id: h7200_seed73_develop
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_h7200_seed73_profit_20261111.yaml
+  - develop
+  - --group
+  - cost_h7200
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_seed73_export
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 32
+- id: h7200_seed73_review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_h7200_seed73_profit_20261111.yaml
+  - review
+  - --group
+  - cost_h7200
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_seed73_export
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 32
+- id: h7200_seed73_report
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_h7200_seed73_profit_20261111.yaml
+  - report
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_seed73_develop
+  - h7200_seed73_review
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 32

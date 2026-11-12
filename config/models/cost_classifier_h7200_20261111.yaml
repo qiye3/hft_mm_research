@@ -1,0 +1,13 @@
+# 两小时费用后获利分类，与已有30分钟分类做固定信息集对照。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/cost_classifier_h7200_20261111_v1
+macro_source: workspace/results/intraday_20261111_v1
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+spot_inputs: workspace/results/cross_market_ablation_20261111_v1/spot/inputs/180s
+horizons_s:
+- 7200
+quantiles:
+- 0.9
+- 0.99
+- 0.999
+profit_output: workspace/results/cost_classifier_h7200_profit_20261111_v1

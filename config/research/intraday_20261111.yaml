@@ -1,0 +1,303 @@
+# 低换手模型和收益实验后台队列，真实目标30分钟/2小时。
+stage: overnight
+queue_directory: config/research/intraday_queue
+output: workspace/results/intraday_20261111_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 2
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: inputs
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_intraday.py
+  - config/models/intraday_20261111.yaml
+  - prepare
+  threads: 2
+  estimated_peak_gib: 10
+  memory_limit_gib: 15
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: model_1800_17
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_intraday.py
+  - config/models/intraday_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success:
+  - inputs
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 1
+- id: model_1800_42
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_intraday.py
+  - config/models/intraday_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --seed
+  - '42'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success:
+  - inputs
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 2
+- id: model_1800_73
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_intraday.py
+  - config/models/intraday_20261111.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --seed
+  - '73'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success:
+  - inputs
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 3
+- id: model_7200_17
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_intraday.py
+  - config/models/intraday_20261111.yaml
+  - train
+  - --horizon
+  - '7200'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success:
+  - inputs
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 4
+- id: model_7200_42
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_intraday.py
+  - config/models/intraday_20261111.yaml
+  - train
+  - --horizon
+  - '7200'
+  - --seed
+  - '42'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success:
+  - inputs
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 5
+- id: model_7200_73
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_intraday.py
+  - config/models/intraday_20261111.yaml
+  - train
+  - --horizon
+  - '7200'
+  - --seed
+  - '73'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success:
+  - inputs
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 6
+- id: signals
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_intraday.py
+  - config/models/intraday_20261111.yaml
+  - export
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 11
+  allocation_limit_gib: 96
+  requires_success:
+  - model_1800_17
+  - model_1800_42
+  - model_1800_73
+  - model_7200_17
+  - model_7200_42
+  - model_7200_73
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 7
+- id: develop_h1800
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/intraday_profit_20261111.yaml
+  - develop
+  - --group
+  - h1800
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - signals
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 8
+- id: develop_h7200
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/intraday_profit_20261111.yaml
+  - develop
+  - --group
+  - h7200
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - signals
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 9
+- id: select
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/intraday_profit_20261111.yaml
+  - select
+  threads: 2
+  estimated_peak_gib: 2
+  memory_limit_gib: 7
+  allocation_limit_gib: 96
+  requires_success:
+  - develop_h1800
+  - develop_h7200
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 10
+- id: review_h1800
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/intraday_profit_20261111.yaml
+  - review
+  - --group
+  - h1800
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 11
+- id: review_h7200
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/intraday_profit_20261111.yaml
+  - review
+  - --group
+  - h7200
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 12
+- id: report
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/intraday_profit_20261111.yaml
+  - report
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 8
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished:
+  - review_h1800
+  - review_h7200
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 13

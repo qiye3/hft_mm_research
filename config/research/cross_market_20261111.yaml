@@ -1,0 +1,437 @@
+# 后台实验队列。读取models/cross_market配置，直接计算输入并训练12个GPU模型。
+# 输出任务状态、日志、资源记录；失败节点有限重试，独立模型继续执行。
+stage: overnight
+queue_directory: config/research/cross_market_queue
+output: workspace/results/cross_market_20261111_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 2
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: old_inputs
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - old
+  threads: 3
+  estimated_peak_gib: 8
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: cross_inputs
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - inputs
+  threads: 3
+  estimated_peak_gib: 10
+  memory_limit_gib: 14
+  allocation_limit_gib: 48
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 1
+- id: cache_premium
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - cache
+  - --group
+  - premium
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  requires_success:
+  - cross_inputs
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 2
+- id: premium_xgb_17
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - premium
+  - --family
+  - xgb
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_premium
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 3
+- id: premium_mlp_17
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - premium
+  - --family
+  - mlp
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_premium
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 4
+- id: premium_mlp_42
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - premium
+  - --family
+  - mlp
+  - --seed
+  - '42'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_premium
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 5
+- id: premium_mlp_73
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - premium
+  - --family
+  - mlp
+  - --seed
+  - '73'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_premium
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 6
+- id: cache_spot
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - cache
+  - --group
+  - spot
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  requires_success:
+  - cross_inputs
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 7
+- id: spot_xgb_17
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - spot
+  - --family
+  - xgb
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_spot
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 8
+- id: spot_mlp_17
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - spot
+  - --family
+  - mlp
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_spot
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 9
+- id: spot_mlp_42
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - spot
+  - --family
+  - mlp
+  - --seed
+  - '42'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_spot
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 10
+- id: spot_mlp_73
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - spot
+  - --family
+  - mlp
+  - --seed
+  - '73'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_spot
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 11
+- id: cache_all
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - cache
+  - --group
+  - all
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  requires_success:
+  - cross_inputs
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 12
+- id: all_xgb_17
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - all
+  - --family
+  - xgb
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_all
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 13
+- id: all_mlp_17
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - all
+  - --family
+  - mlp
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_all
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 14
+- id: all_mlp_42
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - all
+  - --family
+  - mlp
+  - --seed
+  - '42'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_all
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 15
+- id: all_mlp_73
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - train
+  - --group
+  - all
+  - --family
+  - mlp
+  - --seed
+  - '73'
+  threads: 2
+  estimated_peak_gib: 22
+  memory_limit_gib: 26
+  allocation_limit_gib: 96
+  requires_success:
+  - old_inputs
+  - cache_all
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 16
+- id: report
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cross_market.py
+  - config/models/cross_market_20261111.yaml
+  - report
+  threads: 3
+  estimated_peak_gib: 4
+  memory_limit_gib: 8
+  allocation_limit_gib: 48
+  requires_success: []
+  after_finished:
+  - premium_xgb_17
+  - premium_mlp_17
+  - premium_mlp_42
+  - premium_mlp_73
+  - spot_xgb_17
+  - spot_mlp_17
+  - spot_mlp_42
+  - spot_mlp_73
+  - all_xgb_17
+  - all_mlp_17
+  - all_mlp_42
+  - all_mlp_73
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 17

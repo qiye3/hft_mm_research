@@ -10,7 +10,8 @@ import json
 import math
 import shutil
 import time
-from collections import Counter
+from collections import Counter, deque
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -204,8 +205,17 @@ def validate_day(sources: list[dict], date: str) -> None:
 
 
 # ==================== 双时钟路由与分片落盘 ====================
+# 【非核心】独立压缩一个事件分片，返回按调用顺序写入清单的文件信息。
+def write_compressed_shard(destination: Path, filename: str, batch: np.ndarray) -> dict:
+    """将已路由的独立批次写入 NPZ，返回文件名、行数和字节数。"""
+    path = destination / filename
+    np.savez_compressed(path, data=batch)
+    return {"file": filename, "rows": len(batch), "bytes": path.stat().st_size}
+
+
 # 【核心逻辑162】为交易所与本地分别生成可见事件，并按可见时间稳定排序写出 NPZ。
-def write_routed_shards(events: np.ndarray, destination: Path, shard_rows: int) -> list[dict]:
+def write_routed_shards(events: np.ndarray, destination: Path, shard_rows: int,
+                        compression_workers: int = 1) -> list[dict]:
     """生成两个处理器各自有序的标准事件分片。
 
     输入
@@ -228,41 +238,49 @@ def write_routed_shards(events: np.ndarray, destination: Path, shard_rows: int) 
     previous_exchange = None
     previous_local = None
     shards = []
-    for start in range(0, len(order), shard_rows):
-        indices = order[start:start + shard_rows]
-        exchange_mask = indices < event_count
-        batch = events[indices % event_count].copy()
-        batch["ev"] |= np.where(exchange_mask, np.uint64(EXCHANGE), np.uint64(LOCAL))
-        for timestamp_field, mask, previous in [
-            ("exch_ts", exchange_mask, previous_exchange),
-            ("local_ts", ~exchange_mask, previous_local),
-        ]:
-            timestamps = batch[timestamp_field][mask]
-            if len(timestamps) and (np.any(timestamps[1:] < timestamps[:-1]) or
-                                    (previous is not None and timestamps[0] < previous)):
-                raise ValueError(f"路由事件顺序错误：{timestamp_field}")
-            if len(timestamps):
-                if timestamp_field == "exch_ts":
-                    previous_exchange = int(timestamps[-1])
-                else:
-                    previous_local = int(timestamps[-1])
-        filename = f"events-{len(shards):05d}.npz"
-        np.savez_compressed(destination / filename, data=batch)
-        shards.append({"file": filename, "rows": len(batch), "bytes": (destination / filename).stat().st_size})
-        print(f"已写分片 {filename}，累计 {start + len(batch):,}/{len(order):,} 行", flush=True)
+    pending = deque()
+    with ThreadPoolExecutor(max_workers=compression_workers) as executor:
+        for start in range(0, len(order), shard_rows):
+            indices = order[start:start + shard_rows]
+            exchange_mask = indices < event_count
+            batch = events[indices % event_count].copy()
+            batch["ev"] |= np.where(exchange_mask, np.uint64(EXCHANGE), np.uint64(LOCAL))
+            for timestamp_field, mask, previous in [
+                ("exch_ts", exchange_mask, previous_exchange),
+                ("local_ts", ~exchange_mask, previous_local),
+            ]:
+                timestamps = batch[timestamp_field][mask]
+                if len(timestamps) and (np.any(timestamps[1:] < timestamps[:-1]) or
+                                        (previous is not None and timestamps[0] < previous)):
+                    raise ValueError(f"路由事件顺序错误：{timestamp_field}")
+                if len(timestamps):
+                    if timestamp_field == "exch_ts":
+                        previous_exchange = int(timestamps[-1])
+                    else:
+                        previous_local = int(timestamps[-1])
+            filename = f"events-{start // shard_rows:05d}.npz"
+            pending.append(executor.submit(write_compressed_shard, destination, filename, batch))
+            # 限制在途批次，按提交顺序收集结果，保持清单与事件顺序不变。
+            if len(pending) >= compression_workers:
+                shards.append(pending.popleft().result())
+                print(f"已写分片 {shards[-1]['file']}", flush=True)
+        while pending:
+            shards.append(pending.popleft().result())
     return shards
 
 
 # ==================== 单日转换编排与命令行入口 ====================
 # 【核心逻辑160】编排单日全深度行情转换，生成可被原生 C++ reader 直接消费的清单。
 def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: float = 0.1,
-            lot_size: float = 0.001, shard_rows: int = 250_000, full_day: bool = True) -> dict:
+            lot_size: float = 0.001, shard_rows: int = 250_000, full_day: bool = True,
+            compression_workers: int = 1) -> dict:
     """完成从两个原始压缩文件到标准事件和转换清单的离线准备。
 
     输入
         book 和 trades 分别为完整深度流及成交流，date 为样本 UTC 日期。
         destination 必须为空，tick_size、lot_size 指定正步长，shard_rows 控制单片大小。
         full_day 默认为真，测试夹具可设为假以复用转换逻辑处理短序列。
+        compression_workers 控制独立分片压缩线程数，同时限制在途批次数量。
     输出
         返回并写出 manifest.json，其中包括源行计数、路由记录数、时间偏移与分片位置。
         NPZ 保存全部原始深度，策略观察档数在后续 C++ 读取阶段配置。
@@ -293,7 +311,7 @@ def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: f
     if minimum_latency <= 0:
         raise ValueError("源行情存在非正接收延迟，请先核实时间戳，转换器不会自动平移时间")
     events = np.memmap(raw_file, dtype=EVENT_DTYPE, mode="r")
-    shards = write_routed_shards(events, destination, shard_rows)
+    shards = write_routed_shards(events, destination, shard_rows, compression_workers)
     counts = Counter(book_info["counts"])
     manifest = {
         "schema": "hbt.Event/64-byte-little-endian",

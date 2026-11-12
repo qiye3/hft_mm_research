@@ -73,12 +73,13 @@ def walk_levels(prices, quantities, requested, quantity_step):
     return filled, notional / filled if filled > 0 else 0.
 
 
-# 【核心逻辑273】在真实已成交仓位上计算P0—P3，现金、费用与逐档清算价值分开累计。
+# 【核心逻辑273】在真实已成交仓位上计算P0—P5，现金、费用与逐档清算价值分开累计。
 @njit(cache=True)
 def simulate_inventory(predictions, books, times, variance, policy, horizon_index, hold_seconds,
                        risk_lambda, buffer_bps, rebalance_seconds, unit_btc, fee, min_notional, quantity_step,
-                       max_hold_seconds, initial_capital, funding_times, funding_rates, funding_marks):
-    """books为订单到达时最近已发生快照，结果显式标记快照执行估计。"""
+                       max_hold_seconds, initial_capital, funding_times, funding_rates, funding_marks,
+                       management=None):
+    """books用于到达时撮合；management依次为可见买价、卖价、事前波动和入场许可。"""
     count = len(times)
     position = 0.
     cash = 0.
@@ -87,6 +88,10 @@ def simulate_inventory(predictions, books, times, variance, policy, horizon_inde
     opened_at = -1.
     last_rebalance = -np.inf
     funding_cursor = 0
+    entry_price = 0.
+    entry_risk_bps = 0.
+    best_mark_bps = 0.
+    exit_requested = False
     records = np.zeros((count, 11))
     fills = np.zeros((count, 7))
     fill_count = 0
@@ -121,16 +126,45 @@ def simulate_inventory(predictions, books, times, variance, policy, horizon_inde
                 benefit = (candidate - actual) * alpha - .5 * risk_lambda * variance[horizon_index] * (candidate ** 2 - actual ** 2)
                 if benefit > (one_way_cost + buffer_bps) * abs(candidate - actual):
                     target = candidate
+            elif policy in [4, 5]:
+                # 管理只读决策时已可见报价；到达盘口仍仅用于撮合与记账。
+                if management is None:
+                    raise ValueError('持仓管理需要决策时盘口与事前波动率')
+                if position == 0.:
+                    risk_ready = policy == 4 or np.isfinite(management[row, 2])
+                    visible_ready = np.isfinite(management[row, :2]).all() and management[row, 0] > 0
+                    if risk_ready and visible_ready and management[row, 3] > .5:
+                        target = direction
+                else:
+                    if policy == 4 and now - opened_at >= hold_seconds:
+                        if direction * position <= 0:
+                            exit_requested = True
+                    if policy == 5:
+                        visible_price = management[row, 0] if position > 0 else management[row, 1]
+                        if np.isfinite(visible_price) and visible_price > 0:
+                            signed_side = 1. if position > 0 else -1.
+                            mark_bps = signed_side * (visible_price / entry_price - 1.) * 10000
+                            mark_bps -= fee * 10000 * (1. + visible_price / entry_price)
+                            best_mark_bps = max(best_mark_bps, mark_bps)
+                            stop_hit = mark_bps <= -2. * entry_risk_bps
+                            trailing_hit = best_mark_bps >= 2. * entry_risk_bps and mark_bps <= best_mark_bps - entry_risk_bps
+                            if stop_hit or trailing_hit:
+                                exit_requested = True
+                    # 撤回退出意图会使部分成交后残仓失控，退出请求保持到实际平仓。
+                    if exit_requested:
+                        target = 0.
             else:
                 if np.isfinite(curve).all():
                     increments = np.empty(len(curve))
                     increments[0] = curve[0]
                     increments[1:] = curve[1:] - curve[:-1]
                     target = optimal_path(increments, variance, risk_lambda, one_way_cost + buffer_bps, actual)[0]
+        if exit_requested:
+            target = 0.
         force_exit = (row >= count - 20) or (position != 0 and now - opened_at >= max_hold_seconds)
         if force_exit:
             target = 0.
-        if now - last_rebalance < rebalance_seconds and not force_exit:
+        if now - last_rebalance < rebalance_seconds and not force_exit and not exit_requested:
             target = actual
         requested = target * unit_btc - position
         if position * target < 0:
@@ -158,9 +192,14 @@ def simulate_inventory(predictions, books, times, variance, policy, horizon_inde
                 cash -= charged
                 if previous_position == 0 or previous_position * position < 0:
                     opened_at = now
+                    entry_price = price
+                    best_mark_bps = 0.
+                    if policy == 5 and management is not None:
+                        entry_risk_bps = max(20., 2. * management[row, 2])
                 if abs(position) < 1e-10:
                     position = 0.
                     opened_at = -1.
+                    exit_requested = False
                 last_rebalance = now
                 fills[fill_count] = np.array([now, side, quantity, price, charged, position, 1. if force_exit else 0.])
                 fill_count += 1

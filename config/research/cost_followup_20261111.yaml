@@ -1,0 +1,280 @@
+# 原生回放期间并行执行GPU新目标与CPU固定规则种子对照。
+stage: overnight
+queue_directory: config/research/cost_followup_queue
+output: workspace/results/cost_followup_20261111_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 2
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: seed42_develop
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_seed42_profit_20261111.yaml
+  - develop
+  - --group
+  - cost_h1800
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: seed42_review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_seed42_profit_20261111.yaml
+  - review
+  - --group
+  - cost_h1800
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 1
+- id: seed42_report
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_seed42_profit_20261111.yaml
+  - report
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 8
+  allocation_limit_gib: 96
+  requires_success:
+  - seed42_develop
+  - seed42_review
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 2
+- id: seed73_develop
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_seed73_profit_20261111.yaml
+  - develop
+  - --group
+  - cost_h1800
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 3
+- id: seed73_review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_seed73_profit_20261111.yaml
+  - review
+  - --group
+  - cost_h1800
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 4
+- id: seed73_report
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_seed73_profit_20261111.yaml
+  - report
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 8
+  allocation_limit_gib: 96
+  requires_success:
+  - seed73_develop
+  - seed73_review
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 5
+- id: h7200_1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_h7200_20261111.yaml
+  - train
+  - --horizon
+  - '7200'
+  - --side
+  - '1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 6
+- id: h7200_-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_h7200_20261111.yaml
+  - train
+  - --horizon
+  - '7200'
+  - --side
+  - '-1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 23
+  allocation_limit_gib: 96
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: gpu
+  priority: 7
+- id: h7200_export
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_classifier_h7200_20261111.yaml
+  - export
+  threads: 2
+  estimated_peak_gib: 4
+  memory_limit_gib: 9
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_1
+  - h7200_-1
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 8
+- id: h7200_develop
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_h7200_profit_20261111.yaml
+  - develop
+  - --group
+  - cost_h7200
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_export
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 9
+- id: h7200_select
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_h7200_profit_20261111.yaml
+  - select
+  threads: 2
+  estimated_peak_gib: 2
+  memory_limit_gib: 7
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_develop
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 10
+- id: h7200_review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_h7200_profit_20261111.yaml
+  - review
+  - --group
+  - cost_h7200
+  - --signal-column
+  - expected_net_edge_bps
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_select
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 11
+- id: h7200_report
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_profit_research.py
+  - config/strategy/cost_classifier_h7200_profit_20261111.yaml
+  - report
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 8
+  allocation_limit_gib: 96
+  requires_success:
+  - h7200_review
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 12
