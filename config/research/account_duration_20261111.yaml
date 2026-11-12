@@ -1,0 +1,150 @@
+# 十二例新开发案例，全部结束后按30%门槛冻结并复核。
+stage: overnight
+queue_directory: config/research/account_duration_queue
+output: workspace/results/account_duration_20261111_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 2
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: cost1800_hold3600
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_duration_20261111.yaml
+  - screen
+  - --group
+  - cost1800_hold3600
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: cost1800_hold10800
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_duration_20261111.yaml
+  - screen
+  - --group
+  - cost1800_hold10800
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: cost1800_hold14400
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_duration_20261111.yaml
+  - screen
+  - --group
+  - cost1800_hold14400
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: ensemble1800_hold3600
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_duration_20261111.yaml
+  - screen
+  - --group
+  - ensemble1800_hold3600
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: ensemble1800_hold10800
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_duration_20261111.yaml
+  - screen
+  - --group
+  - ensemble1800_hold10800
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: ensemble1800_hold14400
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_duration_20261111.yaml
+  - screen
+  - --group
+  - ensemble1800_hold14400
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_duration_20261111.yaml
+  - review
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 2
+  requires_success:
+  - cost1800_hold3600
+  - cost1800_hold10800
+  - cost1800_hold14400
+  - ensemble1800_hold3600
+  - ensemble1800_hold10800
+  - ensemble1800_hold14400
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60

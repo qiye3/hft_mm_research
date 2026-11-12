@@ -52,7 +52,9 @@ def probability_calibration(probability: np.ndarray, actual: np.ndarray) -> tupl
 
 
 # 【核心逻辑367】直接训练真实费用门槛下的交易获利分类器，训练与早停按目标周期隔离。
-def train_cost_classifier(filename: Path, horizon: int, side: int, seed: int) -> None:
+def train_cost_classifier(filename: Path, horizon: int, side: int, seed: int,
+                          max_depth: int = 4, min_child_weight: float = 50.,
+                          fit_lookback_days: int | None = None) -> None:
     """两个方向单独拟合，输出校准概率和由训练盈亏幅度换算的预期净收益。"""
     import cupy as cp
     import xgboost as xgb
@@ -73,6 +75,8 @@ def train_cost_classifier(filename: Path, horizon: int, side: int, seed: int) ->
         values, valid = net_labels(market, row_sets[split], horizon, side)
         boundary = int(row_sets['tune'][0]) if split == 'fit' else segments['train']['stop_row']
         selected = valid & (row_sets[split] + horizon < boundary)
+        if split == 'fit' and fit_lookback_days is not None:
+            selected &= row_sets[split] >= boundary - fit_lookback_days * 86400
         positions[split] = np.flatnonzero(selected)
         targets[split] = values[selected]
     with Path('/tmp/hft_mm_research_gpu.lock').open('a') as lock:
@@ -97,7 +101,7 @@ def train_cost_classifier(filename: Path, horizon: int, side: int, seed: int) ->
             cp.get_default_memory_pool().free_all_blocks()
         model = xgb.train({
             'objective': 'binary:logistic', 'eval_metric': 'logloss', 'tree_method': 'hist',
-            'device': 'cuda', 'max_depth': 4, 'max_bin': 64, 'min_child_weight': 50,
+            'device': 'cuda', 'max_depth': max_depth, 'max_bin': 64, 'min_child_weight': min_child_weight,
             'eta': .05, 'subsample': .8, 'colsample_bytree': .8, 'lambda': 10,
             'seed': seed, 'nthread': 2,
         }, matrices['fit'], num_boost_round=800, evals=[(matrices['tune'], 'tune')],
@@ -130,6 +134,8 @@ def train_cost_classifier(filename: Path, horizon: int, side: int, seed: int) ->
             np.save(folder / f'{split}_net_edge_bps.npy', edge)
     write_json_atomic(folder / 'completed.json', {
         'status': 'success', 'horizon_s': horizon, 'side': side, 'seed': seed,
+        'max_depth': max_depth, 'min_child_weight': min_child_weight,
+        'fit_lookback_days': fit_lookback_days, 'fit_rows': len(positions['fit']),
         'calibration_slope': slope, 'calibration_intercept': intercept,
         'train_win_mean_bps': win_mean, 'train_loss_mean_bps': loss_mean,
         'train_positive_share': float((fit > 0).mean()),

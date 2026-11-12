@@ -1,0 +1,18 @@
+# 近期拟合前缀实验：截止时刻及tune不变，仅限制fit历史长度。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/cost_recent60_20261111_v1
+macro_source: workspace/results/intraday_20261111_v1
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+spot_inputs: workspace/results/cross_market_ablation_20261111_v1/spot/inputs/180s
+horizons_s:
+- 1800
+quantiles:
+- 0.9
+- 0.99
+- 0.999
+profit_output: workspace/results/cost_recent60_20261111_v1/signals_export
+planned_classifier:
+  max_depth: 4
+  min_child_weight: 50.0
+  seed: 17
+  fit_lookback_days: 60

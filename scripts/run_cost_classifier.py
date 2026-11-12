@@ -15,9 +15,13 @@ def main() -> None:
     parser.add_argument('--horizon', type=int, choices=[180, 1800, 7200])
     parser.add_argument('--side', type=int, choices=[-1, 1])
     parser.add_argument('--seed', type=int, default=17)
+    parser.add_argument('--depth', type=int, default=4)
+    parser.add_argument('--min-child-weight', type=float, default=50.)
+    parser.add_argument('--fit-lookback-days', type=int)
     arguments = parser.parse_args()
     if arguments.stage == 'train':
-        train_cost_classifier(arguments.config, arguments.horizon, arguments.side, arguments.seed)
+        train_cost_classifier(arguments.config, arguments.horizon, arguments.side, arguments.seed,
+                              arguments.depth, arguments.min_child_weight, arguments.fit_lookback_days)
     else:
         export_cost_signals(arguments.config)
 

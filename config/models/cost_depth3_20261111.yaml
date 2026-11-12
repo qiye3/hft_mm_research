@@ -1,0 +1,17 @@
+# 同数据、同seed17费用分类器：更强叶子样本约束，开发冻结后才复核。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/cost_depth3_20261111_v1
+macro_source: workspace/results/intraday_20261111_v1
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+spot_inputs: workspace/results/cross_market_ablation_20261111_v1/spot/inputs/180s
+horizons_s:
+- 1800
+quantiles:
+- 0.9
+- 0.99
+- 0.999
+profit_output: workspace/results/cost_depth3_20261111_v1/unused_signals
+planned_classifier:
+  max_depth: 3
+  min_child_weight: 200.0
+  seed: 17

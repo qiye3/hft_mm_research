@@ -1,0 +1,47 @@
+# 四个新GPU方向分类器的账户策略比较；目标30%，仓位0.08/0.10BTC，保留1倍敞口门禁。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/account_models_20261111_v1/screening
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+quantities_btc:
+- 0.08
+- 0.1
+groups:
+  depth3_fixed:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_depth3_20261111_v1
+      pattern: h1800_side{side}
+  depth3_signal:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_depth3_20261111_v1
+      pattern: h1800_side{side}
+  depth6_fixed:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_depth6_20261111_v1
+      pattern: h1800_side{side}
+  depth6_signal:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_depth6_20261111_v1
+      pattern: h1800_side{side}
+rules:
+  depth3_fixed:
+    policy: 0
+    minimum_hold_s: 7200
+    max_hold_s: 7200
+  depth3_signal:
+    policy: 4
+    minimum_hold_s: 1800
+    max_hold_s: 7200
+  depth6_fixed:
+    policy: 0
+    minimum_hold_s: 7200
+    max_hold_s: 7200
+  depth6_signal:
+    policy: 4
+    minimum_hold_s: 1800
+    max_hold_s: 7200
