@@ -284,16 +284,19 @@ def compare_trade_directions(filename: Path) -> None:
 
 
 # 【核心逻辑382】将实际资金费加入原生权益曲线，跨空仓区间连续统计回撤、逐日收益及月度归因。
-def summarize_native_risk(config: dict, output: Path, native_output: Path, blocks: list[dict], trades: pl.DataFrame) -> None:
+def summarize_native_risk(config: dict, output: Path, native_output: Path, blocks: list[dict],
+                          trades: pl.DataFrame, splits: tuple = ('val_dev', 'val_select')) -> None:
     """只保留日级权益和汇总风险，区间内使用完整已记录权益曲线计算回撤。"""
     source = Path(config['source'])
     manifest = json.loads((source / 'e0/manifest.json').read_text())
     segments = json.loads((source / 'e0/splits.json').read_text())['segments']
     summaries = []
     daily_frames = []
-    for split in ['val_dev', 'val_select']:
+    for split in splits:
         peak = 10000.
         drawdown = 0.
+        drawdown_fraction = 0.
+        peak_leverage = 0.
         daily = []
         for block in blocks:
             if block['split'] != split:
@@ -304,7 +307,7 @@ def summarize_native_risk(config: dict, output: Path, native_output: Path, block
                 pl.col('timestamp_ns').alias('local_timestamp_ns'),
                 pl.col('funding_payment_usdt').cum_sum().alias('funding_paid'),
             ).sort('local_timestamp_ns')
-            equity = pl.read_parquet(run / 'equity.parquet', columns=['local_timestamp_ns', 'equity']).sort('local_timestamp_ns')
+            equity = pl.read_parquet(run / 'equity.parquet', columns=['local_timestamp_ns', 'equity', 'position', 'mid']).sort('local_timestamp_ns')
             equity = equity.join_asof(funding, on='local_timestamp_ns', strategy='backward').with_columns(
                 (pl.col('equity') - pl.col('funding_paid').fill_null(0.)).alias('equity'),
             )
@@ -314,6 +317,9 @@ def summarize_native_risk(config: dict, output: Path, native_output: Path, block
                 raise ValueError('原生权益曲线与含资金费的区间结算不一致')
             running_peak = np.maximum.accumulate(np.r_[peak, values])[1:]
             drawdown = max(drawdown, float(np.max(running_peak - values)))
+            drawdown_fraction = max(drawdown_fraction, float(np.max(1. - values / running_peak)))
+            gross_leverage = equity['position'].abs().to_numpy() * equity['mid'].to_numpy() / values
+            peak_leverage = max(peak_leverage, float(np.nanmax(gross_leverage)))
             peak = float(running_peak[-1])
             daily.append(equity.with_columns(
                 pl.col('local_timestamp_ns').cast(pl.Datetime('ns')).dt.date().alias('date'),
@@ -337,6 +343,9 @@ def summarize_native_risk(config: dict, output: Path, native_output: Path, block
             'max_drawdown_usdt': drawdown, 'ending_equity_usdt': float(curve['equity'][-1]),
             'excluding_best_day_usdt': float(curve['net_pnl_usdt'].sum() - curve['net_pnl_usdt'].max()),
             'round_trips': trades.filter(pl.col('split') == split).height,
+            'duration_days': curve.height, 'capital_usdt': 10000.,
+            'annualized_return': float((curve['equity'][-1] / 10000.) ** (365. / curve.height) - 1.),
+            'max_drawdown_fraction': drawdown_fraction, 'peak_gross_leverage': peak_leverage,
         })
     pl.concat(daily_frames).write_csv(output / 'native_daily.csv')
     write_json_atomic(output / 'native_risk.json', {'basis': 'recorded_native_equity_plus_actual_funding', 'results': summaries})
