@@ -54,6 +54,8 @@ public:
     // 【核心逻辑279】目标库存策略复用同一撤单等待和IOC减仓，最后退出与持仓超时分别记录。
     std::pair<double, double> liquidate(hbt::Backtest& backtest, bool final_exit, bool book_fresh);
 private:
+    // 【核心逻辑393】限时Maker退出只减少实际仓位，超时由原有撤单与IOC流程处理。
+    std::pair<double, double> maker_close(hbt::Backtest& backtest);
     // 【核心逻辑243】风险退出和Hybrid主动调整均复用原生IOC，发单前先等待已有风险订单终结。
     void take(hbt::Backtest& backtest, hbt::Side side, double quantity, const char* purpose);
     TradingConfig config_;

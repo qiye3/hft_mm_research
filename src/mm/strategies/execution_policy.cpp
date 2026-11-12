@@ -29,7 +29,8 @@ ExecutionParameters load_execution_parameters(const std::filesystem::path& filen
         detail::config_number<double>(fields, "minimum_notional_usdt")};
     const bool known_mode = parameters.mode == "fixed" || parameters.mode == "passive"
         || parameters.mode == "skew" || parameters.mode == "inventory" || parameters.mode == "hybrid"
-        || parameters.mode == "directional" || parameters.mode == "defensive";
+        || parameters.mode == "directional" || parameters.mode == "directional_maker"
+        || parameters.mode == "defensive";
     if (!known_mode || (parameters.queue_model != "risk_adverse" && parameters.queue_model != "log_probability")
         || parameters.entry_bps < 0 || parameters.exit_bps < 0 || parameters.exit_bps > parameters.entry_bps
         || parameters.scale_bps <= 0 || parameters.max_alpha_bps <= 0 || parameters.inventory_skew_bps < 0
@@ -165,6 +166,18 @@ std::pair<double, double> ExecutionPolicy::liquidate(hbt::Backtest& backtest, bo
     return maker_.reservations(backtest);
 }
 
+// 【核心逻辑393】退出阶段只按实际剩余仓位挂对手方向的Maker单，队列与在途预算复用现有模块。
+std::pair<double, double> ExecutionPolicy::maker_close(hbt::Backtest& backtest) {
+    const double position = backtest.position(0);
+    if (position > config_.lot_size * .5) {
+        return post(backtest, std::nullopt, backtest.best_ask_tick(0), 0, position);
+    }
+    if (position < -config_.lot_size * .5) {
+        return post(backtest, backtest.best_bid_tick(0), std::nullopt, -position, 0);
+    }
+    return maker_.quote_targets(backtest, std::nullopt, std::nullopt, 0, 0);
+}
+
 // 【核心逻辑240】分离开仓信号、库存目标与风险退出，所有委托仍通过原生Backtest执行。
 std::pair<double, double> ExecutionPolicy::decide(hbt::Backtest& backtest, double alpha,
         bool quotes_allowed, bool final_exit, bool book_fresh) {
@@ -183,8 +196,17 @@ std::pair<double, double> ExecutionPolicy::decide(hbt::Backtest& backtest, doubl
     }
     const bool valid_book = book_fresh && std::isfinite(backtest.mid(0))
         && backtest.best_bid_tick(0) < backtest.best_ask_tick(0);
-    if (final_exit || reducing_) {
-        return liquidate(backtest, final_exit, valid_book);
+    if (final_exit) {
+        return liquidate(backtest, true, valid_book);
+    }
+    if (reducing_) {
+        // Maker退出只等待一个TTL；期间部分成交继续减仓，到时先撤单再IOC。
+        const bool maker_exit_window = parameters_.mode == "directional_maker"
+            && now - opened_at_ < parameters_.max_hold_ns + parameters_.ttl_ns;
+        if (maker_exit_window && valid_book) {
+            return maker_close(backtest);
+        }
+        return liquidate(backtest, false, valid_book);
     }
     if (!quotes_allowed || !valid_book || !std::isfinite(alpha)) {
         return maker_.quote_targets(backtest, std::nullopt, std::nullopt, 0, 0);
@@ -200,6 +222,22 @@ std::pair<double, double> ExecutionPolicy::decide(hbt::Backtest& backtest, doubl
             || (sign < 0 && alpha >= parameters_.exit_bps))) {
         reducing_ = true;
         return liquidate(backtest, false, valid_book);
+    }
+    if (parameters_.mode == "directional_maker") {
+        if (sign != 0 || alpha == 0 || std::abs(alpha) < entry_gate) {
+            return maker_.quote_targets(backtest, std::nullopt, std::nullopt, 0, 0);
+        }
+        const auto& account = backtest.state_values(0);
+        const double equity = config_.initial_capital + account.balance + position * mid - account.fee;
+        const double entry_price = alpha > 0 ? backtest.best_bid(0) : backtest.best_ask(0);
+        const double required = config_.order_quantity * entry_price * (1 + config_.maker_fee + config_.taker_fee);
+        if (required > equity) {
+            return maker_.quote_targets(backtest, std::nullopt, std::nullopt, 0, 0);
+        }
+        if (alpha > 0) {
+            return post(backtest, backtest.best_bid_tick(0), std::nullopt, config_.order_quantity, 0);
+        }
+        return post(backtest, std::nullopt, backtest.best_ask_tick(0), 0, config_.order_quantity);
     }
     // 固定持有实验在空仓时按信号IOC开仓，持仓超时沿用上方原生减仓路径。
     if (parameters_.mode == "directional") {

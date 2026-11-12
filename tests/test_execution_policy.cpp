@@ -46,7 +46,7 @@ void check_native_exit(const std::filesystem::path& root, const std::string& que
     config.quote_stop_timestamp_ns = 1'500'000'000;
     const auto signals = root / (queue + ".csv");
     double later_alpha = 10;
-    if (mode == "directional") {
+    if (mode == "directional" || mode == "directional_maker") {
         later_alpha = 0;
     } else if (mode == "defensive") {
         later_alpha = -10;
@@ -62,7 +62,7 @@ void check_native_exit(const std::filesystem::path& root, const std::string& que
         parameters.entry_bps = 0;
         parameters.exit_bps = 0;
     }
-    if (mode == "directional") {
+    if (mode == "directional" || mode == "directional_maker") {
         parameters.max_hold_ns = 1'100'000'000;
     }
     std::vector<hbt::Event> events;
@@ -87,6 +87,59 @@ void check_native_exit(const std::filesystem::path& root, const std::string& que
     require_execution(result.max_abs_position <= 3, "risk budget exceeded");
 }
 
+// 【非核心】直接驱动原生队列验证Maker退出、部分退出和超时IOC，不用假定成交替代撮合。
+void check_maker_hold_exit(const std::filesystem::path& root, bool closing_trade, bool partial) {
+    mm::TradingConfig config;
+    config.name = "maker_hold_" + std::to_string(closing_trade) + std::to_string(partial);
+    config.source = "memory";
+    config.output = root / config.name;
+    config.tick_size = 1;
+    config.lot_size = 1;
+    config.order_quantity = partial ? 2 : 1;
+    config.max_position = config.order_quantity;
+    config.initial_capital = 1000;
+    config.maker_fee = .001;
+    config.taker_fee = .002;
+    config.half_width_ticks = 1;
+    config.entry_latency_ns = 100;
+    config.response_latency_ns = 50;
+    config.decision_interval_ns = 100'000'000;
+    config.quote_stop_timestamp_ns = 2'500'000'000;
+    const auto signals = root / (config.name + ".csv");
+    std::ofstream(signals) << "timestamp_ns,prediction_bps\n0,1\n1000000000,0\n2000000000,0\n3000000000,0\n";
+    mm::PredictionSeries prediction{signals};
+    mm::ExecutionParameters parameters{"directional_maker", "risk_adverse", 0, 0, 1, 10, 0, false,
+        0, 300'000'000, 500'000'000, 1000, 1};
+    std::vector<hbt::Event> events;
+    // 【非核心】合成事件共用明确的交易所/本地时间差，直接进入原生事件读取器。
+    const auto add = [&](std::uint64_t kind, std::int64_t timestamp, double price, double quantity) {
+        events.push_back({kind | hbt::EXCH_EVENT | hbt::LOCAL_EVENT, timestamp, timestamp + 50,
+                          price, quantity, 0, 0, 0});
+    };
+    add(hbt::DEPTH_EVENT | hbt::BUY_EVENT, 1'000'000, 99, 2);
+    add(hbt::DEPTH_EVENT | hbt::SELL_EVENT, 1'000'000, 101, 2);
+    add(hbt::TRADE_EVENT | hbt::SELL_EVENT, 600'000'000, 98, 8);
+    add(hbt::DEPTH_EVENT | hbt::SELL_EVENT, 1'000'000'000, 101, 2);
+    if (closing_trade) {
+        add(hbt::TRADE_EVENT | hbt::BUY_EVENT, 1'300'000'000, partial ? 101 : 102, partial ? 3 : 8);
+    }
+    add(hbt::DEPTH_EVENT | hbt::SELL_EVENT, 1'400'000'000, 101, 2);
+    add(hbt::DEPTH_EVENT | hbt::SELL_EVENT, 2'500'000'000, 101, 2);
+    add(hbt::DEPTH_EVENT | hbt::SELL_EVENT, 3'100'000'000, 101, 2);
+    const auto result = mm::run_execution_replay(config, parameters, prediction,
+        hbt::EventReaderCache::from_chunks({events}, 2));
+    require_execution(result.position == 0, "maker hold exit left position");
+    require_execution(result.max_abs_position <= config.max_position, "maker hold risk exceeded");
+    require_execution(result.fills == (partial ? 3 : 2), "maker hold fill lifecycle mismatch");
+    double expected_fee = .297;
+    if (partial) {
+        expected_fee = .497;
+    } else if (closing_trade) {
+        expected_fee = .2;
+    }
+    require_execution(std::abs(result.fees - expected_fee) < 1e-9, "maker hold actual maker/taker mix mismatch");
+}
+
 // 【非核心】测试输出位于独立临时目录，断言通过后释放夹具文件。
 int main() {
     const auto root = std::filesystem::temp_directory_path() / ("mm_execution_" + std::to_string(getpid()));
@@ -103,5 +156,9 @@ int main() {
     check_native_exit(root, "risk_adverse", "directional", false, 0, 1000);
     check_native_exit(root, "risk_adverse", "directional", false, 0, 0, true);
     check_native_exit(root, "risk_adverse", "defensive");
+    check_maker_hold_exit(root, true, false);
+    check_maker_hold_exit(root, false, false);
+    check_maker_hold_exit(root, true, true);
+    check_native_exit(root, "risk_adverse", "directional_maker", false, 0, 0, true);
     std::filesystem::remove_all(root);
 }

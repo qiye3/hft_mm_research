@@ -30,7 +30,7 @@ def plan_native(filename: Path) -> None:
     manifest = json.loads((source / 'e0/manifest.json').read_text())
     segments = json.loads((source / 'e0/splits.json').read_text())['segments']
     blocks = []
-    for split in ['val_dev', 'val_select']:
+    for split in config['splits']:
         table = pl.read_parquet(Path(config['signals']) / f'cost_h1800_{split}.parquet').with_row_index('row')
         eligible = table.filter(
             pl.col('expected_net_edge_bps').is_finite() & (pl.col('expected_net_edge_bps') != 0)
@@ -172,8 +172,9 @@ def prepare_native_date(filename: Path, config: dict, output: Path, inventory: d
     entry = inventory[date]
     extension = entry['server_filename'].removeprefix('BTCUSDT.csv.')
     raw = output / 'raw' / date / f'book.csv.{extension}'
-    token = re.search(r'access_token=([^&#\s`<>]+)', Path(config['credential_file']).read_text()).group(1)
-    download_native_raw(entry, raw, token)
+    if not raw.exists() or raw.stat().st_size != entry['size']:
+        token = re.search(r'access_token=([^&#\s`<>]+)', Path(config['credential_file']).read_text()).group(1)
+        download_native_raw(entry, raw, token)
     destination = output / f'event_cache/{date}/events'
     environment = os.environ.copy()
     environment['PYTHONPATH'] = 'research'
@@ -232,16 +233,16 @@ def replay_native_block(filename: Path, identifier: str) -> None:
         capital = previous['ending_account_equity_usdt']
     trading = {
         'date': block['first_date'], 'source': str(combined.resolve()), 'output': str(output),
-        'initial_capital': capital, 'order_quantity': .002, 'max_position': .002,
+        'initial_capital': capital, 'order_quantity': config['order_quantity'], 'max_position': config['order_quantity'],
         'maker_fee': .0002, 'taker_fee': .0005, 'entry_latency_ns': 1_000_000,
         'response_latency_ns': 500_000, 'decision_interval_ns': 100_000_000,
         'prediction_latency_ns': 1_000_000, 'warmup_seconds': 0, 'liquidation_buffer_seconds': 20,
         'max_alpha_bps': 1000., 'taker_slippage_ticks': 1,
     }
     case = {
-        'id': identifier, 'mode': 'directional', 'queue_model': 'risk_adverse',
+        'id': identifier, 'mode': config['mode'], 'queue_model': 'risk_adverse',
         'entry_bps': 0., 'exit_bps': 0., 'scale_bps': 1., 'inventory_skew_bps': 0.,
-        'cost_filter': False, 'offset_ticks': 0, 'ttl_ms': 1000, 'hold_s': config['hold_s'],
+        'cost_filter': False, 'offset_ticks': 0, 'ttl_ms': config['ttl_ms'], 'hold_s': config['hold_s'],
         'quote_half_width_bps': 0., 'minimum_notional_usdt': 100.,
     }
     trading_file, policy_file = write_case_configs(Path.cwd(), trading, case, output)
@@ -370,7 +371,6 @@ def report_native(filename: Path) -> None:
             missing.append(block['id'])
     summary = output / 'summary'
     summary.mkdir(exist_ok=True)
-    write_json_atomic(output / 'completed.json', {'status': 'success' if not missing else 'incomplete', 'missing_blocks': missing})
     if not records:
         raise ValueError('原生验证没有完成的区间')
     table = pl.DataFrame(records)
@@ -381,7 +381,7 @@ def report_native(filename: Path) -> None:
     )
     totals.write_csv(summary / 'totals.csv')
     lines = ['# 费用后分类信号的原生连续验证｜2026-11-11', '',
-        '冻结30分钟获利分类器与2小时持有规则。Taker单侧5bps，实际IOC、部分成交、在途回报和库存使用原生引擎。',
+        '冻结30分钟获利分类器与配置持有规则。Maker单侧2bps、Taker单侧5bps，实际限价单、IOC、部分成交、在途回报和库存使用原生引擎。',
         '全部可发单日期及最长持仓所需后续日期均重放。可证明全程无入场且空仓的日期跳过，区间间现金续接。', '',
         '| 分区 | 费用前USDT | 手续费USDT | 资金费USDT | 净收益USDT | 成交数 |',
         '| --- | --- | --- | --- | --- | --- |']
@@ -389,3 +389,54 @@ def report_native(filename: Path) -> None:
         lines.append(f"| {row['split']} | {row['gross_pnl_usdt']:.3f} | {row['fees_usdt']:.3f} | {row['funding_paid_usdt']:.3f} | {row['net_pnl_usdt']:.3f} | {row['fills']} |")
     lines.append(f'缺失区间数为{len(missing)}。全部原始来源、事件清单、订单、成交、资金费和账户权益保存在本轮目录。')
     (summary / 'report.md').write_text('\n'.join(lines) + '\n')
+    if not missing:
+        report_native_account(config, output, blocks)
+    write_json_atomic(output / 'completed.json', {'status': 'success' if not missing else 'incomplete', 'missing_blocks': missing})
+
+
+# 【核心逻辑394】全部原生区间完成后按完整日历计算账户年化、真实费用占比和1倍敞口门禁。
+def report_native_account(config: dict, output: Path, blocks: list[dict]) -> None:
+    """复用逐笔和连续权益核算，零交易区间保留在完整日历中，不缩短年化时间。"""
+    from mm_research.strategies.cost_attribution import native_round_trips, summarize_native_risk
+
+    frames = []
+    maker_notional = 0.
+    taker_notional = 0.
+    for block in blocks:
+        run = output / 'runs' / block['id']
+        frame = native_round_trips(run)
+        if not frame.is_empty():
+            frames.append(frame.with_columns(pl.lit(block['split']).alias('split')))
+        fills = pl.read_parquet(run / 'fills.parquet', columns=['maker', 'price', 'quantity'])
+        for maker in [1, 0]:
+            notional = float(fills.filter(pl.col('maker') == maker)
+                             .select((pl.col('price') * pl.col('quantity')).sum()).item())
+            if maker == 1:
+                maker_notional += notional
+            else:
+                taker_notional += notional
+    if frames:
+        trades = pl.concat(frames)
+    else:
+        trades = pl.DataFrame(schema={'split': pl.String, 'net_pnl_usdt': pl.Float64})
+    summary = output / 'summary'
+    trades.write_parquet(summary / 'native_trades.parquet', compression='zstd')
+    summarize_native_risk(config, summary, output, blocks, trades, tuple(config['splits']))
+    daily = pl.read_csv(summary / 'native_daily.csv', try_parse_dates=True)
+    monthly = daily.group_by('split', pl.col('date').dt.strftime('%Y-%m').alias('month')).agg(pl.col('net_pnl_usdt').sum())
+    weekly = daily.group_by('split', pl.col('date').dt.truncate('1w').alias('week')).agg(pl.col('net_pnl_usdt').sum())
+    monthly.sort(['split', 'month']).write_csv(summary / 'monthly.csv')
+    weekly.sort(['split', 'week']).write_csv(summary / 'weekly.csv')
+    risk = json.loads((summary / 'native_risk.json').read_text())
+    for record in risk['results']:
+        profits = weekly.filter(pl.col('split') == record['split'])['net_pnl_usdt']
+        record['excluding_best_week_usdt'] = record['net_pnl_usdt'] - float(profits.max())
+        record['passes_annual_exposure_gate'] = (
+            record['annualized_return'] > .30 and record['peak_gross_leverage'] <= 1.
+            and record['excluding_best_week_usdt'] > 0.
+        )
+    write_json_atomic(summary / 'native_account.json', {
+        'capital_usdt': 10000., 'target_annualized_return': .30, 'max_gross_leverage': 1.,
+        'maker_notional_usdt': maker_notional, 'taker_notional_usdt': taker_notional,
+        'results': risk['results'], 'monthly_concentration': 'reported_separately_not_implied_by_annual_gate',
+    })
