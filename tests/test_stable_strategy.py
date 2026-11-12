@@ -91,3 +91,18 @@ def test_visible_volatility_matches_reference():
     market[1800:, :3] *= 2.
     changed = visible_management(market, 700, 2100)[:, 2]
     np.testing.assert_allclose(actual[:1101], changed[:1101], equal_nan=True)
+
+
+# 【非核心】单模型极端看多不应自动变成三个模型的共同交易机会。
+def test_combination_handles_disagreement():
+    """中位数和分歧惩罚压低单一极值，一致认可严格排除非正价值。"""
+    from mm_research.strategies.stable_strategy import combine_values
+
+    edges = np.array([[[100., -1.]], [[-2., -1.]], [[-2., -1.]]])
+    assert combine_values(edges, 'mean')[0, 0] == 32.
+    assert combine_values(edges, 'median')[0, 0] == -2.
+    assert combine_values(edges, 'dispersion_penalty')[0, 0] < 0.
+    assert np.isneginf(combine_values(edges, 'agreement')[0, 0])
+    unanimous = np.array([[[2., -1.]], [[3., -2.]], [[4., -3.]]])
+    assert combine_values(unanimous, 'agreement')[0, 0] == 3.
+    np.testing.assert_array_equal(combine_values(unanimous, 'mean'), [[3., -2.]])
