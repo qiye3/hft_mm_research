@@ -23,12 +23,25 @@ def combined_signal(config: dict, group: str, split: str) -> np.ndarray:
         buy = np.load(folder / (source['pattern'].format(side=1)) / f'{split}_net_edge_bps.npy')
         sell = np.load(folder / (source['pattern'].format(side=-1)) / f'{split}_net_edge_bps.npy')
         edges.append(np.column_stack([buy, sell]))
-    combined = np.mean(edges, axis=0)
-    if specification['combination'] == 'agreement':
-        agrees = np.all(np.array(edges) > 0., axis=0)
-        combined = np.where(agrees, combined, -np.inf)
+    combined = combine_values(np.array(edges), specification['combination'])
     buy, sell = combined[:, 0], combined[:, 1]
     return np.where(np.maximum(buy, sell) > 0., np.where(buy >= sell, 1., -1.), 0.)
+
+
+# 【非核心】固定组合规则抑制单模型极值，分歧惩罚是启发式评分而非统计置信区间。
+def combine_values(edges: np.ndarray, method: str) -> np.ndarray:
+    """输入模型×时间×方向价值，输出同一时间与方向上的固定组合评分。"""
+    average = np.mean(edges, axis=0)
+    if method == 'mean':
+        return average
+    if method == 'median':
+        return np.median(edges, axis=0)
+    if method == 'dispersion_penalty':
+        return average - np.std(edges, axis=0)
+    if method == 'agreement':
+        agrees = np.all(edges > 0., axis=0)
+        return np.where(agrees, average, -np.inf)
+    raise ValueError(f'未知价值组合规则：{method}')
 
 
 # 【非核心】用Polars滑窗计算严格落在决策前的600秒波动，不复制事件窗口矩阵。

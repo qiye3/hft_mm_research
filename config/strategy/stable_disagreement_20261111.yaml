@@ -1,0 +1,58 @@
+# 模型分歧控制；已有预测输入，输出独立开发筛选与冻结复核；旧基准复用结果。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/stable_disagreement_20261111_v1/screening
+groups:
+  cost1800:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_classifier_20261111_v1
+      pattern: h1800_side{side}
+  ensemble1800:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_classifier_20261111_v1
+      pattern: h1800_side{side}
+    - folder: workspace/results/cost_classifier_seed42_20261111_v1
+      pattern: h1800_side{side}
+    - folder: workspace/results/cost_classifier_seed73_20261111_v1
+      pattern: h1800_side{side}
+  seeds_median:
+    combination: median
+    sources:
+    - folder: workspace/results/cost_classifier_20261111_v1
+      pattern: h1800_side{side}
+    - folder: workspace/results/cost_classifier_seed42_20261111_v1
+      pattern: h1800_side{side}
+    - folder: workspace/results/cost_classifier_seed73_20261111_v1
+      pattern: h1800_side{side}
+  seeds_dispersion_penalty:
+    combination: dispersion_penalty
+    sources:
+    - folder: workspace/results/cost_classifier_20261111_v1
+      pattern: h1800_side{side}
+    - folder: workspace/results/cost_classifier_seed42_20261111_v1
+      pattern: h1800_side{side}
+    - folder: workspace/results/cost_classifier_seed73_20261111_v1
+      pattern: h1800_side{side}
+  seeds_agreement:
+    combination: agreement
+    sources:
+    - folder: workspace/results/cost_classifier_20261111_v1
+      pattern: h1800_side{side}
+    - folder: workspace/results/cost_classifier_seed42_20261111_v1
+      pattern: h1800_side{side}
+    - folder: workspace/results/cost_classifier_seed73_20261111_v1
+      pattern: h1800_side{side}
+rules:
+  fixed7200:
+    policy: 0
+    minimum_hold_s: 7200
+    max_hold_s: 7200
+  signal_exit:
+    policy: 4
+    minimum_hold_s: 1800
+    max_hold_s: 7200
+  vol_protection:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 7200

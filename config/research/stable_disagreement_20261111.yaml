@@ -1,0 +1,125 @@
+# 九个新增CPU开发实验；两组旧基准在启动前复用，不重复运行。
+stage: overnight
+queue_directory: config/research/stable_disagreement_queue
+output: workspace/results/stable_disagreement_20261111_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 2
+  gpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: seeds_median
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stable_strategy.py
+  - config/strategy/stable_disagreement_20261111.yaml
+  - screen
+  - --group
+  - seeds_median
+  priority: 1
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: seeds_dispersion_penalty
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stable_strategy.py
+  - config/strategy/stable_disagreement_20261111.yaml
+  - screen
+  - --group
+  - seeds_dispersion_penalty
+  priority: 1
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: seeds_agreement
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stable_strategy.py
+  - config/strategy/stable_disagreement_20261111.yaml
+  - screen
+  - --group
+  - seeds_agreement
+  priority: 1
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: select
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stable_strategy.py
+  - config/strategy/stable_disagreement_20261111.yaml
+  - select
+  priority: 2
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  requires_success:
+  - seeds_median
+  - seeds_dispersion_penalty
+  - seeds_agreement
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stable_strategy.py
+  - config/strategy/stable_disagreement_20261111.yaml
+  - review
+  priority: 2
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  requires_success:
+  - select
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: attribute
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_stability_attribution.py
+  - config/strategy/stable_disagreement_20261111.yaml
+  priority: 2
+  threads: 3
+  estimated_peak_gib: 5
+  memory_limit_gib: 10
+  allocation_limit_gib: 48
+  lane: cpu
+  requires_success:
+  - review
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
