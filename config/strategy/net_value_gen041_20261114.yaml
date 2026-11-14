@@ -1,0 +1,28 @@
+# 开发回放：直接净价值>0入场，0.125BTC；费用、资金费和风险规则沿用基准。
+source: workspace/results/multihorizon_20261109_v1
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+output: workspace/results/net_value_gen041_20261114_v1/strategy
+quantities_btc:
+- 0.125
+groups:
+  huber:
+    combination: mean
+    sources:
+    - folder: workspace/results/net_value_gen041_20261114_v1
+      pattern: huber_h1800_side{side}
+  clipped:
+    combination: mean
+    sources:
+    - folder: workspace/results/net_value_gen041_20261114_v1
+      pattern: clipped_h1800_side{side}
+rules:
+  huber:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
+  clipped:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600

@@ -1,0 +1,21 @@
+# 仅追加新任务，不修改运行中的任务；风险实验终态后再运行规模验证。
+tasks:
+- id: maker_30m_size_background
+  command:
+  - env
+  - RES_OPTIONS=ndots:1
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_research_background.py
+  - config/research/maker_30m_size_20261114.yaml
+  threads: 4
+  estimated_peak_gib: 28
+  memory_limit_gib: 48
+  allocation_limit_gib: 128
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished:
+  - gen041_native_risk_background
+  max_retries: 1
+  retry_delay_seconds: 60
