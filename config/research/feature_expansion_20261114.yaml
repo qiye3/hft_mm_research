@@ -1,0 +1,87 @@
+# 扩宽输入与两种GPU架构；共享GPU锁，和原生事件回放并行。
+stage: overnight
+queue_directory: config/research/feature_expansion_queue
+output: workspace/results/feature_expansion_20261114_v1/queue
+poll_seconds: 5
+start_reserve_gib: 10
+emergency_reserve_gib: 6
+lane_limits:
+  cpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- threads: 2
+  lane: cpu
+  priority: 0
+  after_finished: &id001 []
+  max_retries: 1
+  retry_delay_seconds: 60
+  id: expanded_inputs
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_input_comparison.py
+  - config/models/feature_expansion_20261114.yaml
+  - prepare-new
+  - --horizon
+  - '180'
+  estimated_peak_gib: 8
+  memory_limit_gib: 16
+  allocation_limit_gib: 64
+  requires_success: []
+- threads: 2
+  lane: cpu
+  priority: 0
+  after_finished: *id001
+  max_retries: 1
+  retry_delay_seconds: 60
+  id: expanded_xgb
+  command:
+  - flock
+  - /tmp/hft_mm_research_gpu.lock
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_input_comparison.py
+  - config/models/feature_expansion_20261114.yaml
+  - train
+  - --horizon
+  - '180'
+  - --group
+  - combined
+  - --family
+  - xgb
+  - --seed
+  - '17'
+  estimated_peak_gib: 18
+  memory_limit_gib: 28
+  allocation_limit_gib: 128
+  requires_success:
+  - expanded_inputs
+- threads: 2
+  lane: cpu
+  priority: 0
+  after_finished: *id001
+  max_retries: 1
+  retry_delay_seconds: 60
+  id: expanded_mlp
+  command:
+  - flock
+  - /tmp/hft_mm_research_gpu.lock
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_input_comparison.py
+  - config/models/feature_expansion_20261114.yaml
+  - train
+  - --horizon
+  - '180'
+  - --group
+  - combined
+  - --family
+  - mlp
+  - --seed
+  - '17'
+  estimated_peak_gib: 18
+  memory_limit_gib: 28
+  allocation_limit_gib: 128
+  requires_success:
+  - expanded_inputs

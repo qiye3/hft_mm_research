@@ -1,0 +1,19 @@
+# 旧模型30分钟原生实验结束后接续E4风险退出，避免双份事件缓存争用共享盘。
+tasks:
+- id: gen041_native_risk_background
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_research_background.py
+  - config/research/gen041_native_risk_20261114.yaml
+  threads: 4
+  estimated_peak_gib: 28
+  memory_limit_gib: 48
+  allocation_limit_gib: 128
+  lane: cpu
+  priority: 0
+  requires_success:
+  - maker_30m_background
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60

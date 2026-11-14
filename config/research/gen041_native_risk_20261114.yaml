@@ -1,0 +1,63 @@
+# 独立原生风险退出队列；真实事件全部区间结束后才汇总账户门槛。
+stage: overnight
+queue_directory: config/research/gen041_native_risk_queue
+output: workspace/results/gen041_native_risk_20261114_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 1
+  data: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: risk_signals
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_native.py
+  - config/strategy/gen041_native_risk_20261114.yaml
+  - risk-signals
+  threads: 2
+  estimated_peak_gib: 5
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: plan
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_native.py
+  - config/strategy/gen041_native_risk_20261114.yaml
+  - plan
+  threads: 2
+  estimated_peak_gib: 3
+  memory_limit_gib: 8
+  allocation_limit_gib: 32
+  requires_success:
+  - risk_signals
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 0
+- id: build
+  command:
+  - test
+  - -x
+  - workspace/results/gen041_native_risk_20261114_v1/build/strategy_replay
+  threads: 2
+  estimated_peak_gib: 1
+  memory_limit_gib: 8
+  allocation_limit_gib: 32
+  requires_success: []
+  after_finished: []
+  max_retries: 2
+  retry_delay_seconds: 60
+  lane: cpu
+  priority: 1

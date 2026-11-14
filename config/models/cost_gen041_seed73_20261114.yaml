@@ -1,0 +1,13 @@
+# GPU因子/模型对照，固定原fit/tune切分；CLI指定本例种子与树结构。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/cost_gen041_seed73_20261114_v1
+macro_source: workspace/results/gen041_selected_inputs_20261114_v1
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+spot_inputs: workspace/results/cross_market_ablation_20261111_v1/spot/inputs/180s
+horizons_s:
+- 1800
+quantiles:
+- 0.9
+- 0.99
+- 0.999
+profit_output: workspace/results/cost_gen041_seed73_profit_20261114_v1

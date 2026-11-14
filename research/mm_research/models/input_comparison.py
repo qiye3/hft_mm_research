@@ -177,8 +177,18 @@ def prepare_new_inputs(filename: Path, horizon: int) -> None:
 def load_input_group(config: dict, output: Path, horizon: int, group: str, split: str) -> np.ndarray:
     """旧列保留原次序，新列保留选列CSV次序，所有模型共用相同缺失标记。"""
     folders = {'old': Path(config['local_cache']), 'new': output / 'inputs' / f'{horizon}s'}
+    selection = None
+    if 'input_selection' in config:
+        specification = config['input_selection']
+        folders['new'] = Path(specification['source'])
+        selection = json.loads(Path(specification['file']).read_text())['matrix_columns']
     parts = ['old', 'new'] if group == 'combined' else [group]
-    matrices = [np.load(folders[part] / f'{split}_x.npy', mmap_mode='r') for part in parts]
+    matrices = []
+    for part in parts:
+        matrix = np.load(folders[part] / f'{split}_x.npy', mmap_mode='r')
+        if part == 'new' and selection is not None:
+            matrix = matrix[:, selection]
+        matrices.append(matrix)
     if len(matrices) == 1:
         return matrices[0]
     return np.concatenate(matrices, axis=1)
@@ -193,7 +203,7 @@ def predict_input_group(predictor, config: dict, source: Path, output: Path, fol
     labels = np.load(source / 'e0/y.npy', mmap_mode='r')
     target_index = int(np.flatnonzero(HORIZONS == horizon)[0])
     metrics = {}
-    for split in ['val_dev', 'val_select']:
+    for split in ['val_dev']:
         bounds = splits[split]
         # 验证时分别映射旧/新缓存，组合仅在单批内分配。
         parts = ['old', 'new'] if group == 'combined' else [group]
@@ -244,7 +254,7 @@ def predict_input_group(predictor, config: dict, source: Path, output: Path, fol
 
 # 【核心逻辑317】固定超参数对照三种输入，MLP复用逐epoch恢复，树模型采用CUDA分箱。
 def train_input_group(filename: Path, horizon: int, group: str, family: str, seed: int) -> None:
-    """模型只拟合原Train前缀，尾部14天早停，两个外部验证区间仅用于评价。"""
+    """模型只拟合原Train前缀，尾部14天早停，本轮仅评价开发期；冻结复核独立执行。"""
     config, source, output = experiment_context(filename)
     folder = output / 'models' / f'{horizon}s_{group}_{family}_seed{seed}'
     folder.mkdir(parents=True, exist_ok=True)

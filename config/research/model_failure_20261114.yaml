@@ -1,0 +1,168 @@
+# 逐模型独立重放后统一诊断，完整失败记录保留。
+stage: overnight
+queue_directory: config/research/model_failure_queue
+output: workspace/results/model_failure_20261114_v1/queue
+poll_seconds: 5
+start_reserve_gib: 10
+emergency_reserve_gib: 6
+lane_limits:
+  cpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- threads: 2
+  lane: cpu
+  priority: 0
+  after_finished: &id001 []
+  max_retries: 1
+  retry_delay_seconds: 60
+  id: ledger_seed42
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/model_failure_20261114.yaml
+  - screen
+  - --group
+  - seed42
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success: []
+- threads: 2
+  lane: cpu
+  priority: 0
+  after_finished: *id001
+  max_retries: 1
+  retry_delay_seconds: 60
+  id: ledger_seed73
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/model_failure_20261114.yaml
+  - screen
+  - --group
+  - seed73
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success: []
+- threads: 2
+  lane: cpu
+  priority: 0
+  after_finished: *id001
+  max_retries: 1
+  retry_delay_seconds: 60
+  id: ledger_depth2
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/model_failure_20261114.yaml
+  - screen
+  - --group
+  - depth2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success: []
+- threads: 2
+  lane: cpu
+  priority: 0
+  after_finished: *id001
+  max_retries: 1
+  retry_delay_seconds: 60
+  id: ledger_depth6
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/model_failure_20261114.yaml
+  - screen
+  - --group
+  - depth6
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success: []
+- threads: 2
+  lane: cpu
+  priority: 0
+  after_finished: *id001
+  max_retries: 1
+  retry_delay_seconds: 60
+  id: ledger_compact6
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/model_failure_20261114.yaml
+  - screen
+  - --group
+  - compact6
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success: []
+- threads: 2
+  lane: cpu
+  priority: 0
+  after_finished: *id001
+  max_retries: 1
+  retry_delay_seconds: 60
+  id: ledger_e0
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/model_failure_20261114.yaml
+  - screen
+  - --group
+  - e0
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success: []
+- threads: 2
+  lane: cpu
+  priority: 0
+  after_finished: *id001
+  max_retries: 1
+  retry_delay_seconds: 60
+  id: ledger_e4
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/model_failure_20261114.yaml
+  - screen
+  - --group
+  - e4
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success: []
+- threads: 2
+  lane: cpu
+  priority: 0
+  after_finished: *id001
+  max_retries: 1
+  retry_delay_seconds: 60
+  id: diagnostics
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/evaluate_model_failures.py
+  - config/evaluation/model_failure_20261114.yaml
+  estimated_peak_gib: 8
+  memory_limit_gib: 16
+  allocation_limit_gib: 64
+  requires_success:
+  - ledger_seed42
+  - ledger_seed73
+  - ledger_depth2
+  - ledger_depth6
+  - ledger_compact6
+  - ledger_e0
+  - ledger_e4

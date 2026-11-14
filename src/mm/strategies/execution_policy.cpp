@@ -30,6 +30,7 @@ ExecutionParameters load_execution_parameters(const std::filesystem::path& filen
     const bool known_mode = parameters.mode == "fixed" || parameters.mode == "passive"
         || parameters.mode == "skew" || parameters.mode == "inventory" || parameters.mode == "hybrid"
         || parameters.mode == "directional" || parameters.mode == "directional_maker"
+        || parameters.mode == "directional_risk" || parameters.mode == "directional_maker_risk"
         || parameters.mode == "defensive";
     if (!known_mode || (parameters.queue_model != "risk_adverse" && parameters.queue_model != "log_probability")
         || parameters.entry_bps < 0 || parameters.exit_bps < 0 || parameters.exit_bps > parameters.entry_bps
@@ -43,12 +44,14 @@ ExecutionParameters load_execution_parameters(const std::filesystem::path& filen
     return parameters;
 }
 
-// 【核心逻辑236】预测CSV仅接受时间键和bps预测两列，整秒间距保证交易网格完整。
-PredictionSeries::PredictionSeries(const std::filesystem::path& filename) {
+// 【核心逻辑236】普通模式严格读取两列，风险模式明确增加risk_bps列，均保持完整整秒网格。
+PredictionSeries::PredictionSeries(const std::filesystem::path& filename, bool with_risk) {
     std::ifstream input(filename);
     std::string line;
-    if (!input || !std::getline(input, line) || line != "timestamp_ns,prediction_bps") {
-        throw std::invalid_argument("prediction CSV requires timestamp_ns,prediction_bps");
+    const std::string header = with_risk ? "timestamp_ns,prediction_bps,risk_bps"
+                                         : "timestamp_ns,prediction_bps";
+    if (!input || !std::getline(input, line) || line != header) {
+        throw std::invalid_argument("prediction CSV requires " + header);
     }
     while (std::getline(input, line)) {
         const auto separator = line.find(',');
@@ -59,6 +62,13 @@ PredictionSeries::PredictionSeries(const std::filesystem::path& filename) {
             throw std::invalid_argument("prediction grid must be complete UTC seconds");
         }
         values_.emplace_back(timestamp, value);
+        if (with_risk) {
+            const auto risk_separator = line.find(',', separator + 1);
+            if (risk_separator == std::string::npos) {
+                throw std::invalid_argument("risk prediction row requires three columns");
+            }
+            risks_.push_back(std::stod(line.substr(risk_separator + 1)));
+        }
     }
     if (values_.empty()) {
         throw std::invalid_argument("prediction file is empty");
@@ -75,6 +85,16 @@ double PredictionSeries::at(std::int64_t timestamp, std::int64_t latency) {
         return std::numeric_limits<double>::quiet_NaN();
     }
     return values_[cursor_].second;
+}
+
+// 【非核心】不另建时钟，风险列和模型值必须来自同一条已经可见的记录。
+double PredictionSeries::risk_at(std::int64_t timestamp, std::int64_t latency) {
+    at(timestamp, latency);
+    const auto ready_at = values_[cursor_].first + latency;
+    if (ready_at > timestamp || timestamp - ready_at >= 1'000'000'000) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    return risks_.at(cursor_);
 }
 
 // 【非核心】订单ID、目标库存及持有时间只服务于策略决策，订单状态从Backtest读取。
@@ -178,31 +198,62 @@ std::pair<double, double> ExecutionPolicy::maker_close(hbt::Backtest& backtest) 
     return maker_.quote_targets(backtest, std::nullopt, std::nullopt, 0, 0);
 }
 
+// 【核心逻辑408】与研究policy5共用同一止损和移动止盈公式，风险固定于真实开仓时。
+bool risk_exit_trigger(double mark_bps, double entry_risk_bps, double& best_mark_bps) {
+    best_mark_bps = std::max(best_mark_bps, mark_bps);
+    const bool stop_hit = mark_bps <= -2 * entry_risk_bps;
+    const bool trailing_hit = best_mark_bps >= 2 * entry_risk_bps
+        && mark_bps <= best_mark_bps - entry_risk_bps;
+    return stop_hit || trailing_hit;
+}
+
 // 【核心逻辑240】分离开仓信号、库存目标与风险退出，所有委托仍通过原生Backtest执行。
 std::pair<double, double> ExecutionPolicy::decide(hbt::Backtest& backtest, double alpha,
-        bool quotes_allowed, bool final_exit, bool book_fresh) {
+        bool quotes_allowed, bool final_exit, bool book_fresh, double risk_bps) {
     const auto now = backtest.current_timestamp();
     const double position = backtest.position(0);
+    const bool risk_mode = parameters_.mode == "directional_risk"
+        || parameters_.mode == "directional_maker_risk";
+    const bool maker_mode = parameters_.mode == "directional_maker"
+        || parameters_.mode == "directional_maker_risk";
     const int sign = position > config_.lot_size * .5 ? 1 : (position < -config_.lot_size * .5 ? -1 : 0);
     if (sign != position_sign_) {
         opened_at_ = sign == 0 ? 0 : now;
         position_sign_ = sign;
+        best_mark_bps_ = 0;
         if (sign == 0) {
             reducing_ = false;
+            reducing_at_ = 0;
+        } else if (risk_mode) {
+            entry_risk_bps_ = pending_risk_bps_;
+            if (!(entry_risk_bps_ > 0)) {
+                throw std::runtime_error("filled risk order has no valid entry risk");
+            }
         }
     }
-    if (sign != 0 && now - opened_at_ >= parameters_.max_hold_ns) {
+    if (!reducing_ && sign != 0 && now - opened_at_ >= parameters_.max_hold_ns) {
         reducing_ = true;
+        reducing_at_ = now;
     }
     const bool valid_book = book_fresh && std::isfinite(backtest.mid(0))
         && backtest.best_bid_tick(0) < backtest.best_ask_tick(0);
+    // 按实际平均成交成本和本地报价判断，不能用预定成交价替代实际成交。
+    if (risk_mode && sign != 0 && valid_book && !reducing_) {
+        const double entry_price = recorder_.summary().average_cost;
+        const double visible_price = sign > 0 ? backtest.best_bid(0) : backtest.best_ask(0);
+        const double ratio = visible_price / entry_price;
+        const double mark_bps = sign * (ratio - 1) * 10000 - config_.taker_fee * 10000 * (1 + ratio);
+        if (risk_exit_trigger(mark_bps, entry_risk_bps_, best_mark_bps_)) {
+            reducing_ = true;
+            reducing_at_ = now;
+        }
+    }
     if (final_exit) {
         return liquidate(backtest, true, valid_book);
     }
     if (reducing_) {
         // Maker退出只等待一个TTL；期间部分成交继续减仓，到时先撤单再IOC。
-        const bool maker_exit_window = parameters_.mode == "directional_maker"
-            && now - opened_at_ < parameters_.max_hold_ns + parameters_.ttl_ns;
+        const bool maker_exit_window = maker_mode && now - reducing_at_ < parameters_.ttl_ns;
         if (maker_exit_window && valid_book) {
             return maker_close(backtest);
         }
@@ -223,7 +274,13 @@ std::pair<double, double> ExecutionPolicy::decide(hbt::Backtest& backtest, doubl
         reducing_ = true;
         return liquidate(backtest, false, valid_book);
     }
-    if (parameters_.mode == "directional_maker") {
+    if (risk_mode && sign == 0) {
+        if (!std::isfinite(risk_bps) || risk_bps <= 0) {
+            return maker_.quote_targets(backtest, std::nullopt, std::nullopt, 0, 0);
+        }
+        pending_risk_bps_ = risk_bps;
+    }
+    if (maker_mode) {
         if (sign != 0 || alpha == 0 || std::abs(alpha) < entry_gate) {
             return maker_.quote_targets(backtest, std::nullopt, std::nullopt, 0, 0);
         }
@@ -240,7 +297,7 @@ std::pair<double, double> ExecutionPolicy::decide(hbt::Backtest& backtest, doubl
         return post(backtest, std::nullopt, backtest.best_ask_tick(0), 0, config_.order_quantity);
     }
     // 固定持有实验在空仓时按信号IOC开仓，持仓超时沿用上方原生减仓路径。
-    if (parameters_.mode == "directional") {
+    if (parameters_.mode == "directional" || parameters_.mode == "directional_risk") {
         if (sign == 0 && alpha != 0 && std::abs(alpha) >= entry_gate) {
             take(backtest, alpha > 0 ? hbt::Side::Buy : hbt::Side::Sell,
                  config_.order_quantity, "alpha_taker");
@@ -346,8 +403,11 @@ TradingSummary run_execution_replay(const TradingConfig& config, const Execution
         const bool fresh = engine.local->last_book_timestamp_ns > 0
             && now - engine.local->last_book_timestamp_ns <= 1'000'000'000;
         const double alpha = parameters.mode == "fixed" ? 0 : predictions.at(now, parameters.prediction_latency_ns);
+        const bool risk_mode = parameters.mode == "directional_risk" || parameters.mode == "directional_maker_risk";
+        const double risk = risk_mode ? predictions.risk_at(now, parameters.prediction_latency_ns)
+                                      : std::numeric_limits<double>::quiet_NaN();
         const auto reserved = policy.decide(backtest, alpha, now >= config.quote_start_timestamp_ns,
-                                            now >= config.quote_stop_timestamp_ns, fresh);
+                                            now >= config.quote_stop_timestamp_ns, fresh, risk);
         if (std::isfinite(engine.local->last_mid)) {
             recorder.checkpoint(now, engine.local->last_mid, backtest.state_values(0), reserved.first, reserved.second);
             const auto& state = backtest.state_values(0);

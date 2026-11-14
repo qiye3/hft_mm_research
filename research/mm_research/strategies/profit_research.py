@@ -74,6 +74,17 @@ def save_screening_case(output: Path, identifier: str, specification: dict,
     folder = output / 'cases'
     folder.mkdir(exist_ok=True)
     trades.write_parquet(folder / f'{identifier}.trades.parquet', compression='zstd')
+    # 分钟抽样直接来自执行账本，不根据往返成交重建或插值权益。
+    sampled = ledger[::60]
+    pl.DataFrame({
+        'timestamp_s': sampled[:, 0],
+        'position_btc': sampled[:, 3],
+        'cashflow_usdt': sampled[:, 4],
+        'fees_usdt': sampled[:, 5],
+        'funding_paid_usdt': sampled[:, 6],
+        'net_pnl_liquidated_usdt': sampled[:, 7],
+        'margin_rejections': sampled[:, 10],
+    }).write_parquet(folder / f'{identifier}.timeline.parquet', compression='zstd')
     pl.DataFrame(daily).write_csv(folder / f'{identifier}.daily.csv')
     record = {
         'id': identifier, **specification, 'round_trips': trades.height,
