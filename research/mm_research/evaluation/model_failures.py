@@ -153,3 +153,75 @@ def output_profile(edge: np.ndarray, probability: np.ndarray, target: np.ndarray
         result[f'edge_q{quantile}'] = float(np.quantile(edge, quantile))
         result[f'actual_q{quantile}'] = float(np.quantile(actual, quantile))
     return result
+
+
+# 【非核心】入场状态截止上一完整秒，剔除跨质量区段的历史收益。
+def entry_past_return(market: np.ndarray, entry_rows: np.ndarray, horizon: int) -> np.ndarray:
+    """返回入场前horizon秒的对数bps；不读取入场所在秒或任何未来价格。"""
+    last = entry_rows - 1
+    first = last - horizon
+    prices = market[last, 0]
+    past_prices = market[first, 0]
+    valid = (
+        (market[last, 8] > .5)
+        & (market[first, 8] > .5)
+        & (market[last, 9] == market[first, 9])
+        & np.isfinite(prices)
+        & np.isfinite(past_prices)
+        & (prices > 0)
+        & (past_prices > 0)
+    )
+    returns = np.full(len(entry_rows), np.nan)
+    returns[valid] = np.log(prices[valid] / past_prices[valid]) * 10000
+    return returns
+
+
+# 【核心逻辑414】按事前趋势与波动归因实际交易，不用未来收益划分行情或删除交易。
+def evaluate_entry_regimes(filename: Path) -> None:
+    """复用逐笔账本，固定10bps趋势分界和20bps波动分界，只诊断开发期。"""
+    _, config, output = context(filename)
+    source = Path(config['source'])
+    manifest = json.loads((source / 'e0/manifest.json').read_text())
+    market = np.load(source / 'e0/market.npy', mmap_mode='r')
+    trades = pl.read_parquet(output / 'trades_with_signal.parquet')
+    entry_rows = np.rint(
+        trades['entry_time_s'].to_numpy() - manifest['start_timestamp_ns'] / SECOND - .002
+    ).astype('int64')
+    for horizon in [600, 1800]:
+        past_return = entry_past_return(market, entry_rows, horizon)
+        trades = trades.with_columns(pl.Series(f'past_{horizon}s_bps', past_return).fill_nan(None))
+    trades = trades.with_columns(
+        pl.when(pl.col('past_1800s_bps').is_null()).then(pl.lit('unknown'))
+        .when(pl.col('past_1800s_bps') < -10).then(pl.lit('falling'))
+        .when(pl.col('past_1800s_bps') > 10).then(pl.lit('rising'))
+        .otherwise(pl.lit('flat')).alias('trend'),
+        pl.when(~pl.col('entry_past_600s_vol_bps').is_finite()).then(pl.lit('unknown'))
+        .when(pl.col('entry_past_600s_vol_bps') >= 20).then(pl.lit('high'))
+        .otherwise(pl.lit('low')).alias('volatility'),
+    )
+    statistics = [
+        pl.len().alias('trades'),
+        pl.col('gross_pnl_usdt').sum().alias('gross_usdt'),
+        pl.col('net_pnl_usdt').sum().alias('net_usdt'),
+        pl.col('net_pnl_usdt').mean().alias('mean_net_usdt'),
+        pl.col('net_pnl_usdt').min().alias('worst_trade_usdt'),
+        (pl.col('net_pnl_usdt') > 0).mean().alias('win_rate'),
+        pl.col('holding_seconds').median().alias('median_hold_s'),
+    ]
+    for dimension in ['trend', 'volatility']:
+        trades.group_by(['model', dimension]).agg(statistics).sort(
+            ['model', dimension]
+        ).write_csv(output / f'trades_by_{dimension}.csv')
+    trades.group_by(['model', 'trend', 'volatility']).agg(statistics).sort(
+        ['model', 'trend', 'volatility']
+    ).write_csv(output / 'trades_by_joint_regime.csv')
+    trades.write_parquet(output / 'trades_with_regime.parquet')
+    write_json_atomic(output / 'regimes_completed.json', {
+        'status': 'success',
+        'split': 'val_dev',
+        'trend_horizon_s': 1800,
+        'trend_boundary_bps': 10,
+        'volatility_boundary_bps': 20,
+        'purpose': 'descriptive_attribution_not_parameter_selection',
+        'information_cutoff': 'previous_complete_second',
+    })
