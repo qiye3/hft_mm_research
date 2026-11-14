@@ -35,3 +35,9 @@ PYTHONPATH=research .venv-models/bin/python scripts/run_research_background.py c
 ```
 
 第一条命令完成Release构建及执行模式测试，第二条接管数据准备、回放和完整账户报告。队列的build任务只确认已构建程序存在。
+
+## 并行风险退出实验
+
+配置config/strategy/account_risk_20261112.yaml新增四个开发案例：seed17信号、1800/7200秒双周期同向共识，各比较3600/14400秒最大持有。每例0.10BTC，复用policy5：以入场前600秒波动确定风险距离，达到两倍风险距离止损；浮盈达到两倍风险距离后，回撤一倍风险距离触发移动止盈。波动下限和部分退出行为沿用现有执行器。
+
+这组实验采用到达时十档盘口逐档成交，Taker5bps及实际资金费，区别于本轮原生Maker实验。沿用开发年化30%、最高1倍敞口、去掉最好周仍正收益的晋级门槛；通过者才冻结复核，之后仍须原生验证。追加批次config/research/maker_native_queue/account_risk.yaml，与转换和回放共用队列内存准入，保留全部失败案例。

@@ -1,0 +1,103 @@
+# 与原生回放共享内存准入；四例开发完成后仅复核通过30%门槛者。
+tasks:
+- id: risk_cost1800_vol3600
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_risk_20261112.yaml
+  - screen
+  - --group
+  - cost1800_vol3600
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 5
+  requires_success:
+  - build
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: risk_cost1800_vol14400
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_risk_20261112.yaml
+  - screen
+  - --group
+  - cost1800_vol14400
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 5
+  requires_success:
+  - build
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: risk_agreement_vol3600
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_risk_20261112.yaml
+  - screen
+  - --group
+  - agreement_vol3600
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 5
+  requires_success:
+  - build
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: risk_agreement_vol14400
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_risk_20261112.yaml
+  - screen
+  - --group
+  - agreement_vol14400
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 5
+  requires_success:
+  - build
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: risk_review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_risk_20261112.yaml
+  - review
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 6
+  requires_success:
+  - risk_cost1800_vol3600
+  - risk_cost1800_vol14400
+  - risk_agreement_vol3600
+  - risk_agreement_vol14400
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
