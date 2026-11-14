@@ -30,3 +30,23 @@ def test_entry_regime_uses_past_only():
     np.testing.assert_allclose(entry_past_return(market, rows, 2), expected)
     market[6, 9] = 2.
     assert np.isnan(entry_past_return(market, rows, 2)[1])
+
+
+# 【非核心】按逐秒标记计数缺口，入场所在秒不得混入诊断窗口。
+def test_entry_window_quality():
+    """已知两个无效秒和一次恢复，随后修改未来行不影响统计。"""
+    from mm_research.evaluation.model_failures import entry_window_quality
+
+    market = np.ones((10, 10))
+    market[:, 5] = np.arange(10) * 1_000_000_000
+    market[:, 7] = 20_000_000
+    market[2:4, 8] = 0.
+    market[4:, 9] = 2.
+    result = entry_window_quality(market, 7, 5)
+    assert result['past_invalid_seconds'] == 2
+    assert result['past_longest_invalid_seconds'] == 2
+    assert result['past_segment_changes'] == 1
+    assert result['seconds_since_segment_change'] == 3
+    assert result['past_max_exchange_step_s'] == 1.
+    market[7:, 8] = 0.
+    assert entry_window_quality(market, 7, 5) == result

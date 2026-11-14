@@ -187,6 +187,8 @@ def evaluate_entry_regimes(filename: Path) -> None:
     entry_rows = np.rint(
         trades['entry_time_s'].to_numpy() - manifest['start_timestamp_ns'] / SECOND - .002
     ).astype('int64')
+    quality = pl.DataFrame([entry_window_quality(market, int(row), 1800) for row in entry_rows])
+    trades = trades.hstack(quality)
     for horizon in [600, 1800]:
         past_return = entry_past_return(market, entry_rows, horizon)
         trades = trades.with_columns(pl.Series(f'past_{horizon}s_bps', past_return).fill_nan(None))
@@ -225,3 +227,22 @@ def evaluate_entry_regimes(filename: Path) -> None:
         'purpose': 'descriptive_attribution_not_parameter_selection',
         'information_cutoff': 'previous_complete_second',
     })
+
+
+# 【非核心】直接检查入场前窗口的逐秒盘口，保留区段变化及原始时钟跳跃，不推断缺失原因。
+def entry_window_quality(market: np.ndarray, entry_row: int, horizon: int) -> dict:
+    """输出窗口内无效秒、最长连续无效秒、区段变化数及最近变化距入场秒数。"""
+    window = market[entry_row - horizon - 1:entry_row]
+    invalid = window[:, 8] <= .5
+    run_edges = np.flatnonzero(np.diff(np.r_[False, invalid, False]))
+    invalid_lengths = run_edges[1::2] - run_edges[::2]
+    changes = np.flatnonzero(np.diff(window[:, 9]) != 0) + 1
+    exchange_steps = np.diff(window[:, 5]) / SECOND
+    return {
+        'past_invalid_seconds': int(invalid.sum()),
+        'past_longest_invalid_seconds': int(invalid_lengths.max()) if len(invalid_lengths) else 0,
+        'past_segment_changes': len(changes),
+        'seconds_since_segment_change': int(len(window) - changes[-1]) if len(changes) else None,
+        'past_max_exchange_step_s': float(np.nanmax(exchange_steps)),
+        'past_max_snapshot_age_s': float(np.nanmax(window[:, 7]) / SECOND),
+    }
