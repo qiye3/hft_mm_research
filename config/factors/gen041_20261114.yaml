@@ -1,0 +1,8 @@
+# Gen041研究准备；run_gen041.py；输入既有标准逐笔和Features，输出本轮独立阈值及后续因子。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/gen041_20261114_v1
+standard_folder: workspace/data/standard/server_market_v1
+feature_folder: workspace/data/features/server_531d_v1
+factor_folder: workspace/data/factors/gen041_20261114_v1
+lot_size: 0.001
+min_fraction: 0.8
