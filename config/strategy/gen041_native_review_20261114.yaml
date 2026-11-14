@@ -1,0 +1,15 @@
+# 冻结历史复核：与开发相同模型、0.125BTC和风险退出；输入历史事件，输出完整账户账本。
+source: workspace/results/multihorizon_20261109_v1
+signals: workspace/results/gen041_native_review_20261114_v1/signals
+output: workspace/results/gen041_native_review_20261114_v1
+binary_folder: workspace/results/gen041_native_risk_20261114_v1/build
+standard_trades: workspace/data/standard/server_market_v1/trades
+credential_file: /root/.config/hft_mm_research/gen041_native_review_20261114.md
+queue_directory: config/research/gen041_native_review_queue
+hold_s: 3600
+splits:
+- val_select
+order_quantity: 0.125
+mode: directional_maker_risk
+ttl_ms: 30000
+model_source: workspace/results/cost_gen041_e4_20261114_v1
