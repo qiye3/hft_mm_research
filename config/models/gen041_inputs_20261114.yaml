@@ -1,0 +1,6 @@
+# 模型输入缓存；run_gen041.py ... cache；输入独立36因子及旧18列慢状态，输出E1/E2/E3矩阵。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/gen041_inputs_20261114_v1
+factor_run: workspace/results/gen041_20261114_v1
+factor_folder: workspace/data/factors/gen041_20261114_v1
+previous_macro_source: workspace/results/intraday_20261111_v1

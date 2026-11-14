@@ -37,7 +37,13 @@ def second_statistics(raw: pl.DataFrame) -> pl.DataFrame:
         for column in TRADE_COLUMNS
     ])
     seconds = raw.group_by(((pl.col("timestamp_ns") + SECOND - 1) // SECOND * SECOND).alias("timestamp_ns"))
-    frame = seconds.agg(*aggregations).sort("timestamp_ns").with_columns(
+    return attach_book_statistics(seconds.agg(*aggregations).sort("timestamp_ns"))
+
+
+# 【非核心】共享秒末盘口计算，生产链路可先过滤整秒，避免物化十倍的盘口矩阵。
+def attach_book_statistics(seconds: pl.DataFrame) -> pl.DataFrame:
+    """输入秒末盘口及秒内OBI/成交统计，返回成本、深度、方向一致性与差分。"""
+    frame = seconds.with_columns(
         pl.col("timestamp_ns").cast(pl.Datetime("ns")).dt.strftime("%Y-%m-%d").alias("date"),
         pl.sum_horizontal([pl.col(f"bid_quantity_{level}") for level in range(1, 11)], ignore_nulls=False).alias("bid_depth"),
         pl.sum_horizontal([pl.col(f"ask_quantity_{level}") for level in range(1, 11)], ignore_nulls=False).alias("ask_depth"),

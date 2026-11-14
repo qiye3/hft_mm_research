@@ -1,0 +1,37 @@
+# 仅开发回测：0.10BTC、固定2小时、Taker5bps及资金费；与旧模型同规则比较。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/account_gen041_20261114_v1/screening
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+quantities_btc:
+- 0.1
+groups:
+  e1:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_e1_20261114_v1
+      pattern: h1800_side{side}
+  e2:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_e2_20261114_v1
+      pattern: h1800_side{side}
+  e3:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_e3_20261114_v1
+      pattern: h1800_side{side}
+rules:
+  e1:
+    policy: 0
+    minimum_hold_s: 7200
+    max_hold_s: 7200
+  e2:
+    policy: 0
+    minimum_hold_s: 7200
+    max_hold_s: 7200
+  e3:
+    policy: 0
+    minimum_hold_s: 7200
+    max_hold_s: 7200
