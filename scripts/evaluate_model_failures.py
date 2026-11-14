@@ -2,6 +2,7 @@
 
 import argparse
 from pathlib import Path
+from mm_research.evaluation.trade_paths import evaluate_trade_paths
 from mm_research.evaluation.model_failures import (
     evaluate_model_failures, evaluate_entry_regimes, evaluate_regression_outputs,
 )
@@ -15,8 +16,11 @@ def main() -> None:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--regimes-only', action='store_true')
     mode.add_argument('--regression-only', action='store_true')
+    mode.add_argument('--paths-only', action='store_true')
     arguments = parser.parse_args()
-    if arguments.regression_only:
+    if arguments.paths_only:
+        evaluate_trade_paths(arguments.config)
+    elif arguments.regression_only:
         evaluate_regression_outputs(arguments.config)
     elif arguments.regimes_only:
         evaluate_entry_regimes(arguments.config)
