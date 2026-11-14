@@ -47,6 +47,17 @@ def confirmed_entry(signal: np.ndarray, seconds: int) -> np.ndarray:
     return (signal != 0.) & (rows - run_start + 1 >= seconds)
 
 
+# 【核心逻辑416】短周期预测只作为入场方向确认，严格校对整秒时间键，不使用未来标签。
+def directional_entry_filter(filename: Path, signal: np.ndarray, start_ns: int) -> np.ndarray:
+    """读取当时已生成的预测，正负方向与主信号相同才准入；缺失或零预测不准入。"""
+    frame = pl.read_parquet(filename, columns=['timestamp_ns', 'prediction_log_bps'])
+    expected = start_ns + np.arange(len(signal), dtype='int64') * SECOND
+    if not np.array_equal(frame['timestamp_ns'].to_numpy(), expected):
+        raise ValueError('短周期确认预测与主策略完整时间网格不一致')
+    prediction = frame['prediction_log_bps'].to_numpy()
+    return np.isfinite(prediction) & (prediction * signal > 0.)
+
+
 # 【核心逻辑391】每个规模重新按十档数量撮合，现金约束与手续费随实际成交变化。
 def screen_account(filename: Path, group: str, split: str) -> None:
     """开发比较固定规模网格，复核只使用开发冻结规模，不线性乘大旧利润。"""
@@ -69,6 +80,11 @@ def screen_account(filename: Path, group: str, split: str) -> None:
         chosen = json.loads((output / 'selected.json').read_text())['candidates']
         quantities = [row['quantity_btc'] for row in chosen if row['group'] == group]
     entry_allowed = np.ones(len(predictions))
+    if 'entry_filter_prediction' in rule:
+        filter_file = Path(rule['entry_filter_prediction'].format(split=split))
+        entry_allowed *= directional_entry_filter(
+            filter_file, predictions, manifest['start_timestamp_ns'] + begin * SECOND,
+        )
     if 'entry_confirmation_s' in rule:
         entry_allowed *= confirmed_entry(predictions, rule['entry_confirmation_s'])
     entry_allowed[:120] = 0.
