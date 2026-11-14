@@ -13,7 +13,7 @@ def main() -> None:
     parser.add_argument('config', type=Path)
     parser.add_argument('--horizon', type=int, choices=[1800, 7200], required=True)
     parser.add_argument('--side', type=int, choices=[-1, 1], required=True)
-    parser.add_argument('--family', choices=['huber', 'clipped'], required=True)
+    parser.add_argument('--family', choices=['huber', 'clipped', 'mean'], required=True)
     arguments = parser.parse_args()
     train_net_value(arguments.config, arguments.horizon, arguments.side, arguments.family)
 
