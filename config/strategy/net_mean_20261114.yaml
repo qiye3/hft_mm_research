@@ -1,0 +1,28 @@
+# 开发回放原180列与完整216列均值模型；相同0.125BTC和风险规则。
+source: workspace/results/multihorizon_20261109_v1
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+output: workspace/results/net_mean_20261114_v1/strategy
+quantities_btc:
+- 0.125
+groups:
+  old:
+    combination: mean
+    sources:
+    - folder: workspace/results/net_mean_old_20261114_v1
+      pattern: mean_h1800_side{side}
+  full:
+    combination: mean
+    sources:
+    - folder: workspace/results/net_mean_full_20261114_v1
+      pattern: mean_h1800_side{side}
+rules:
+  old:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
+  full:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600

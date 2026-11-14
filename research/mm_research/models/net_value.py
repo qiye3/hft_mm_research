@@ -62,9 +62,14 @@ def train_net_value(filename: Path, horizon: int, side: int, family: str) -> Non
             temporary_files.append(temporary)
             del values
             cp.get_default_memory_pool().free_all_blocks()
-        objective = {'huber': 'reg:pseudohubererror', 'clipped': 'reg:squarederror'}[family]
+        # 均值模型使用未截尾目标及RMSE早停；原稳健模型保持MAE，分别检验不同统计目标。
+        objective, metric = {
+            'huber': ('reg:pseudohubererror', 'mae'),
+            'clipped': ('reg:squarederror', 'mae'),
+            'mean': ('reg:squarederror', 'rmse'),
+        }[family]
         model = xgb.train({
-            'objective': objective, 'eval_metric': 'mae', 'tree_method': 'hist', 'device': 'cuda',
+            'objective': objective, 'eval_metric': metric, 'tree_method': 'hist', 'device': 'cuda',
             'max_depth': 4, 'max_bin': 64, 'min_child_weight': 500, 'eta': .05,
             'subsample': .8, 'colsample_bytree': .8, 'lambda': 10, 'seed': 17, 'nthread': 2,
         }, matrices['fit'], num_boost_round=800, evals=[(matrices['tune'], 'tune')],
@@ -87,6 +92,7 @@ def train_net_value(filename: Path, horizon: int, side: int, family: str) -> Non
     write_json_atomic(folder / 'completed.json', {
         'status': 'success', 'family': family, 'horizon_s': horizon, 'side': side,
         'seed': 17, 'rounds': rounds, 'target_center_bps': center, 'target_scale_bps': scale,
+        'objective': objective, 'early_stopping_metric': metric,
         'fit_rows': len(positions['fit']), 'tune_rows': len(positions['tune']),
         'evaluation_labels': 'all_valid_original_returns_without_tail_deletion',
     })

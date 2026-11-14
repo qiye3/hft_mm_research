@@ -1,0 +1,143 @@
+# 四个GPU均值模型与两个开发回放，失败独立记录；不启动历史复核。
+stage: overnight
+queue_directory: config/research/net_mean_queue
+output: workspace/results/net_mean_20261114_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  gpu: 1
+  cpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: old_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_mean_old_20261114.yaml
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --family
+  - mean
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: &id001 []
+  after_finished: &id002 []
+  lane: gpu
+  priority: 0
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: old_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_mean_old_20261114.yaml
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --family
+  - mean
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: *id001
+  after_finished: *id002
+  lane: gpu
+  priority: 0
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: old_screen
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/net_mean_20261114.yaml
+  - screen
+  - --group
+  - old
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success:
+  - old_side1
+  - old_side-1
+  after_finished: &id003 []
+  lane: cpu
+  priority: 1
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: full_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_mean_full_20261114.yaml
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --family
+  - mean
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: *id001
+  after_finished: *id002
+  lane: gpu
+  priority: 0
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: full_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_net_value.py
+  - config/models/net_mean_full_20261114.yaml
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --family
+  - mean
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: *id001
+  after_finished: *id002
+  lane: gpu
+  priority: 0
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: full_screen
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/net_mean_20261114.yaml
+  - screen
+  - --group
+  - full
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success:
+  - full_side1
+  - full_side-1
+  after_finished: *id003
+  lane: cpu
+  priority: 1
+  max_retries: 1
+  retry_delay_seconds: 60

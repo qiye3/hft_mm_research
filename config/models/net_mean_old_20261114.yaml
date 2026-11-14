@@ -1,0 +1,6 @@
+# 均值净收益模型：原始费用后目标，平方损失，RMSE早停；复用固定fit/tune与输入。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/net_mean_old_20261114_v1
+macro_source: workspace/results/intraday_20261111_v1
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+spot_inputs: workspace/results/cross_market_ablation_20261111_v1/spot/inputs/180s
