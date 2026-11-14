@@ -1,0 +1,9 @@
+# 已完成六个180秒模型的开发预测→分布、时间相关与分位诊断；不运行交易或读取复核。
+output: workspace/results/model_failure_20261114_v1/regression180
+predictions:
+  wide_xgb: workspace/results/feature_expansion_20261114_v1/models/180s_combined_xgb_seed17/val_dev.parquet
+  wide_mlp: workspace/results/feature_expansion_20261114_v1/models/180s_combined_mlp_seed17/val_dev.parquet
+  family_xgb: workspace/results/feature_expansion_20261114_v1/family_balanced/models/180s_combined_xgb_seed17/val_dev.parquet
+  family_mlp: workspace/results/feature_expansion_20261114_v1/family_balanced/models/180s_combined_mlp_seed17/val_dev.parquet
+  pruned_xgb: workspace/results/feature_expansion_20261114_v1/correlation_pruned/models/180s_combined_xgb_seed17/val_dev.parquet
+  pruned_mlp: workspace/results/feature_expansion_20261114_v1/correlation_pruned/models/180s_combined_mlp_seed17/val_dev.parquet

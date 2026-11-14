@@ -50,3 +50,30 @@ def test_entry_window_quality():
     assert result['past_max_exchange_step_s'] == 1.
     market[7:, 8] = 0.
     assert entry_window_quality(market, 7, 5) == result
+
+
+# 【非核心】回归评价必须排除无效标签，同时保留完整预测网格计数。
+def test_regression_diagnostic_population(tmp_path):
+    """线性可手算标签检查RMSE与分桶总数，最后一行无效极值不能污染结果。"""
+    import polars as pl
+    import yaml
+    from mm_research.evaluation.model_failures import evaluate_regression_outputs
+
+    prediction = np.linspace(-1., 1., 701)
+    actual = prediction * 2
+    actual[-1] = 10000.
+    prediction_file = tmp_path / 'predictions.parquet'
+    pl.DataFrame({
+        'prediction_log_bps': prediction,
+        'target_log_bps': actual,
+        'evaluation_valid': np.arange(701) < 700,
+    }).write_parquet(prediction_file)
+    output = tmp_path / 'output'
+    config = tmp_path / 'config.yaml'
+    config.write_text(yaml.safe_dump({'output': str(output), 'predictions': {'example': str(prediction_file)}}))
+    evaluate_regression_outputs(config)
+    profile = pl.read_csv(output / 'regression_profiles.csv').row(0, named=True)
+    assert profile['grid_rows'] == 701
+    assert profile['label_rows'] == 700
+    np.testing.assert_allclose(profile['rmse_bps'], np.sqrt(np.mean(prediction[:-1] ** 2)))
+    assert pl.read_csv(output / 'regression_deciles.csv')['rows'].sum() == 700

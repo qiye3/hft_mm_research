@@ -246,3 +246,68 @@ def entry_window_quality(market: np.ndarray, entry_row: int, horizon: int) -> di
         'past_max_exchange_step_s': float(np.nanmax(exchange_steps)),
         'past_max_snapshot_age_s': float(np.nanmax(window[:, 7]) / SECOND),
     }
+
+
+# 【核心逻辑415】对180秒回归模型按同一开发标签比较分布、时间持续性和分位实际收益。
+def evaluate_regression_outputs(filename: Path) -> None:
+    """只读取已生成开发预测，分位组用于诊断，不将开发分位作为新交易阈值。"""
+    _, config, output = context(filename)
+    profiles = []
+    bins = []
+    temporal = []
+    for name, prediction_file in config['predictions'].items():
+        frame = pl.read_parquet(prediction_file)
+        prediction = frame['prediction_log_bps'].to_numpy()
+        target = frame['target_log_bps'].to_numpy().copy()
+        target[~frame['evaluation_valid'].to_numpy()] = np.nan
+        valid = np.isfinite(prediction) & np.isfinite(target)
+        predicted = prediction[valid]
+        actual = target[valid]
+        error = predicted - actual
+        profiles.append({
+            'model': name,
+            'grid_rows': len(prediction),
+            'label_rows': int(valid.sum()),
+            'prediction_mean_bps': float(predicted.mean()),
+            'actual_mean_bps': float(actual.mean()),
+            'prediction_std_bps': float(predicted.std()),
+            'actual_std_bps': float(actual.std()),
+            'prediction_q01_bps': float(np.quantile(predicted, .01)),
+            'prediction_q99_bps': float(np.quantile(predicted, .99)),
+            'actual_q01_bps': float(np.quantile(actual, .01)),
+            'actual_q99_bps': float(np.quantile(actual, .99)),
+            'rmse_bps': float(np.sqrt(np.mean(error * error))),
+            'ic': finite_correlation(predicted, actual),
+            'sign_accuracy': float(np.mean(np.sign(predicted) == np.sign(actual))),
+        })
+        boundaries = np.quantile(predicted, np.arange(1, 10) / 10.)
+        groups = np.searchsorted(boundaries, predicted, side='right')
+        for group in range(10):
+            selected = groups == group
+            if not selected.any():
+                continue
+            bins.append({
+                'model': name,
+                'decile': group + 1,
+                'rows': int(selected.sum()),
+                'prediction_mean_bps': float(predicted[selected].mean()),
+                'actual_mean_bps': float(actual[selected].mean()),
+                'actual_std_bps': float(actual[selected].std()),
+            })
+        for lag in [1, 60, 180, 600]:
+            temporal.append({
+                'model': name,
+                'lag_s': lag,
+                'prediction_autocorrelation': finite_correlation(prediction[:-lag], prediction[lag:]),
+                'actual_autocorrelation': finite_correlation(target[:-lag], target[lag:]),
+            })
+    pl.DataFrame(profiles).write_csv(output / 'regression_profiles.csv')
+    pl.DataFrame(bins).write_csv(output / 'regression_deciles.csv')
+    pl.DataFrame(temporal).write_csv(output / 'regression_temporal.csv')
+    write_json_atomic(output / 'regression_completed.json', {
+        'status': 'success',
+        'split': 'val_dev',
+        'horizon_s': 180,
+        'target': 'log_mid_return_bps_before_costs',
+        'deciles': 'descriptive_development_only_not_trading_thresholds',
+    })

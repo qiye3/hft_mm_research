@@ -2,7 +2,9 @@
 
 import argparse
 from pathlib import Path
-from mm_research.evaluation.model_failures import evaluate_model_failures, evaluate_entry_regimes
+from mm_research.evaluation.model_failures import (
+    evaluate_model_failures, evaluate_entry_regimes, evaluate_regression_outputs,
+)
 
 
 # 【非核心】配置明确模型、同规则交易账本及独立诊断输出目录。
@@ -10,9 +12,13 @@ def main() -> None:
     """仅分析开发期，不触发历史复核选型。"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('config', type=Path)
-    parser.add_argument('--regimes-only', action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--regimes-only', action='store_true')
+    mode.add_argument('--regression-only', action='store_true')
     arguments = parser.parse_args()
-    if arguments.regimes_only:
+    if arguments.regression_only:
+        evaluate_regression_outputs(arguments.config)
+    elif arguments.regimes_only:
         evaluate_entry_regimes(arguments.config)
     else:
         evaluate_model_failures(arguments.config)
