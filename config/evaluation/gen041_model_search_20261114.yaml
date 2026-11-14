@@ -1,0 +1,16 @@
+# 同样本开发评价，复用E0/E4已完成预测，不评价历史复核。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/gen041_model_search_20261114_v1/evaluation
+split: val_dev
+horizon_s: 1800
+baseline: e0
+bootstrap_repeats: 1000
+seed: 17
+models:
+  e0: workspace/results/cost_classifier_20261111_v1
+  e4: workspace/results/cost_gen041_e4_20261114_v1
+  seed42: workspace/results/cost_gen041_seed42_20261114_v1
+  seed73: workspace/results/cost_gen041_seed73_20261114_v1
+  depth2: workspace/results/cost_gen041_depth2_20261114_v1
+  depth6: workspace/results/cost_gen041_depth6_20261114_v1
+  compact6: workspace/results/cost_gen041_compact6_20261114_v1

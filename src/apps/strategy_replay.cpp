@@ -11,7 +11,8 @@ int main(int argc, char** argv) {
         }
         const auto config = mm::load_trading_config(argv[1]);
         const auto parameters = mm::load_execution_parameters(argv[2]);
-        mm::PredictionSeries predictions{argv[3]};
+        const bool risk_mode = parameters.mode == "directional_risk" || parameters.mode == "directional_maker_risk";
+        mm::PredictionSeries predictions{argv[3], risk_mode};
         mm::run_execution_replay(config, parameters, predictions,
             hbt::event_reader_from_files(hbt::event_files_from_manifest(config.source.string())));
         return 0;

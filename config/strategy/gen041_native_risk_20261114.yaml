@@ -1,0 +1,15 @@
+# E4风险退出原生开发验证：0.125BTC，最长1小时，事前600秒风险；真实Maker开平仓。
+source: workspace/results/multihorizon_20261109_v1
+signals: workspace/results/gen041_native_risk_20261114_v1/signals
+output: workspace/results/gen041_native_risk_20261114_v1
+binary_folder: workspace/results/gen041_native_risk_20261114_v1/build
+standard_trades: workspace/data/standard/server_market_v1/trades
+credential_file: /root/.config/hft_mm_research/gen041_native_risk_20261114.md
+queue_directory: config/research/gen041_native_risk_queue
+hold_s: 3600
+splits:
+- val_dev
+order_quantity: 0.125
+mode: directional_maker_risk
+ttl_ms: 30000
+model_source: workspace/results/cost_gen041_e4_20261114_v1

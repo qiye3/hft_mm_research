@@ -1,0 +1,7 @@
+# 宽池内的方法对照，只使用fit，输出索引而不复制全日期矩阵。
+source: workspace/results/multihorizon_20261109_v1
+inputs: workspace/results/feature_expansion_20261114_v1/inputs/180s
+factor_results: workspace/results/factor_windows_20261110_v1
+output: workspace/results/feature_expansion_20261114_v1/selections/family_balanced
+method: family_balanced
+maximum_per_family: 8

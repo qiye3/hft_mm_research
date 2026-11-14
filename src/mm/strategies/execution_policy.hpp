@@ -31,13 +31,19 @@ ExecutionParameters load_execution_parameters(const std::filesystem::path& filen
 class PredictionSeries {
 public:
     // 【核心逻辑236】读取完整整秒预测，严格递增时间键不包含标签有效性筛选。
-    explicit PredictionSeries(const std::filesystem::path& filename);
+    explicit PredictionSeries(const std::filesystem::path& filename, bool with_risk = false);
     // 【核心逻辑239】只返回已完成推理的最近一秒预测，缺失或过期返回NaN。
     double at(std::int64_t timestamp, std::int64_t latency);
+    // 【非核心】风险列与预测共用可见时钟；仅风险模式调用。
+    double risk_at(std::int64_t timestamp, std::int64_t latency);
 private:
     std::vector<std::pair<std::int64_t, double>> values_;
+    std::vector<double> risks_;
     std::size_t cursor_ = 0;
 };
+
+// 【核心逻辑408】更新费用后最佳浮盈，并按固定入场风险判断止损和回撤退出。
+bool risk_exit_trigger(double mark_bps, double entry_risk_bps, double& best_mark_bps);
 
 class ExecutionPolicy {
 public:
@@ -46,7 +52,8 @@ public:
                     const hbt::HashMapMarketDepth& depth);
     // 【核心逻辑240】根据预测、实际库存和订单在途状态作决策，收尾阶段优先真实平仓。
     std::pair<double, double> decide(hbt::Backtest& backtest, double alpha, bool quotes_allowed,
-                                    bool final_exit, bool book_fresh);
+                                    bool final_exit, bool book_fresh,
+                                    double risk_bps = std::numeric_limits<double>::quiet_NaN());
     // 【核心逻辑242】到期报价先发撤单并等待确认，Maker价格始终位于本地对手盘之外。
     std::pair<double, double> post(hbt::Backtest& backtest,
         std::optional<std::int64_t> bid, std::optional<std::int64_t> ask,
@@ -69,6 +76,10 @@ private:
     int position_sign_ = 0;
     bool reducing_ = false;
     double target_position_ = 0;
+    double pending_risk_bps_ = 0;
+    double entry_risk_bps_ = 0;
+    double best_mark_bps_ = 0;
+    std::int64_t reducing_at_ = 0;
 };
 
 // 【核心逻辑237】将冻结预测连接到原生历史事件回放，输出可核对且最终平仓的交易账本。

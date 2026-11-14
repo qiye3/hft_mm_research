@@ -1,0 +1,11 @@
+# 仅内部fit：最多6列、每家族1列，覆盖和同号门槛沿用E4。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/gen041_compact_inputs_20261114_v1
+e3_inputs: workspace/results/gen041_inputs_20261114_v1/e3
+horizon_s: 1800
+minimum_daily_samples: 100
+minimum_coverage: 0.8
+minimum_day_fraction: 0.8
+minimum_sign_agreement: 0.6
+maximum_factors: 6
+maximum_per_family: 1

@@ -1,0 +1,68 @@
+# 固定E4风险退出、0.125BTC，比较模型变动；不挑单一最佳种子，另报预定等权组合。
+source: workspace/results/multihorizon_20261109_v1
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+output: workspace/results/gen041_model_search_20261114_v1/screening
+quantities_btc:
+- 0.125
+groups:
+  seed42:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_seed42_20261114_v1
+      pattern: h1800_side{side}
+  seed73:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_seed73_20261114_v1
+      pattern: h1800_side{side}
+  depth2:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_depth2_20261114_v1
+      pattern: h1800_side{side}
+  depth6:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_depth6_20261114_v1
+      pattern: h1800_side{side}
+  compact6:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_compact6_20261114_v1
+      pattern: h1800_side{side}
+  seed_mean:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_e4_20261114_v1
+      pattern: h1800_side{side}
+    - folder: workspace/results/cost_gen041_seed42_20261114_v1
+      pattern: h1800_side{side}
+    - folder: workspace/results/cost_gen041_seed73_20261114_v1
+      pattern: h1800_side{side}
+rules:
+  seed42:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
+  seed73:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
+  depth2:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
+  depth6:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
+  compact6:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
+  seed_mean:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600

@@ -36,6 +36,17 @@ def account_metrics(ledger: np.ndarray, books: np.ndarray, capital: float) -> di
     }
 
 
+# 【核心逻辑413】只用截至当前秒连续同向的信号决定入场资格，不改变持仓中的退出规则。
+def confirmed_entry(signal: np.ndarray, seconds: int) -> np.ndarray:
+    """完整秒网格上零信号或方向变化打断确认；前缀不足时不准入场。"""
+    if seconds < 1:
+        raise ValueError('信号确认秒数必须为正整数')
+    rows = np.arange(len(signal))
+    changes = np.r_[True, signal[1:] != signal[:-1]]
+    run_start = np.maximum.accumulate(np.where(changes, rows, 0))
+    return (signal != 0.) & (rows - run_start + 1 >= seconds)
+
+
 # 【核心逻辑391】每个规模重新按十档数量撮合，现金约束与手续费随实际成交变化。
 def screen_account(filename: Path, group: str, split: str) -> None:
     """开发比较固定规模网格，复核只使用开发冻结规模，不线性乘大旧利润。"""
@@ -58,6 +69,8 @@ def screen_account(filename: Path, group: str, split: str) -> None:
         chosen = json.loads((output / 'selected.json').read_text())['candidates']
         quantities = [row['quantity_btc'] for row in chosen if row['group'] == group]
     entry_allowed = np.ones(len(predictions))
+    if 'entry_confirmation_s' in rule:
+        entry_allowed *= confirmed_entry(predictions, rule['entry_confirmation_s'])
     entry_allowed[:120] = 0.
     entry_allowed[-rule['max_hold_s'] - 20:] = 0.
     if rule['policy'] == 0:

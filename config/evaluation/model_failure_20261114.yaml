@@ -1,0 +1,25 @@
+# 费用模型输出与实际成交的开发诊断：分布、时序、强度分组和逐笔失败。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/model_failure_20261114_v1/diagnostics
+models:
+  seed42:
+    folder: workspace/results/cost_gen041_seed42_20261114_v1
+    case: workspace/results/model_failure_20261114_v1/replays/cases/seed42_q0.125_val_dev.json
+  seed73:
+    folder: workspace/results/cost_gen041_seed73_20261114_v1
+    case: workspace/results/model_failure_20261114_v1/replays/cases/seed73_q0.125_val_dev.json
+  depth2:
+    folder: workspace/results/cost_gen041_depth2_20261114_v1
+    case: workspace/results/model_failure_20261114_v1/replays/cases/depth2_q0.125_val_dev.json
+  depth6:
+    folder: workspace/results/cost_gen041_depth6_20261114_v1
+    case: workspace/results/model_failure_20261114_v1/replays/cases/depth6_q0.125_val_dev.json
+  compact6:
+    folder: workspace/results/cost_gen041_compact6_20261114_v1
+    case: workspace/results/model_failure_20261114_v1/replays/cases/compact6_q0.125_val_dev.json
+  e0:
+    folder: workspace/results/cost_classifier_20261111_v1
+    case: workspace/results/model_failure_20261114_v1/replays/cases/e0_q0.125_val_dev.json
+  e4:
+    folder: workspace/results/cost_gen041_e4_20261114_v1
+    case: workspace/results/model_failure_20261114_v1/replays/cases/e4_q0.125_val_dev.json

@@ -1,0 +1,16 @@
+# 扩宽因子池：旧146列加128个新四档因子；180秒目标，比较XGBoost与MLP。
+# 输入原1206因子及fit前缀IC；prepare-new输出新列缓存，train输出独立预测。
+source: workspace/results/multihorizon_20261109_v1
+factor_results: workspace/results/factor_windows_20261110_v1
+output: workspace/results/feature_expansion_20261114_v1
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+horizons_s:
+- 180
+new_features: 128
+read_workers: 2
+seeds:
+- 17
+batch_size: 8192
+max_epochs: 20
+patience: 4
+learning_rate: 0.001

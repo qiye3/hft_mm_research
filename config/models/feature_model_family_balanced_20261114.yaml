@@ -1,0 +1,18 @@
+# 旧146列固定，新增池按明确索引读取；XGB/MLP同输入，仅评价val_dev。
+source: workspace/results/multihorizon_20261109_v1
+factor_results: workspace/results/factor_windows_20261110_v1
+output: workspace/results/feature_expansion_20261114_v1/family_balanced
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+horizons_s:
+- 180
+new_features: 128
+read_workers: 2
+seeds:
+- 17
+batch_size: 8192
+max_epochs: 20
+patience: 4
+learning_rate: 0.001
+input_selection:
+  source: workspace/results/feature_expansion_20261114_v1/inputs/180s
+  file: workspace/results/feature_expansion_20261114_v1/selections/family_balanced/selected.json

@@ -1,0 +1,126 @@
+# 后台队列：六个开发案例顺序运行，与已有原生回放并行；失败保留并继续。
+stage: overnight
+queue_directory: config/research/signal_confirmation_queue
+output: workspace/results/signal_confirmation_20261114_v1/queue
+poll_seconds: 5
+start_reserve_gib: 10
+emergency_reserve_gib: 6
+lane_limits:
+  cpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: e4_confirm5
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/signal_confirmation_20261114.yaml
+  - screen
+  - --group
+  - e4_confirm5
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: e4_confirm15
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/signal_confirmation_20261114.yaml
+  - screen
+  - --group
+  - e4_confirm15
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: e4_confirm60
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/signal_confirmation_20261114.yaml
+  - screen
+  - --group
+  - e4_confirm60
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: compact6_confirm5
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/signal_confirmation_20261114.yaml
+  - screen
+  - --group
+  - compact6_confirm5
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: compact6_confirm15
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/signal_confirmation_20261114.yaml
+  - screen
+  - --group
+  - compact6_confirm15
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: compact6_confirm60
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/signal_confirmation_20261114.yaml
+  - screen
+  - --group
+  - compact6_confirm60
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60

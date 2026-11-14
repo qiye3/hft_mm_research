@@ -224,8 +224,11 @@ def replay_native_block(filename: Path, identifier: str) -> None:
     )
     first = int(np.datetime64(block['first_date'], 'ns').astype('int64'))
     last = int(np.datetime64(block['last_date'], 'ns').astype('int64')) + DAY * SECOND
+    signal_columns = ['timestamp_ns', 'prediction_bps']
+    if config['mode'] in ['directional_risk', 'directional_maker_risk']:
+        signal_columns.append('risk_bps')
     signals.filter(pl.col('timestamp_ns').is_between(first, last, closed='left')).select(
-        'timestamp_ns', 'prediction_bps',
+        signal_columns,
     ).write_csv(folder / 'signals.csv')
     capital = 10000.
     if block['previous_block']:
@@ -442,4 +445,42 @@ def report_native_account(config: dict, output: Path, blocks: list[dict]) -> Non
         'capital_usdt': 10000., 'target_annualized_return': .30, 'max_gross_leverage': 1.,
         'maker_notional_usdt': maker_notional, 'taker_notional_usdt': taker_notional,
         'results': risk['results'], 'monthly_concentration': 'reported_separately_not_implied_by_annual_gate',
+    })
+
+
+# 【核心逻辑407】冻结E4净价值与事前600秒风险，按完整开发时钟输出原生策略输入。
+def prepare_risk_signals(filename: Path) -> None:
+    """风险仅用决策前数据，预测和风险共用时间键；不导出成交时刻或未来退出请求。"""
+    from mm_research.strategies.stable_strategy import visible_management
+
+    _, config, output = context(filename)
+    source = Path(config['source'])
+    manifest = json.loads((source / 'e0/manifest.json').read_text())
+    segments = json.loads((source / 'e0/splits.json').read_text())['segments']
+    market = np.load(source / 'e0/market.npy', mmap_mode='r')
+    destination = Path(config['signals'])
+    destination.mkdir(parents=True, exist_ok=True)
+    for split in config['splits']:
+        bounds = segments[split]
+        begin, stop = bounds['start_row'], bounds['stop_row']
+        model = Path(config['model_source']) / 'models'
+        buy = np.load(model / f'h1800_side1/{split}_net_edge_bps.npy')
+        sell = np.load(model / f'h1800_side-1/{split}_net_edge_bps.npy')
+        volatility = visible_management(market, begin, stop)[:, 2]
+        risk = np.maximum(20., 2. * volatility)
+        active = (np.maximum(buy, sell) > 0) & np.isfinite(risk)
+        score = np.where(active, np.where(buy >= sell, buy, -sell), 0.)
+        frame = pl.DataFrame({
+            'timestamp_ns': manifest['start_timestamp_ns'] + np.arange(begin, stop) * SECOND,
+            'expected_net_edge_bps': score,
+            'risk_bps': risk,
+        })
+        pending = destination / f'cost_h1800_{split}.parquet.pending'
+        frame.write_parquet(pending, compression='zstd')
+        pending.replace(destination / f'cost_h1800_{split}.parquet')
+    write_json_atomic(output / 'risk_inputs.json', {
+        'model_source': config['model_source'],
+        'risk': 'max_20bps_or_2_times_strictly_past_600_second_volatility',
+        'execution': 'native_actual_fills_no_frozen_exit_schedule',
+        'splits': config['splits'],
     })

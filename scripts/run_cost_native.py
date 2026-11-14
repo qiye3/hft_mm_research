@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 from mm_research.strategies.cost_native import (
-    cleanup_credential, convert_native_day, plan_native, prefetch_native, prepare_native_block, replay_native_block, report_native,
+    cleanup_credential, convert_native_day, prepare_risk_signals, plan_native, prefetch_native, prepare_native_block, replay_native_block, report_native,
 )
 
 
@@ -13,12 +13,14 @@ def main() -> None:
     """执行原生区间规划、缺失日期准备、连续回放与完整费用后账本核算。"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('config', type=Path)
-    parser.add_argument('stage', choices=['plan', 'data', 'convert', 'replay', 'cleanup', 'report', 'build', 'prefetch'])
+    parser.add_argument('stage', choices=['plan', 'data', 'convert', 'replay', 'cleanup', 'report', 'build', 'prefetch', 'risk-signals'])
     parser.add_argument('--block')
     parser.add_argument('--date')
     parser.add_argument('--exclude-blocks', nargs='*', default=[])
     arguments = parser.parse_args()
-    if arguments.stage == 'plan':
+    if arguments.stage == 'risk-signals':
+        prepare_risk_signals(arguments.config)
+    elif arguments.stage == 'plan':
         plan_native(arguments.config)
     elif arguments.stage == 'prefetch':
         prefetch_native(arguments.config, arguments.exclude_blocks)
