@@ -1,0 +1,19 @@
+# 只有完整权益恢复成功后才运行新的30分钟Maker开发回放。
+tasks:
+- id: maker_30m_background
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_research_background.py
+  - config/research/maker_30m_20261114.yaml
+  threads: 4
+  estimated_peak_gib: 28
+  memory_limit_gib: 48
+  allocation_limit_gib: 128
+  lane: cpu
+  priority: 0
+  requires_success:
+  - recover_report
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
