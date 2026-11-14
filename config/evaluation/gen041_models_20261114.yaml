@@ -1,0 +1,13 @@
+# 模型增量评价；evaluate_fee_models.py；输入冻结费用分类预测和原标签，输出配对开发指标。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/gen041_evaluation_20261114_v1
+split: val_dev
+horizon_s: 1800
+baseline: e0
+bootstrap_repeats: 1000
+seed: 17
+models:
+  e0: workspace/results/cost_classifier_20261111_v1
+  e1: workspace/results/cost_gen041_e1_20261114_v1
+  e2: workspace/results/cost_gen041_e2_20261114_v1
+  e3: workspace/results/cost_gen041_e3_20261114_v1

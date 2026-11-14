@@ -33,3 +33,13 @@
 模型配置为`config/models/cost_gen041_e1/e2/e3_20261114.yaml`三个独立文件。每组两个方向、seed17、1800秒费用目标，沿用原树参数和标签边界。策略配置`config/strategy/account_gen041_20261114.yaml`固定每笔0.10BTC、持仓7200秒、Taker5bps和资金费，与旧模型同规则比较。
 
 后台依赖批次为`gen041_production.yaml`和`gen041_models.yaml`，共用原队列的内存准入。三组开发完成后再做分类指标及收益配对分析；这批任务不自动执行历史复核。E4的Train内筛选还未实现，不把E1—E3称为全部对照完成。
+
+## 同样本概率评价
+
+评价代码位于`evaluation/fee_models.py`，入口`evaluate_fee_models.py`，配置`config/evaluation/gen041_models_20261114.yaml`。六个新模型全部完成后，由`gen041_evaluation.yaml`自动触发。只评价val_dev，不读取复核标签。
+
+概率根据已保存的校准后净价值和训练期正负收益幅度反推，和训练器输出口径相同。四组使用同一价格质量与目标结束时间掩码，不按新因子缺失删样本。输出总体及每日LogLoss、Brier、含并列处理的AUC，固定十分位概率区间的实际发生率，以及每日新旧模型误差差值。
+
+对LogLoss与Brier差值按UTC周成块重采样1000次，保留周内重叠标签相关性，输出95%区间。AUC没有正负两类的日子保留为空。分类目标为买卖一价及双边5bps后的1800秒获利，不含资金费；资金费只在独立交易账本中计入，不能混用两种口径。
+
+独立真实基线自对照已完成，完整开发期两个方向的误差差值及周抽样区间均为零。该验收只验证评价链路，不代表Gen041已有预测增量。产物保存在`workspace/results/gen041_evaluation_reference_20261114_v1`；正式结果将写入`workspace/results/gen041_evaluation_20261114_v1`。
