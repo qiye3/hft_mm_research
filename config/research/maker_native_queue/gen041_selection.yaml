@@ -1,0 +1,107 @@
+# E4先内部fit筛选再训练，开发指标和账本独立保留；无合格列不放宽规则。
+tasks:
+- id: gen041_selection
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_gen041.py
+  - config/models/gen041_selection_20261114.yaml
+  - select
+  threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 20
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_cache
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_e4_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_gen041_e4_20261114.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_selection
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_e4_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_gen041_e4_20261114.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_selection
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_e4_screen
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_gen041_e4_20261114.yaml
+  - screen
+  - --group
+  - e4
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_e4_side1
+  - gen041_e4_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_e4_evaluation
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/evaluate_fee_models.py
+  - config/evaluation/gen041_e4_20261114.yaml
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_e4_side1
+  - gen041_e4_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60

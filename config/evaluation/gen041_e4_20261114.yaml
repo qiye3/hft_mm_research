@@ -1,0 +1,11 @@
+# E4与冻结基线同样本配对评价，仅读开发期。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/gen041_e4_evaluation_20261114_v1
+split: val_dev
+horizon_s: 1800
+baseline: e0
+bootstrap_repeats: 1000
+seed: 17
+models:
+  e0: workspace/results/cost_classifier_20261111_v1
+  e4: workspace/results/cost_gen041_e4_20261114_v1
