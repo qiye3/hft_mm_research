@@ -1,0 +1,155 @@
+# GPU models share the existing queue memory admission and global GPU lock.
+tasks:
+- id: h3600_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_h3600_20261113.yaml
+  - train
+  - --horizon
+  - '3600'
+  - --side
+  - '1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: cpu
+  priority: 0
+  requires_success:
+  - build
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: h3600_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_h3600_20261113.yaml
+  - train
+  - --horizon
+  - '3600'
+  - --side
+  - '-1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: cpu
+  priority: 0
+  requires_success:
+  - h3600_side1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: hour_hour_hold3600
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_h3600_20261113.yaml
+  - screen
+  - --group
+  - hour_hold3600
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - h3600_side1
+  - h3600_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: hour_hour_hold7200
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_h3600_20261113.yaml
+  - screen
+  - --group
+  - hour_hold7200
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - h3600_side1
+  - h3600_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: hour_mean_hold3600
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_h3600_20261113.yaml
+  - screen
+  - --group
+  - mean_hold3600
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - h3600_side1
+  - h3600_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: hour_mean_hold7200
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_h3600_20261113.yaml
+  - screen
+  - --group
+  - mean_hold7200
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - h3600_side1
+  - h3600_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: hour_review
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_h3600_20261113.yaml
+  - review
+  threads: 3
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 1
+  requires_success:
+  - hour_hour_hold3600
+  - hour_hour_hold7200
+  - hour_mean_hold3600
+  - hour_mean_hold7200
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
