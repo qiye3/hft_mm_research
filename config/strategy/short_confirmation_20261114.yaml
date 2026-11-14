@@ -1,0 +1,30 @@
+# 180秒新家族均衡XGB确认1800秒模型入场方向；同一时间键，不改变风险退出。
+source: workspace/results/multihorizon_20261109_v1
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+output: workspace/results/short_confirmation_20261114_v1
+quantities_btc:
+- 0.125
+groups:
+  e4:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_e4_20261114_v1
+      pattern: h1800_side{side}
+  compact6:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_compact6_20261114_v1
+      pattern: h1800_side{side}
+rules:
+  e4:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
+    entry_filter_prediction: workspace/results/feature_expansion_20261114_v1/family_balanced/models/180s_combined_xgb_seed17/{split}.parquet
+  compact6:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
+    entry_filter_prediction: workspace/results/feature_expansion_20261114_v1/family_balanced/models/180s_combined_xgb_seed17/{split}.parquet

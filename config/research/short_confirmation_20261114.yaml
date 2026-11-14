@@ -1,0 +1,50 @@
+# 两例开发回放，不训练、不扫确认阈值、不读取复核标签。
+stage: overnight
+queue_directory: config/research/short_confirmation_queue
+output: workspace/results/short_confirmation_20261114_v1/queue
+poll_seconds: 5
+start_reserve_gib: 10
+emergency_reserve_gib: 6
+lane_limits:
+  cpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: e4
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/short_confirmation_20261114.yaml
+  - screen
+  - --group
+  - e4
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: &id001 []
+  after_finished: &id002 []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: compact6
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/short_confirmation_20261114.yaml
+  - screen
+  - --group
+  - compact6
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: *id001
+  after_finished: *id002
+  max_retries: 1
+  retry_delay_seconds: 60
