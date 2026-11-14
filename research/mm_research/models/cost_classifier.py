@@ -34,8 +34,9 @@ def net_labels(market: np.ndarray, rows: np.ndarray, horizon: int, side: int) ->
 
 
 # 【非核心】在Train内部尾部校准概率，后续区间使用固定斜率和截距。
-def probability_calibration(probability: np.ndarray, actual: np.ndarray) -> tuple:
-    """返回Platt校准参数，采用稳定对数损失，不读取开发与复核标签。"""
+def probability_calibration(probability: np.ndarray, actual: np.ndarray,
+                            sample_weight: np.ndarray | None = None) -> tuple:
+    """返回Platt参数；显式权重用于盈亏幅度分类，未提供时保留普通获利概率校准。"""
     clipped = np.clip(probability, 1e-6, 1 - 1e-6)
     logits = np.log(clipped / (1 - clipped))
 
@@ -43,7 +44,8 @@ def probability_calibration(probability: np.ndarray, actual: np.ndarray) -> tupl
     def loss(parameters: np.ndarray) -> float:
         """返回二元对数损失及校准斜率正则项。"""
         scores = parameters[0] * logits + parameters[1]
-        return float(np.mean(np.logaddexp(0, scores) - actual * scores) + 1e-4 * parameters[0] ** 2)
+        return float(np.average(np.logaddexp(0, scores) - actual * scores, weights=sample_weight)
+                     + 1e-4 * parameters[0] ** 2)
 
     fitted = minimize(loss, np.array([1., 0.]), method='L-BFGS-B')
     if not fitted.success:
@@ -69,6 +71,7 @@ def train_cost_classifier(filename: Path, horizon: int, side: int, seed: int,
     market = np.load(source / 'e0/market.npy', mmap_mode='r')
     segments = json.loads((source / 'e0/splits.json').read_text())['segments']
     row_sets = {split: np.load(source / f'e1/folds/final/{split}_rows.npy') for split in ['fit', 'tune']}
+    payoff_weighted = config.get('weight_by_absolute_payoff', False)
     targets = {}
     positions = {}
     for split in ['fit', 'tune']:
@@ -79,6 +82,7 @@ def train_cost_classifier(filename: Path, horizon: int, side: int, seed: int,
             selected &= row_sets[split] >= boundary - fit_lookback_days * 86400
         positions[split] = np.flatnonzero(selected)
         targets[split] = values[selected]
+    payoff_scale = float(np.mean(np.abs(targets['fit'])))
     with Path('/tmp/hft_mm_research_gpu.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         matrices = {}
@@ -96,6 +100,8 @@ def train_cost_classifier(filename: Path, horizon: int, side: int, seed: int,
             reference = matrices['fit'] if split == 'tune' else None
             labels = (targets[split] > 0).astype('float32')
             matrices[split] = xgb.QuantileDMatrix(GpuBatchIterator(values, labels), max_bin=64, ref=reference, nthread=2)
+            if payoff_weighted:
+                matrices[split].set_weight(np.abs(targets[split]) / payoff_scale)
             temporary_files.append(temporary)
             del values
             cp.get_default_memory_pool().free_all_blocks()
@@ -123,6 +129,7 @@ def train_cost_classifier(filename: Path, horizon: int, side: int, seed: int,
             probabilities[split] = probability
         slope, intercept = probability_calibration(
             probabilities['tune'][positions['tune']], (targets['tune'] > 0).astype('float64'),
+            np.abs(targets['tune']) / payoff_scale if payoff_weighted else None,
         )
         fit = targets['fit']
         win_mean = float(fit[fit > 0].mean())
@@ -130,7 +137,11 @@ def train_cost_classifier(filename: Path, horizon: int, side: int, seed: int,
         for split, probability in probabilities.items():
             probability = np.clip(probability, 1e-6, 1 - 1e-6)
             calibrated = expit(slope * np.log(probability / (1 - probability)) + intercept)
-            edge = calibrated * win_mean + (1 - calibrated) * loss_mean
+            if payoff_weighted:
+                # 输出为净价值符号评分，幅度使用全fit固定尺度，不冒充条件平均收益。
+                edge = (2 * calibrated - 1) * payoff_scale
+            else:
+                edge = calibrated * win_mean + (1 - calibrated) * loss_mean
             np.save(folder / f'{split}_net_edge_bps.npy', edge)
     write_json_atomic(folder / 'completed.json', {
         'status': 'success', 'horizon_s': horizon, 'side': side, 'seed': seed,
@@ -139,6 +150,9 @@ def train_cost_classifier(filename: Path, horizon: int, side: int, seed: int,
         'calibration_slope': slope, 'calibration_intercept': intercept,
         'train_win_mean_bps': win_mean, 'train_loss_mean_bps': loss_mean,
         'train_positive_share': float((fit > 0).mean()),
+        'weight_by_absolute_payoff': payoff_weighted,
+        'payoff_scale_bps': payoff_scale,
+        'output_semantics': 'payoff_share_signed_score' if payoff_weighted else 'expected_net_edge_bps',
     })
 
 
