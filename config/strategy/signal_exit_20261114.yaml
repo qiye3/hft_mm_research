@@ -1,0 +1,38 @@
+# 既有policy4信号失效退出，对照policy5；最短5/15分钟、最长1小时，原模型/仓位/费用不变。
+source: workspace/results/multihorizon_20261109_v1
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+output: workspace/results/signal_exit_20261114_v1
+quantities_btc:
+- 0.125
+groups:
+  e4_exit300: &id001
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_e4_20261114_v1
+      pattern: h1800_side{side}
+  e4_exit900: *id001
+  compact6_exit300: &id002
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_compact6_20261114_v1
+      pattern: h1800_side{side}
+  compact6_exit900: *id002
+rules:
+  e4_exit300:
+    policy: 4
+    minimum_hold_s: 300
+    max_hold_s: 3600
+  e4_exit900:
+    policy: 4
+    minimum_hold_s: 900
+    max_hold_s: 3600
+  compact6_exit300:
+    policy: 4
+    minimum_hold_s: 300
+    max_hold_s: 3600
+  compact6_exit900:
+    policy: 4
+    minimum_hold_s: 900
+    max_hold_s: 3600
