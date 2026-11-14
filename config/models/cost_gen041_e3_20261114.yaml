@@ -1,0 +1,13 @@
+# Gen041模型增量；保留原1800秒费用目标和训练参数，追加本组长周期输入。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/cost_gen041_e3_20261114_v1
+macro_source: workspace/results/gen041_inputs_20261114_v1/e3
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+spot_inputs: workspace/results/cross_market_ablation_20261111_v1/spot/inputs/180s
+horizons_s:
+- 1800
+quantiles:
+- 0.9
+- 0.99
+- 0.999
+profit_output: workspace/results/cost_gen041_e3_profit_20261114_v1

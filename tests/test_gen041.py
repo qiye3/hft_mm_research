@@ -1,15 +1,80 @@
 """Gen041手算、缺失传播、跨午夜及未来扰动测试。"""
 
 import unittest
+import tempfile
+from pathlib import Path
+import json
 
 import numpy as np
 import polars as pl
+import yaml
 from polars.testing import assert_frame_equal
 
 from mm_research.factors.gen041 import second_statistics, factor_expressions, window_statistic
+from mm_research.data.storage import write_series_frames
+from mm_research.models.gen041 import read_second_history, cache_model_inputs
 
 
 class Gen041Test(unittest.TestCase):
+    # 【非核心】新增模型输入必须严格滞后一秒，只拟合fit统计并保留缺失通道与旧列。
+    def test_model_cache_lag_and_fit_only_scaling(self) -> None:
+        """用可手算的十行数据核对E1/E2/E3拆分、上一秒读取和验证缺失处理。"""
+        expressions, _ = factor_expressions()
+        columns = list(expressions)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            fold = source / "e1/folds/final"
+            fold.mkdir(parents=True)
+            (source / "e0").mkdir()
+            np.save(fold / "fit_rows.npy", [1, 2, 3])
+            np.save(fold / "tune_rows.npy", [4])
+            (source / "e0/splits.json").write_text(json.dumps({"segments": {
+                "val_dev": {"start_row": 5, "stop_row": 7}, "val_select": {"start_row": 7, "stop_row": 9},
+            }}))
+            factors = root / "factors"
+            factors.mkdir()
+            for index, column in enumerate(columns):
+                values = np.arange(10, dtype=float) + index
+                if index == 0:
+                    values[5] = np.nan
+                pl.DataFrame({column: values}).write_parquet(factors / f"{column}.parquet")
+            (root / "factors_ready.json").write_text(json.dumps({"columns": columns}))
+            old = root / "old/all/inputs/180s"
+            old.mkdir(parents=True)
+            for split, count in [("fit", 3), ("tune", 1), ("val_dev", 2), ("val_select", 2)]:
+                np.save(old / f"{split}_x.npy", np.full((count, 2), 77., dtype="float32"))
+            config = {"source": str(source), "output": str(root / "output"), "factor_run": str(root),
+                      "factor_folder": str(factors), "previous_macro_source": str(root / "old")}
+            filename = root / "config.yaml"
+            filename.write_text(yaml.safe_dump(config))
+            cache_model_inputs(filename)
+            for group, count in [("e1", 27), ("e2", 9), ("e3", 36)]:
+                path = root / "output" / group / "all/inputs/180s"
+                matrix = np.load(path / "val_dev_x.npy")
+                self.assertEqual(matrix.shape, (2, 2 + count * 2))
+                np.testing.assert_array_equal(matrix[:, :2], 77.)
+            matrix = np.load(root / "output/e1/all/inputs/180s/val_dev_x.npy")
+            self.assertAlmostEqual(matrix[0, 2], 3 / np.sqrt(2 / 3), places=5)
+            self.assertEqual(matrix[1, 2], 0.)
+            self.assertEqual(matrix[1, 2 + 27], 1.)
+
+    # 【非核心】生产先筛整秒盘口的优化必须与直接100ms参考计算逐列一致。
+    def test_production_seconds_match_reference(self) -> None:
+        """使用真实单变量Parquet格式验证跨日读取和两类聚合的时间关联。"""
+        raw = self.raw_sample()
+        stored = raw.with_columns(
+            pl.lit("BTCUSDT").alias("symbol"), pl.lit(.5).alias("imbalance_1"),
+            pl.col("timestamp_ns").cast(pl.Datetime("ns")).dt.strftime("%Y-%m-%d").alias("date"),
+        )
+        columns = [column for column in stored.columns if column not in ["symbol", "date", "timestamp_ns"]]
+        metadata = {column: {"dataset": {"interval_ns": 100_000_000}} for column in columns}
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            write_series_frames([stored], folder, columns, metadata)
+            optimized = read_second_history(folder, "1970-01-02")
+        assert_frame_equal(optimized, second_statistics(raw))
+
     # 【非核心】构造跨午夜的完整100ms网格，盘口固定以便手算聚合与执行成本。
     def raw_sample(self) -> pl.DataFrame:
         """返回四秒与首个端点，主动买卖数量分别为每格2和1BTC。"""
@@ -43,6 +108,11 @@ class Gen041Test(unittest.TestCase):
         thin = raw.with_columns(pl.lit(.001).alias("ask_quantity_1"))
         thin = thin.with_columns([pl.lit(.001).alias(f"ask_quantity_{level}") for level in range(2, 11)])
         self.assertIsNone(second_statistics(thin)["cost_gap"][1])
+        interrupted = raw.with_row_index().with_columns(
+            pl.when(pl.col("index") >= 10).then(2.).otherwise(1.).alias("book_segment_id"),
+        )
+        self.assertIsNone(second_statistics(interrupted)["bid_delta"][1])
+        self.assertEqual(second_statistics(interrupted)["bid_delta"][2], 0.)
 
     # 【非核心】高成交量秒必须获得相应权重，已知无活动与未知缺失不能混淆。
     def test_weighted_ratio_and_zero_activity(self) -> None:

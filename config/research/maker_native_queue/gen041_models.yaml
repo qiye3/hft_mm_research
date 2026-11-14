@@ -1,0 +1,227 @@
+# 因子完成后自动生成缓存、训练六个GPU方向模型、运行三组开发回测；不自动查看复核。
+tasks:
+- id: gen041_cache
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_gen041.py
+  - config/models/gen041_inputs_20261114.yaml
+  - cache
+  threads: 2
+  estimated_peak_gib: 12
+  memory_limit_gib: 20
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_factors
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_e1_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_gen041_e1_20261114.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_cache
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_e1_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_gen041_e1_20261114.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_cache
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_screen_e1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_gen041_20261114.yaml
+  - screen
+  - --group
+  - e1
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_e1_side1
+  - gen041_e1_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_e2_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_gen041_e2_20261114.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_cache
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_e2_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_gen041_e2_20261114.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_cache
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_screen_e2
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_gen041_20261114.yaml
+  - screen
+  - --group
+  - e2
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_e2_side1
+  - gen041_e2_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_e3_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_gen041_e3_20261114.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_cache
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_e3_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_gen041_e3_20261114.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --seed
+  - '17'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_cache
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: gen041_screen_e3
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/account_gen041_20261114.yaml
+  - screen
+  - --group
+  - e3
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success:
+  - gen041_e3_side1
+  - gen041_e3_side-1
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
