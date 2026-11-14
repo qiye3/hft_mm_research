@@ -1,0 +1,140 @@
+# Research并行准备。入口run_research_background.py，输入冻结E4复核日期与原档，输出同一版本的日期事件缓存及完成标记。
+# 从区段末尾反向准备，与主队列从区段开头准备互补；日期独占锁保证每一天只转换一次。
+# 额外一路预约24GiB，启动时另留30GiB给主转换、回放和系统；匿名内存超过26GiB独立停止重试。
+stage: overnight
+queue_directory: config/research/gen041_native_parallel_prepare_queue
+output: workspace/results/gen041_native_review_20261114_v1/parallel_prepare
+poll_seconds: 5
+start_reserve_gib: 30
+emergency_reserve_gib: 10
+lane_limits:
+  data: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: parallel_prepare_20260630
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_native.py
+  - config/strategy/gen041_native_review_20261114.yaml
+  - data
+  - --block
+  - val_select_02
+  - --date
+  - '2026-06-30'
+  threads: 4
+  estimated_peak_gib: 24
+  memory_limit_gib: 26
+  allocation_limit_gib: 64
+  requires_success: []
+  after_finished: []
+  lane: data
+  max_retries: 2
+  retry_delay_seconds: 60
+  priority: 0
+- id: parallel_prepare_20260629
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_native.py
+  - config/strategy/gen041_native_review_20261114.yaml
+  - data
+  - --block
+  - val_select_02
+  - --date
+  - '2026-06-29'
+  threads: 4
+  estimated_peak_gib: 24
+  memory_limit_gib: 26
+  allocation_limit_gib: 64
+  requires_success: []
+  after_finished: []
+  lane: data
+  max_retries: 2
+  retry_delay_seconds: 60
+  priority: 1
+- id: parallel_prepare_20260628
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_native.py
+  - config/strategy/gen041_native_review_20261114.yaml
+  - data
+  - --block
+  - val_select_02
+  - --date
+  - '2026-06-28'
+  threads: 4
+  estimated_peak_gib: 24
+  memory_limit_gib: 26
+  allocation_limit_gib: 64
+  requires_success: []
+  after_finished: []
+  lane: data
+  max_retries: 2
+  retry_delay_seconds: 60
+  priority: 2
+- id: parallel_prepare_20260627
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_native.py
+  - config/strategy/gen041_native_review_20261114.yaml
+  - data
+  - --block
+  - val_select_02
+  - --date
+  - '2026-06-27'
+  threads: 4
+  estimated_peak_gib: 24
+  memory_limit_gib: 26
+  allocation_limit_gib: 64
+  requires_success: []
+  after_finished: []
+  lane: data
+  max_retries: 2
+  retry_delay_seconds: 60
+  priority: 3
+- id: parallel_prepare_20260625
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_native.py
+  - config/strategy/gen041_native_review_20261114.yaml
+  - data
+  - --block
+  - val_select_02
+  - --date
+  - '2026-06-25'
+  threads: 4
+  estimated_peak_gib: 24
+  memory_limit_gib: 26
+  allocation_limit_gib: 64
+  requires_success: []
+  after_finished: []
+  lane: data
+  max_retries: 2
+  retry_delay_seconds: 60
+  priority: 4
+- id: parallel_prepare_20260624
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_native.py
+  - config/strategy/gen041_native_review_20261114.yaml
+  - data
+  - --block
+  - val_select_02
+  - --date
+  - '2026-06-24'
+  threads: 4
+  estimated_peak_gib: 24
+  memory_limit_gib: 26
+  allocation_limit_gib: 64
+  requires_success: []
+  after_finished: []
+  lane: data
+  max_retries: 2
+  retry_delay_seconds: 60
+  priority: 5

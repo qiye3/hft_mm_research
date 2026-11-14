@@ -10,6 +10,7 @@ import json
 import math
 import shutil
 import time
+import zipfile
 from collections import Counter, deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -207,9 +208,11 @@ def validate_day(sources: list[dict], date: str) -> None:
 # ==================== 双时钟路由与分片落盘 ====================
 # 【非核心】独立压缩一个事件分片，返回按调用顺序写入清单的文件信息。
 def write_compressed_shard(destination: Path, filename: str, batch: np.ndarray) -> dict:
-    """将已路由的独立批次写入 NPZ，返回文件名、行数和字节数。"""
+    """以一级DEFLATE写入标准NPZ，减少压缩耗时，事件内容与顺序保持原样。"""
     path = destination / filename
-    np.savez_compressed(path, data=batch)
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
+        with archive.open("data.npy", "w", force_zip64=True) as member:
+            np.lib.format.write_array(member, batch, allow_pickle=False)
     return {"file": filename, "rows": len(batch), "bytes": path.stat().st_size}
 
 
@@ -333,6 +336,7 @@ def convert(book: Path, trades: Path, date: str, destination: Path, tick_size: f
         "trades": trades_info,
         "shards": shards,
         "normalized_bytes": sum(shard["bytes"] for shard in shards),
+        "npz_compression_level": 1,
         "conversion_seconds": time.monotonic() - started,
         "routing": "Separate EXCH and LOCAL rows, stable by visible timestamp; trades before depth on ties.",
         "depth_policy": "All source levels retained; 5/10-level selection is observer-only.",
