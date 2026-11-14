@@ -1,0 +1,19 @@
+# 宽输入模型开发回放：同一0.125BTC、policy5与3600秒持仓，不读取复核收益。
+source: workspace/results/multihorizon_20261109_v1
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+output: workspace/results/cost_wide128_20261114_v1/strategy
+quantities_btc:
+- 0.125
+groups:
+  wide128:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_wide128_20261114_v1
+      pattern: h1800_side{side}
+rules:
+  wide128:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600

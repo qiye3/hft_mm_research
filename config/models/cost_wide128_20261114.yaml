@@ -1,0 +1,7 @@
+# 原180列+128列多尺度输入，缓存顺序不变；费用分类器1800秒目标，输出两方向净价值。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/cost_wide128_20261114_v1
+macro_source: workspace/results/intraday_20261111_v1
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+spot_inputs: workspace/results/cross_market_ablation_20261111_v1/spot/inputs/180s
+extra_inputs: workspace/results/feature_expansion_20261114_v1/inputs/180s

@@ -80,12 +80,16 @@ def prepare_intraday(filename: Path) -> None:
 
 # 【非核心】三份已归一化输入按块拼接，所有值及缺失通道沿用训练期定义。
 def input_parts(config: dict, output: Path, split: str) -> list[np.ndarray]:
-    """返回旧146列、现货16列、长状态18列的只读矩阵，均含对应缺失通道。"""
-    return [
+    """返回原三组及配置显式追加的只读矩阵，每组保留对应缺失通道。"""
+    matrices = [
         np.load(Path(config['local_cache']) / f'{split}_x.npy', mmap_mode='r'),
         np.load(Path(config['spot_inputs']) / f'{split}_x.npy', mmap_mode='r'),
         np.load(output / 'all/inputs/180s' / f'{split}_x.npy', mmap_mode='r'),
     ]
+    # 扩展实验显式指定追加缓存，原三组及各自缺失通道的次序保持不变。
+    if 'extra_inputs' in config:
+        matrices.append(np.load(Path(config['extra_inputs']) / f'{split}_x.npy', mmap_mode='r'))
+    return matrices
 
 
 # 【核心逻辑362】新目标使用原参数CUDA树，拟合和早停明确剔除跨越目标边界的行。

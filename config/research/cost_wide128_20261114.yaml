@@ -1,0 +1,88 @@
+# 两个GPU方向模型完成后自动开发回放；复用完整输入，保持失败恢复。
+stage: overnight
+queue_directory: config/research/cost_wide128_queue
+output: workspace/results/cost_wide128_20261114_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  gpu: 1
+  cpu: 1
+morning_report_at: null
+report_command: null
+tasks:
+- id: wide_side1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_wide128_20261114.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '1'
+  - --seed
+  - '17'
+  - --depth
+  - '4'
+  - --min-child-weight
+  - '50'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: &id001 []
+  after_finished: &id002 []
+  lane: gpu
+  priority: 0
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: wide_side-1
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_cost_classifier.py
+  - config/models/cost_wide128_20261114.yaml
+  - train
+  - --horizon
+  - '1800'
+  - --side
+  - '-1'
+  - --seed
+  - '17'
+  - --depth
+  - '4'
+  - --min-child-weight
+  - '50'
+  threads: 2
+  estimated_peak_gib: 18
+  memory_limit_gib: 25
+  allocation_limit_gib: 96
+  requires_success: *id001
+  after_finished: *id002
+  lane: gpu
+  priority: 0
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: wide_screen
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/cost_wide128_20261114.yaml
+  - screen
+  - --group
+  - wide128
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  requires_success:
+  - wide_side1
+  - wide_side-1
+  after_finished: []
+  lane: cpu
+  priority: 1
+  max_retries: 1
+  retry_delay_seconds: 60
