@@ -1,0 +1,69 @@
+# 三个持仓上限乘两个仓位；开发完整结束后再决策，未附加自动复核。
+stage: overnight
+queue_directory: config/research/gen041_risk_size_queue
+output: workspace/results/gen041_risk_size_20261114_v1/queue
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits:
+  cpu: 2
+morning_report_at: null
+report_command: null
+tasks:
+- id: e4_risk_h1800
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/gen041_risk_size_20261114.yaml
+  - screen
+  - --group
+  - e4_risk_h1800
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: e4_risk_h3600
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/gen041_risk_size_20261114.yaml
+  - screen
+  - --group
+  - e4_risk_h3600
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: e4_risk_h7200
+  command:
+  - .venv-models/bin/python
+  - -u
+  - scripts/run_account_sizing.py
+  - config/strategy/gen041_risk_size_20261114.yaml
+  - screen
+  - --group
+  - e4_risk_h7200
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60

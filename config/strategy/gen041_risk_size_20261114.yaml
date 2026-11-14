@@ -1,0 +1,30 @@
+# E4风险退出的开发规模试验；每档重新撮合，不直接放大收益。
+source: workspace/results/multihorizon_20261109_v1
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+output: workspace/results/gen041_risk_size_20261114_v1/screening
+quantities_btc:
+- 0.12
+- 0.125
+groups:
+  e4_risk_h1800: &id001
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_e4_20261114_v1
+      pattern: h1800_side{side}
+  e4_risk_h3600: *id001
+  e4_risk_h7200: *id001
+rules:
+  e4_risk_h1800:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 1800
+  e4_risk_h3600:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
+  e4_risk_h7200:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 7200
