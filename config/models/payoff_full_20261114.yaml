@@ -1,0 +1,14 @@
+# 幅度加权分类：fit/tune按绝对净盈亏加权；输出盈利金额份额评分，不是普通胜率或条件均值。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/payoff_full_20261114_v1
+macro_source: workspace/results/gen041_inputs_20261114_v1/e3
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+spot_inputs: workspace/results/cross_market_ablation_20261111_v1/spot/inputs/180s
+horizons_s:
+- 1800
+quantiles:
+- 0.9
+- 0.99
+- 0.999
+profit_output: workspace/results/cost_gen041_e3_profit_20261114_v1
+weight_by_absolute_payoff: true

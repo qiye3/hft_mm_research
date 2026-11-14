@@ -1,0 +1,28 @@
+# 净价值符号评分>0才可入场；原0.125BTC、policy5与费用，不按分数幅度加仓。
+source: workspace/results/multihorizon_20261109_v1
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+output: workspace/results/payoff_20261114_v1/strategy
+quantities_btc:
+- 0.125
+groups:
+  old:
+    combination: mean
+    sources:
+    - folder: workspace/results/payoff_old_20261114_v1
+      pattern: h1800_side{side}
+  full:
+    combination: mean
+    sources:
+    - folder: workspace/results/payoff_full_20261114_v1
+      pattern: h1800_side{side}
+rules:
+  old:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
+  full:
+    policy: 5
+    minimum_hold_s: 0
+    max_hold_s: 3600
