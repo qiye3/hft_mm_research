@@ -12,7 +12,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('config', type=Path)
     parser.add_argument('stage', choices=['train', 'export'])
-    parser.add_argument('--horizon', type=int, choices=[180, 1800, 7200])
+    parser.add_argument('--horizon', type=int, choices=[180, 1800, 3600, 7200])
     parser.add_argument('--side', type=int, choices=[-1, 1])
     parser.add_argument('--seed', type=int, default=17)
     parser.add_argument('--depth', type=int, default=4)

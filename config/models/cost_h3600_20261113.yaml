@@ -1,0 +1,13 @@
+# GPU 3600s fee-aware target; frozen inputs and training split; run_cost_classifier.py.
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/cost_h3600_20261113_v1
+macro_source: workspace/results/intraday_20261111_v1
+local_cache: workspace/results/cross_market_20261111_v1/old_inputs
+spot_inputs: workspace/results/cross_market_ablation_20261111_v1/spot/inputs/180s
+horizons_s:
+- 3600
+quantiles:
+- 0.9
+- 0.99
+- 0.999
+profit_output: workspace/results/cost_h3600_profit_20261113_v1
