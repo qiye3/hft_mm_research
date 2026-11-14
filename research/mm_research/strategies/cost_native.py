@@ -87,7 +87,7 @@ def plan_native(filename: Path) -> None:
     write_json_atomic(extension, {'tasks': tasks})
 
 
-# 【非核心】动态追加的任务沿用现有监督器，每段账户最多提前准备一个区间，回放后释放缓存。
+# 【非核心】日期准备与区段回放复用监督器的资源准入、失败重试和独立日志。
 def native_task(identifier: str, command: list[str], dependencies: list[str], lane: str,
                 estimate: int, limit: int) -> dict:
     """返回公开队列结构，不另建调度或重试系统。"""
@@ -146,41 +146,47 @@ def prefetch_native(filename: Path, excluded_blocks: list[str]) -> None:
 
 
 # 【核心逻辑373】复用既有日期缓存，只下载和转换原生验证缺少的L2原档。
-def prepare_native_block(filename: Path, identifier: str) -> None:
-    """私有凭证仅在进程内读取，原始成交继续使用已生产的官方Parquet。"""
+def prepare_native_block(filename: Path, identifier: str, date: str | None = None) -> None:
+    """准备冻结区间的全部日期或指定一天，供正式队列和并行准备任务共用。"""
     _, config, output = context(filename)
     source = Path(config['source'])
     block = block_definition(output, identifier)
     inventory = {record['date']: record['entry'] for record in json.loads((source / 'l2/archive_inventory.json').read_text())}
     (output / 'days').mkdir(exist_ok=True)
-    # 实测大行情日可占近30GiB；区间间并行，区间内逐日执行，避免超过60GiB实例容量。
-    for date in block['dates']:
-        prepare_native_date(filename, config, output, inventory, date)
+    dates = block['dates']
+    if date is not None:
+        if date not in dates:
+            raise ValueError(f'指定日期不属于冻结回放区间 {identifier}: {date}')
+        dates = [date]
+    # 每日独立子进程释放排序内存，并发准入由监督队列控制。
+    for selected_date in dates:
+        prepare_native_date(filename, config, output, inventory, selected_date)
 
 
-# 【非核心】每个日期独立转换和发布标记，重试复用已完成日期。
+# 【非核心】同一天取得独占锁后转换和发布标记，正式队列复用并行准备的日期。
 def prepare_native_date(filename: Path, config: dict, output: Path, inventory: dict, date: str) -> None:
     """复用已有事件或下载原档，子进程退出后发布单日清单，避免跨日内存累积。"""
     source = Path(config['source'])
     marker = output / 'days' / f'{date}.json'
-    if marker.exists():
-        return
-    existing = source / f'l2/event_cache/{date}/events/manifest.json'
-    if existing.exists():
-        write_json_atomic(marker, {'date': date, 'manifest': str(existing.resolve()), 'created_here': False})
-        return
-    entry = inventory[date]
-    extension = entry['server_filename'].removeprefix('BTCUSDT.csv.')
-    raw = output / 'raw' / date / f'book.csv.{extension}'
-    if not raw.exists() or raw.stat().st_size != entry['size']:
-        token = re.search(r'access_token=([^&#\s`<>]+)', Path(config['credential_file']).read_text()).group(1)
-        download_native_raw(entry, raw, token)
-    destination = output / f'event_cache/{date}/events'
-    environment = os.environ.copy()
-    environment['PYTHONPATH'] = 'research'
-    subprocess.run([sys.executable, '-u', 'scripts/run_cost_native.py', str(filename), 'convert', '--date', date],
-                   env=environment, check=True)
-    write_json_atomic(marker, {'date': date, 'manifest': str((destination / 'manifest.json').resolve()), 'created_here': True})
+    with file_locks([marker]):
+        if marker.exists():
+            return
+        existing = source / f'l2/event_cache/{date}/events/manifest.json'
+        if existing.exists():
+            write_json_atomic(marker, {'date': date, 'manifest': str(existing.resolve()), 'created_here': False})
+            return
+        entry = inventory[date]
+        extension = entry['server_filename'].removeprefix('BTCUSDT.csv.')
+        raw = output / 'raw' / date / f'book.csv.{extension}'
+        if not raw.exists() or raw.stat().st_size != entry['size']:
+            token = re.search(r'access_token=([^&#\s`<>]+)', Path(config['credential_file']).read_text()).group(1)
+            download_native_raw(entry, raw, token)
+        destination = output / f'event_cache/{date}/events'
+        environment = os.environ.copy()
+        environment['PYTHONPATH'] = 'research'
+        subprocess.run([sys.executable, '-u', 'scripts/run_cost_native.py', str(filename), 'convert', '--date', date],
+                       env=environment, check=True)
+        write_json_atomic(marker, {'date': date, 'manifest': str((destination / 'manifest.json').resolve()), 'created_here': True})
 
 
 # 【非核心】一天转换独立退出，释放排序与路由的临时分配。

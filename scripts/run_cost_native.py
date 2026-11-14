@@ -25,7 +25,7 @@ def main() -> None:
     elif arguments.stage == 'prefetch':
         prefetch_native(arguments.config, arguments.exclude_blocks)
     elif arguments.stage == 'data':
-        prepare_native_block(arguments.config, arguments.block)
+        prepare_native_block(arguments.config, arguments.block, arguments.date)
     elif arguments.stage == 'convert':
         convert_native_day(arguments.config, arguments.date)
     elif arguments.stage == 'replay':
