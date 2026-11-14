@@ -282,7 +282,10 @@ def compress_native_frames(run: Path) -> None:
             schema['fill_id'] = pl.UInt64
         if name == 'ioc_actions':
             schema['purpose'] = pl.String
-        pl.scan_csv(run / f'{name}.csv', schema_overrides=schema, null_values='nan').sink_parquet(destination, compression='zstd')
+        # 中断只能留下临时文件，正式文件存在即表示该表已完整发布。
+        pending = destination.with_suffix('.parquet.pending')
+        pl.scan_csv(run / f'{name}.csv', schema_overrides=schema, null_values='nan').sink_parquet(pending, compression='zstd')
+        pending.replace(destination)
 
 
 # 【核心逻辑375】独立核对原生成交、手续费、结算时实际仓位和连续区间权益。

@@ -1,0 +1,19 @@
+# E4仅开发回测，与E0-E3保持0.10BTC和固定2小时持有。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/account_gen041_e4_20261114_v1/screening
+capital_usdt: 10000.0
+max_gross_leverage: 1.0
+target_annualized_return: 0.3
+quantities_btc:
+- 0.1
+groups:
+  e4:
+    combination: mean
+    sources:
+    - folder: workspace/results/cost_gen041_e4_20261114_v1
+      pattern: h1800_side{side}
+rules:
+  e4:
+    policy: 0
+    minimum_hold_s: 7200
+    max_hold_s: 7200

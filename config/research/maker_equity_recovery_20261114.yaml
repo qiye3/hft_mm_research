@@ -1,0 +1,47 @@
+# 首段权益文件中断恢复：复用原档重放同一冻结配置，最后生成完整风险报告。
+stage: overnight
+queue_directory: config/research/maker_equity_recovery_queue
+output: workspace/results/maker_equity_recovery_20261114_v1
+poll_seconds: 5
+start_reserve_gib: 8
+emergency_reserve_gib: 5
+lane_limits: {cpu: 1}
+morning_report_at: null
+report_command: null
+tasks:
+- id: recover_data
+  command: [.venv-models/bin/python, -u, scripts/run_cost_native.py, config/strategy/maker_native_20261111.yaml, data, --block, val_dev_00]
+  threads: 4
+  estimated_peak_gib: 24
+  memory_limit_gib: 38
+  allocation_limit_gib: 96
+  lane: cpu
+  priority: 0
+  requires_success: []
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: recover_replay
+  command: [.venv-models/bin/python, -u, scripts/run_cost_native.py, config/strategy/maker_native_20261111.yaml, replay, --block, val_dev_00]
+  threads: 2
+  estimated_peak_gib: 2
+  memory_limit_gib: 12
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: [recover_data]
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60
+- id: recover_report
+  command: [.venv-models/bin/python, -u, scripts/run_cost_native.py, config/strategy/maker_native_20261111.yaml, report]
+  threads: 2
+  estimated_peak_gib: 6
+  memory_limit_gib: 16
+  allocation_limit_gib: 48
+  lane: cpu
+  priority: 0
+  requires_success: [recover_replay]
+  after_finished: []
+  max_retries: 1
+  retry_delay_seconds: 60

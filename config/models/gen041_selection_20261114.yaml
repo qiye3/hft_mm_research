@@ -1,0 +1,11 @@
+# E4仅用原内部fit筛选；run_gen041.py ... select；输入E3缓存，输出选择清单及E4模型输入。
+source: workspace/results/multihorizon_20261109_v1
+output: workspace/results/gen041_selected_inputs_20261114_v1
+e3_inputs: workspace/results/gen041_inputs_20261114_v1/e3
+horizon_s: 1800
+minimum_daily_samples: 100
+minimum_coverage: 0.8
+minimum_day_fraction: 0.8
+minimum_sign_agreement: 0.6
+maximum_factors: 12
+maximum_per_family: 2
