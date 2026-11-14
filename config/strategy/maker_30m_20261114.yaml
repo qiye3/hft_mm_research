@@ -1,0 +1,14 @@
+# 旧费用分类器30分钟Maker持仓开发验证；原生排队、手续费及实际资金费，原档复用。
+source: workspace/results/multihorizon_20261109_v1
+signals: workspace/results/cost_classifier_20261111_v1/signals
+output: workspace/results/maker_30m_20261114_v1
+binary_folder: workspace/results/maker_native_20261111_v1/build
+standard_trades: workspace/data/standard/server_market_v1/trades
+credential_file: /root/.config/hft_mm_research/maker_30m_20261114.md
+queue_directory: config/research/maker_30m_queue
+hold_s: 1800
+splits:
+- val_dev
+order_quantity: 0.1
+mode: directional_maker
+ttl_ms: 30000

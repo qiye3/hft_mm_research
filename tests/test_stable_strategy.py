@@ -106,3 +106,15 @@ def test_combination_handles_disagreement():
     unanimous = np.array([[[2., -1.]], [[3., -2.]], [[4., -3.]]])
     assert combine_values(unanimous, 'agreement')[0, 0] == 3.
     np.testing.assert_array_equal(combine_values(unanimous, 'mean'), [[3., -2.]])
+
+
+# 【非核心】方向消融只禁用空头，不改多头原值，也不修改原始预测数组。
+def test_long_only_preserves_values():
+    """即使空头价值更大也不能发空单，多头非正时仍应空仓。"""
+    from mm_research.strategies.stable_strategy import combine_values
+
+    edges = np.array([[[2., 10.], [-1., 8.]]])
+    result = combine_values(edges, 'long_only')
+    np.testing.assert_array_equal(result[:, 0], [2., -1.])
+    assert np.isneginf(result[:, 1]).all()
+    np.testing.assert_array_equal(edges[0, :, 1], [10., 8.])

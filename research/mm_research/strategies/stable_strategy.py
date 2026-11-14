@@ -34,6 +34,10 @@ def combine_values(edges: np.ndarray, method: str) -> np.ndarray:
     average = np.mean(edges, axis=0)
     if method == 'mean':
         return average
+    if method == 'long_only':
+        # 方向消融在发单前禁用空头，保留多头原始价值，不事后删除亏损交易。
+        average[:, 1] = -np.inf
+        return average
     if method == 'median':
         return np.median(edges, axis=0)
     if method == 'dispersion_penalty':
