@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+# The bundled Lexical editor expression is executable code, with no credential value.
+[[allowlists]]
+description = "Lexical selection key expression in the generated E4 report"
+condition = "AND"
+regexTarget = "match"
+paths = ['''^docs/reports/e4_20261115/report\.html$''']
+regexes = ['''i\.focus\.key''']
