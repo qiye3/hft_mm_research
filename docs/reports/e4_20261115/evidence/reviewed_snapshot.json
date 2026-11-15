@@ -1,0 +1,1022 @@
+{
+  "surface": "report",
+  "title": "E4｜从长周期订单流到原生交易验证",
+  "generatedAt": "2026-11-15T12:00:00Z",
+  "status": "reviewed",
+  "buildStatus": "complete",
+  "filters": [],
+  "queries": {
+    "account_dev": {
+      "rows": [
+        {
+          "split": "val_dev",
+          "net_pnl_usdt": 410.81105752524127,
+          "max_drawdown_usdt": 184.41781468000227,
+          "ending_equity_usdt": 10410.811057525241,
+          "excluding_best_day_usdt": 303.23105385324743,
+          "round_trips": 22,
+          "duration_days": 53,
+          "capital_usdt": 10000,
+          "annualized_return": 0.31950964197204157,
+          "max_drawdown_fraction": 0.018167605409768917,
+          "peak_gross_leverage": 0.9804140296644317,
+          "excluding_best_week_usdt": 238.70024752524296,
+          "passes_annual_exposure_gate": true,
+          "period": "开发"
+        }
+      ],
+      "source": {
+        "label": "gen041_native_risk_20261114_v1 账户汇总",
+        "path": "evidence/gen041_native_risk_20261114_v1/native_account.json",
+        "metricDefinitions": [
+          {
+            "label": "净收益",
+            "definition": "费用前损益减实际手续费与资金费支付，单位USDT。"
+          },
+          {
+            "label": "年化",
+            "definition": "(期末权益/10000)^(365/53)-1，无成交日计入分母。"
+          }
+        ],
+        "caveats": [
+          "完整53日账户，本金10000 USDT，0.125 BTC固定委托，实际Maker/Taker费用与资金费。"
+        ]
+      }
+    },
+    "daily_dev": {
+      "rows": [
+        {
+          "date": "2026-03-23",
+          "equity": 10057.611165,
+          "net_pnl_usdt": 57.611165000000256,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-03-24",
+          "equity": 10057.611165,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-03-25",
+          "equity": 10057.611165,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-03-26",
+          "equity": 10057.611165,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-03-27",
+          "equity": 10065.821265319999,
+          "net_pnl_usdt": 8.210100319998674,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-03-28",
+          "equity": 10065.821265319999,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-03-29",
+          "equity": 10091.15448532,
+          "net_pnl_usdt": 25.333220000000438,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-03-30",
+          "equity": 10091.15448532,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-03-31",
+          "equity": 10091.15448532,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-01",
+          "equity": 10091.15448532,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-02",
+          "equity": 10108.87420282,
+          "net_pnl_usdt": 17.719717500000115,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-03",
+          "equity": 10108.87420282,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-04",
+          "equity": 10108.87420282,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-05",
+          "equity": 10108.87420282,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-06",
+          "equity": 10108.87420282,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-07",
+          "equity": 10108.87420282,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-08",
+          "equity": 10108.87420282,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-09",
+          "equity": 10108.87420282,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-10",
+          "equity": 10108.87420282,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-11",
+          "equity": 10108.87420282,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-12",
+          "equity": 10081.97703282,
+          "net_pnl_usdt": -26.897170000000187,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-13",
+          "equity": 10081.97703282,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-14",
+          "equity": 10141.070623853248,
+          "net_pnl_usdt": 59.09359103324823,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-15",
+          "equity": 10141.070623853248,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-16",
+          "equity": 10141.070623853248,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-17",
+          "equity": 10248.650627525241,
+          "net_pnl_usdt": 107.58000367199384,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-18",
+          "equity": 10248.650627525241,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-19",
+          "equity": 10217.277247525242,
+          "net_pnl_usdt": -31.373379999999088,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-20",
+          "equity": 10270.336762525241,
+          "net_pnl_usdt": 53.05951499999901,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-21",
+          "equity": 10270.336762525241,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-22",
+          "equity": 10320.82781502524,
+          "net_pnl_usdt": 50.49105249999957,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-23",
+          "equity": 10389.38805752524,
+          "net_pnl_usdt": 68.56024249999973,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-24",
+          "equity": 10389.38805752524,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-25",
+          "equity": 10389.38805752524,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-26",
+          "equity": 10389.38805752524,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-27",
+          "equity": 10318.32922002524,
+          "net_pnl_usdt": -71.05883750000066,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-28",
+          "equity": 10318.32922002524,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-29",
+          "equity": 10318.32922002524,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-04-30",
+          "equity": 10318.32922002524,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-01",
+          "equity": 10318.32922002524,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-02",
+          "equity": 10318.32922002524,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-03",
+          "equity": 10318.32922002524,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-04",
+          "equity": 10318.32922002524,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-05",
+          "equity": 10387.419590025242,
+          "net_pnl_usdt": 69.09037000000171,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-06",
+          "equity": 10410.811057525241,
+          "net_pnl_usdt": 23.391467499999635,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-07",
+          "equity": 10410.811057525241,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-08",
+          "equity": 10410.811057525241,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-09",
+          "equity": 10410.811057525241,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-10",
+          "equity": 10410.811057525241,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-11",
+          "equity": 10410.811057525241,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-12",
+          "equity": 10410.811057525241,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-13",
+          "equity": 10410.811057525241,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        },
+        {
+          "date": "2026-05-14",
+          "equity": 10410.811057525241,
+          "net_pnl_usdt": 0,
+          "split": "val_dev",
+          "period": "开发"
+        }
+      ],
+      "source": {
+        "label": "gen041_native_risk_20261114_v1 UTC日末权益",
+        "path": "evidence/gen041_native_risk_20261114_v1/native_daily.csv",
+        "caveats": [
+          "各分区独立本金10000 USDT，包含完整无成交日。"
+        ]
+      }
+    },
+    "account_review": {
+      "rows": [
+        {
+          "split": "val_select",
+          "net_pnl_usdt": 291.0372750838487,
+          "max_drawdown_usdt": 242.34108249999917,
+          "ending_equity_usdt": 10291.037275083849,
+          "excluding_best_day_usdt": 167.5530450838487,
+          "round_trips": 26,
+          "duration_days": 53,
+          "capital_usdt": 10000,
+          "annualized_return": 0.21843843140432817,
+          "max_drawdown_fraction": 0.023922355244304083,
+          "peak_gross_leverage": 0.8802015014440832,
+          "excluding_best_week_usdt": 74.9702980247639,
+          "passes_annual_exposure_gate": false,
+          "period": "冻结复核"
+        }
+      ],
+      "source": {
+        "label": "gen041_native_review_20261114_v1 账户汇总",
+        "path": "evidence/gen041_native_review_20261114_v1/native_account.json",
+        "metricDefinitions": [
+          {
+            "label": "净收益",
+            "definition": "费用前损益减实际手续费与资金费支付，单位USDT。"
+          },
+          {
+            "label": "年化",
+            "definition": "(期末权益/10000)^(365/53)-1，无成交日计入分母。"
+          }
+        ],
+        "caveats": [
+          "完整53日账户，本金10000 USDT，0.125 BTC固定委托，实际Maker/Taker费用与资金费。"
+        ]
+      }
+    },
+    "daily_review": {
+      "rows": [
+        {
+          "date": "2026-05-15",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-16",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-17",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-18",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-19",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-20",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-21",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-22",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-23",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-24",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-25",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-26",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-27",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-28",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-29",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-30",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-05-31",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-01",
+          "equity": 10000,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-02",
+          "equity": 10077.830232499999,
+          "net_pnl_usdt": 77.8302324999986,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-03",
+          "equity": 10077.830232499999,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-04",
+          "equity": 10086.254839999998,
+          "net_pnl_usdt": 8.424607499999183,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-05",
+          "equity": 10075.593882573061,
+          "net_pnl_usdt": -10.660957426936875,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-06",
+          "equity": 10026.328118184765,
+          "net_pnl_usdt": -49.26576438829579,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-07",
+          "equity": 10032.200808024765,
+          "net_pnl_usdt": 5.872689840000021,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-08",
+          "equity": 10136.51764758385,
+          "net_pnl_usdt": 104.31683955908557,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-09",
+          "equity": 10248.26778508385,
+          "net_pnl_usdt": 111.75013749999925,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-10",
+          "equity": 10248.26778508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-11",
+          "equity": 10248.26778508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-12",
+          "equity": 10248.26778508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-13",
+          "equity": 10248.26778508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-14",
+          "equity": 10248.26778508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-15",
+          "equity": 10248.26778508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-16",
+          "equity": 10248.26778508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-17",
+          "equity": 10246.23984508385,
+          "net_pnl_usdt": -2.027939999999944,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-18",
+          "equity": 10246.23984508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-19",
+          "equity": 10246.23984508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-20",
+          "equity": 10246.23984508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-21",
+          "equity": 10246.23984508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-22",
+          "equity": 10246.23984508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-23",
+          "equity": 10246.23984508385,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-24",
+          "equity": 10233.51647758385,
+          "net_pnl_usdt": -12.723367500000677,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-25",
+          "equity": 10185.433112583849,
+          "net_pnl_usdt": -48.08336500000041,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-26",
+          "equity": 10308.917342583849,
+          "net_pnl_usdt": 123.48423000000003,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-27",
+          "equity": 10308.917342583849,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-28",
+          "equity": 10315.23836008385,
+          "net_pnl_usdt": 6.32101750000038,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-29",
+          "equity": 10343.390717583849,
+          "net_pnl_usdt": 28.152357499999198,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-06-30",
+          "equity": 10343.390717583849,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-07-01",
+          "equity": 10343.390717583849,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-07-02",
+          "equity": 10343.390717583849,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-07-03",
+          "equity": 10343.390717583849,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-07-04",
+          "equity": 10343.390717583849,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-07-05",
+          "equity": 10343.390717583849,
+          "net_pnl_usdt": 0,
+          "split": "val_select",
+          "period": "冻结复核"
+        },
+        {
+          "date": "2026-07-06",
+          "equity": 10291.037275083849,
+          "net_pnl_usdt": -52.3534424999998,
+          "split": "val_select",
+          "period": "冻结复核"
+        }
+      ],
+      "source": {
+        "label": "gen041_native_review_20261114_v1 UTC日末权益",
+        "path": "evidence/gen041_native_review_20261114_v1/native_daily.csv",
+        "caveats": [
+          "各分区独立本金10000 USDT，包含完整无成交日。"
+        ]
+      }
+    },
+    "probability": {
+      "rows": [
+        {
+          "group": "e0",
+          "side": "1",
+          "count": 3719562,
+          "positive_rate": 0.3105266157682007,
+          "logloss": 0.6085315860453903,
+          "brier": 0.20944389888738207,
+          "auc": 0.5912654486944724
+        },
+        {
+          "group": "e4",
+          "side": "1",
+          "count": 3719562,
+          "positive_rate": 0.3105266157682007,
+          "logloss": 0.6090692284300205,
+          "brier": 0.2096095485508937,
+          "auc": 0.5907073312933323
+        },
+        {
+          "group": "e0",
+          "side": "-1",
+          "count": 3719562,
+          "positive_rate": 0.29466318883782555,
+          "logloss": 0.599767629574987,
+          "brier": 0.20547845567251588,
+          "auc": 0.5816604314487056
+        },
+        {
+          "group": "e4",
+          "side": "-1",
+          "count": 3719562,
+          "positive_rate": 0.29466318883782555,
+          "logloss": 0.5995539329622477,
+          "brier": 0.20530744811845308,
+          "auc": 0.5856506993283148
+        }
+      ],
+      "source": {
+        "label": "E0与E4同样本概率评价",
+        "path": "evidence/model_evaluation.csv",
+        "caveats": [
+          "val_dev，每方向3719562条标签，1800秒双边5bps，不含资金费。"
+        ]
+      }
+    },
+    "development": {
+      "rows": [
+        {
+          "stage": "固定7200s · 0.10 BTC",
+          "net_pnl_usdt": 110.84991553736918,
+          "execution": "快照 Taker"
+        },
+        {
+          "stage": "固定3600s · 0.10 BTC",
+          "net_pnl_usdt": 176.79,
+          "execution": "快照 Taker"
+        },
+        {
+          "stage": "风险3600s · 0.10 BTC",
+          "net_pnl_usdt": 274.67,
+          "execution": "快照 Taker"
+        },
+        {
+          "stage": "风险3600s · 0.125 BTC",
+          "net_pnl_usdt": 343.33,
+          "execution": "快照 Taker"
+        },
+        {
+          "stage": "风险3600s · 0.125 BTC",
+          "net_pnl_usdt": 410.81105752524127,
+          "execution": "原生 Maker"
+        }
+      ],
+      "source": {
+        "label": "E4开发过程",
+        "path": "report.md",
+        "caveats": [
+          "相同53日开发区间；前两处176.79/274.67/343.33保留原报告两位小数，最后原生结果使用账户原值。各阶段数量或执行方式有变化。"
+        ]
+      }
+    },
+    "selected_factors": {
+      "rows": [
+        {
+          "order": 1,
+          "factor": "cross_trade_book_sign_agree_mean_1800s",
+          "mean_rank_correlation": 0.07459558333469574,
+          "sign_agreement": 0.7401315789473685
+        },
+        {
+          "order": 2,
+          "factor": "cross_trade_book_sign_agree_mean_900s",
+          "mean_rank_correlation": 0.06401134526594662,
+          "sign_agreement": 0.7269736842105263
+        },
+        {
+          "order": 3,
+          "factor": "book_depth_notional_p10_900s",
+          "mean_rank_correlation": -0.045704987511566306,
+          "sign_agreement": 0.625
+        },
+        {
+          "order": 4,
+          "factor": "book_depth_notional_p10_1800s",
+          "mean_rank_correlation": -0.04274754029840593,
+          "sign_agreement": 0.6217105263157895
+        },
+        {
+          "order": 5,
+          "factor": "trade_small_qtyimb_1800s",
+          "mean_rank_correlation": -0.03888521023406305,
+          "sign_agreement": 0.6513157894736842
+        },
+        {
+          "order": 6,
+          "factor": "trade_aggr_qtyimb_1800s",
+          "mean_rank_correlation": -0.04025607904364912,
+          "sign_agreement": 0.6052631578947368
+        },
+        {
+          "order": 7,
+          "factor": "trade_aggr_qtyimb_900s",
+          "mean_rank_correlation": -0.03151895108385298,
+          "sign_agreement": 0.6513157894736842
+        },
+        {
+          "order": 8,
+          "factor": "trade_small_qtyimb_900s",
+          "mean_rank_correlation": -0.03002900618113058,
+          "sign_agreement": 0.6578947368421053
+        },
+        {
+          "order": 9,
+          "factor": "book_bid_depth_down_share_diff_60s_3600s",
+          "mean_rank_correlation": -0.007665070409512651,
+          "sign_agreement": 0.8223684210526315
+        },
+        {
+          "order": 10,
+          "factor": "book_net_depth_direction_signed_ratio_diff_60s_1800s",
+          "mean_rank_correlation": 0.007475814948022098,
+          "sign_agreement": 0.8125
+        },
+        {
+          "order": 11,
+          "factor": "book_ask_depth_down_share_diff_60s_3600s",
+          "mean_rank_correlation": 0.007248088163757058,
+          "sign_agreement": 0.819078947368421
+        },
+        {
+          "order": 12,
+          "factor": "book_ask_depth_down_share_900s",
+          "mean_rank_correlation": 0.007764373551656016,
+          "sign_agreement": 0.6052631578947368
+        }
+      ],
+      "source": {
+        "label": "E4冻结选列与fit期排名",
+        "path": "evidence/selection.json",
+        "caveats": [
+          "按fit多头1800秒标签选择，每家族最多2列。"
+        ]
+      }
+    }
+  },
+  "report": {
+    "asOf": "2026-11-14"
+  },
+  "id": "report:32974807-6182-4554-81f4-fbc11d47a71c",
+  "exportPreferences": {
+    "selected": null,
+    "destinations": []
+  }
+}

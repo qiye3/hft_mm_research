@@ -1,169 +1,114 @@
-# 2026-11-06 — 高频做市研究项目
+# HFT Market Microstructure Research
 
-基于 C++20 和 hftbacktest-cpp 的 Binance Futures BTCUSDT 永续合约研究项目，使用官方普通成交与网盘25档快照进行离线研究，使用历史L2事件进行交易仿真。
+**BTCUSDT 永续合约的高频特征、费用后预测与原生交易仿真。**
 
-- **M0 行情回放**支持双时间戳事件调度、盘口重建、前 5／10 档观察及整日性能测试。
-- **M1 做市基线**支持固定宽度报价、GTX 委托、在途敞口限制、成交记录和 PnL 核对。
-- **M2-A 研究数据**使用官方普通成交与网盘25档快照标准Parquet入口，使用 Polars 构造特征，按独立版本保存特征与多周期 bps 标签。
-- Python 用于离线数据转换与实验分析，C++ 负责回放和策略运行。
+C++20 · Python · Polars · XGBoost · CMake · hftbacktest-cpp
 
-第三方引擎通过 Git Submodule 固定在 v0.1.0，提交为 `e0d2f7887c68755b220d9e69425d61d27e5b6432`。
+项目从逐笔成交与历史盘口出发，构建100ms Features、1s Factors和独立预测标签，研究短期价格信息如何转化为交易决策。订单簿、事件调度、委托生命周期和成交模拟复用固定版本的开源回测引擎。
+
+[**阅读 E4 交互报告 →**](https://qiye3.github.io/hft_mm_research/)
+[完整过程与公式](docs/reports/e4_20261115/report.md) · [实验结果目录](docs/reports/README.md) · [代码阅读指南](docs/reading_guide.md)
+
+## 代表研究 · E4
+
+E4在原180列输入上增加12列训练期筛选的长周期微观结构因子，以多空两个XGBoost模型预测1800秒费用后获利概率。经过持有期、风险退出及仓位对照，再以0.125 BTC固定委托进行真实L2原生Maker回放。
+
+| 原生账户指标 | 开发期 | 冻结历史复核 |
+| --- | ---: | ---: |
+| 日期 | 2026-03-23—05-14 | 2026-05-15—07-06 |
+| 完整日历 | 53日 | 53日 |
+| 初始本金 | 10,000 USDT | 10,000 USDT |
+| 费用后净收益 | +410.81 USDT | +291.04 USDT |
+| 53日复合年化 | 31.95% | 21.84% |
+| 最大回撤 | 1.82% | 2.39% |
+| 峰值总敞口 | 0.9804倍 | 0.8802倍 |
+| 往返交易 | 22 | 26 |
+| 剔除最好一周后净收益 | +238.70 USDT | +74.97 USDT |
+
+![E4 开发与冻结历史复核日末权益](docs/reports/e4_20261115/equity.png)
+
+费用包括实际模拟Maker/Taker成交手续费及资金费。年化按完整53日折算，无成交日纳入分母。复核年化未达到预设30%门槛，收益主要集中在6月。该区间曾由其他实验查看，作为冻结历史复核报告。Python生成冻结预测，C++逐事件执行订单与风控。[完整结果及来源](docs/reports/e4_20261115/report.md)
+
+## 研究链路
+
+```text
+普通逐笔成交 + 历史盘口快照
+  → 标准 Parquet
+  → 100ms Features
+  → 1s Factors + 独立 Targets
+  → 同样本评价、训练期选列与模型比较
+  → 冻结预测、策略与风险规则
+  → 真实 L2 + 官方成交的 C++ 原生回放
+  → 订单 / 成交 / 费用 / 资金费 / 账户权益
+```
+
+- **数据与特征** — 标准研究行情覆盖2025-05-09至2026-10-21，共531天。研究可见时钟采用交易所时间加20ms，缺失和来源切换显式标记。
+- **因子与目标** — Polars负责探索性构造，按真实秒数滚动、跨午夜延续。每个Feature/Factor一份全日期Parquet，Targets独立版本管理。
+- **模型与评价** — 线性基线、树、MLP与序列模型按实验组比较。特征选择和预处理使用训练期，开发选参后冻结历史复核。
+- **策略与执行** — 固定报价、预测驱动入场、库存限制、风险退出和Maker优先执行。原生引擎管理排队、延迟、在途请求和部分成交，独立账本核对权益。
 
 ## Quickstart
 
-需要 C++20 编译器、Python 3.12+、Git、zlib 和 uv。macOS 可使用 Xcode Command Line Tools，Linux 安装对应编译器与 zlib 开发包。以下命令在项目根目录执行。
+### 安装与构建
 
-### 1. 安装依赖并构建
+需要Git、C++20编译器、Python 3.12+、zlib和[uv](https://docs.astral.sh/uv/)。macOS使用Xcode Command Line Tools，Linux使用对应编译器及zlib开发包。
 
 ```sh
-git submodule update --init --recursive
+git clone --recurse-submodules https://github.com/qiye3/hft_mm_research.git
+cd hft_mm_research
 uv venv .venv
 uv pip install --python .venv/bin/python -r requirements.txt
 . .venv/bin/activate
-cmake -S . -B workspace/build/release -G Ninja -DCMAKE_BUILD_TYPE=Release \
+cmake -S . -B workspace/build/release -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
   -DPython3_EXECUTABLE="$PWD/.venv/bin/python"
 cmake --build workspace/build/release --parallel 4
 ```
 
-已有 `.venv` 时跳过创建步骤，继续安装依赖后再构建。
+第三方引擎通过Submodule固定到`e0d2f7887c68755b220d9e69425d61d27e5b6432`。已有检出可运行`git submodule update --init --recursive`。
 
-### 2. 运行测试与合成行情
+### 用合成行情验证回放
 
 ```sh
 ctest --test-dir workspace/build/release --output-on-failure
 ./workspace/build/release/replay_probe config/replay/synthetic.yaml
 ```
 
-合成回放报告输出至 `workspace/results/synthetic/replay.json`。
+合成报告保存到`workspace/results/synthetic/replay.json`。该入口可独立验证事件调度、盘口状态和观察统计。
 
-### 3. 准备一天真实行情
+### 运行研究数据生产
 
-样本日为 2025-02-01 UTC。已有标准化数据时可直接进入下一步，转换器要求输出目录为空。
-
-```sh
-./scripts/download_tardis.sh
-mkdir -p workspace/results/m0/BTCUSDT_2025-02-01
-python scripts/convert_tardis.py \
-  --book workspace/data/raw/binance-futures_incremental_book_L2_2025-02-01_BTCUSDT.csv.gz \
-  --trades workspace/data/raw/binance-futures_trades_2025-02-01_BTCUSDT.csv.gz \
-  --date 2025-02-01 --tick-size 0.1 --lot-size 0.001 \
-  --output-dir workspace/data/normalized/BTCUSDT_2025-02-01 --shard-rows 250000 \
-  > workspace/results/m0/BTCUSDT_2025-02-01/conversion.log 2>&1
-```
-
-### 4. 运行回放与做市实验
-
-```sh
-./workspace/build/release/replay_probe config/replay/btcusdt.yaml
-./workspace/build/release/baseline_mm config/strategy/baseline_mm.yaml
-```
-
-策略参数位于 `config/strategy/baseline_mm.yaml`，默认输出至 `workspace/results/m1/BTCUSDT_2025-02-01/A_width20`。输出目录已存在时，请修改配置中的 output。
-
-运行完整的 A/B/C 实验可指定一组新输出目录。
-
-```sh
-mkdir -p workspace/results/m1/BTCUSDT_2025-02-01_repeat
-python scripts/analyze_baseline.py --run-experiments \
-  --output-root workspace/results/m1/BTCUSDT_2025-02-01_repeat \
-  --report-dir docs/reports/m1_repeat_2025-02-01 \
-  > workspace/results/m1/BTCUSDT_2025-02-01_repeat/experiments.log 2>&1
-```
-
-每组实验保存 `orders.csv`、`fills.csv`、`equity.csv` 和 `summary.json`。实验根目录保存 `configs/`、`analysis.json` 与上述命令的 `experiments.log`。分析已有实验可执行以下命令。
-
-```sh
-python scripts/analyze_baseline.py --analyze-existing workspace/results/m1/BTCUSDT_2025-02-01
-```
-
-### 5. 运行本地 Polars 研究数据生产
-
-已准备2026-07-01至07-30的market_v2标准行情。研究采样使用统一20ms固定行情延迟，生产独立特征与标签。
+准备好配置明确声明的原始行情后，在项目根执行。
 
 ```sh
 python scripts/build_standard_data.py config/data/standardize_30d.yaml
 python scripts/build_features.py config/features/build_30d.yaml
-```
-
-Data 使用 `config/data/standardize_30d.yaml`，Features 使用 `config/features/build_30d.yaml`。服务器整秒标签使用独立配置 `config/targets/build_1s.yaml`，入口为 `scripts/build_labels.py`。标准数据按 `standard/版本/{snapshots,trades}/日期.parquet` 保存，特征按 `features/版本/特征名.parquet` 保存，标签按 `labels/版本/horizon=周期/日期.parquet` 保存。来源、字段、版本和 X、y 读取见 [研究包指南](docs/implementation/research_package.md)。
-
-### 6. 服务器整秒研究
-
-已有531天Features后，分别生成标签、因子和评价。
-
-```sh
 python scripts/build_labels.py config/targets/build_1s.yaml
 POLARS_MAX_THREADS=5 python scripts/build_factors.py config/factors/all_non_ofi.yaml
 POLARS_MAX_THREADS=2 python scripts/evaluate_factors.py config/evaluation/all_non_ofi.yaml
 ```
 
-每个Feature和Factor各保存全部日期。窗口跨午夜连续计算，缺失值通过min_samples处理。评估报告位于 `workspace/results/evaluation/server_factors_1s_v1/report.html`。
+各YAML声明自己的输入、输出、日期和版本。真实研究需要自行准备标准行情，配置日期按实际取得的数据调整。全量531日、跨市场与GPU模型实验的资源需求高于合成回放。[数据来源与准备](docs/implementation/data_requirements.md) · [研究包输入输出](docs/implementation/research_package.md) · [E4复现命令](docs/reports/e4_20261115/report.md#103-复现命令)
 
-## 项目结构
+## 代码导航
 
-M2-A 数据准备、生成和读取见 [研究数据集指南](docs/implementation/m2_a_dataset.md)。
-当前分组研究结果位于 `workspace/results/m2_standard/market_columns_v1/`。
+| 位置 | 职责 | 推荐入口 |
+| --- | --- | --- |
+| `src/` | C++回放、报价、风控与账本 | [execution_policy.cpp](src/mm/strategies/execution_policy.cpp) |
+| `research/mm_research/data/` | 原始行情标准化与存储 | [standard.py](research/mm_research/data/standard.py) |
+| `research/mm_research/features/` | 100ms基础及衍生特征 | [base.py](research/mm_research/features/base.py) |
+| `research/mm_research/factors/` | 分族因子公式 | [gen041.py](research/mm_research/factors/gen041.py) |
+| `research/mm_research/targets/` | 独立预测标签 | [midprice.py](research/mm_research/targets/midprice.py) |
+| `research/mm_research/models/` | 选列、训练与校准 | [cost_classifier.py](research/mm_research/models/cost_classifier.py) |
+| `research/mm_research/strategies/` | 实验规则与原生接入 | [cost_native.py](research/mm_research/strategies/cost_native.py) |
+| `research/mm_research/evaluation/` | 因子、模型及交易诊断 | [fee_models.py](research/mm_research/evaluation/fee_models.py) |
+| `config/` | 按阶段组织的显式配置 | [E4模型配置](config/models/cost_gen041_e4_20261114.yaml) |
+| `scripts/` | 命令行入口与任务编排 | [run_cost_native.py](scripts/run_cost_native.py) |
+| `tests/` | 公式、边界、订单与账本测试 | [研究规范](AGENTS.md) |
+| `apps/factorboard/` | 因子交互研究与管理 | [FactorBoard说明](apps/factorboard/README.md) |
+| `docs/` | 方法、实现与实验报告 | [文档目录](docs/README.md) |
+| `workspace/` | 本地数据、构建与运行产物 | 由Git忽略 |
 
-```text
-hft_mm_research/
-├── src/          C++ 源码
-│   ├── apps/     回放与做市命令行入口
-│   └── mm/       模块头文件与实现，detail/ 保存内部接入代码
-├── research/     Python/Polars 研究包 mm_research
-├── config/       按阶段组织的数据、研究、回放与策略参数
-├── scripts/      下载、转换、校验与实验分析
-├── tests/        单元测试、集成测试与 benchmarks
-├── third_party/  固定版本的回测引擎
-├── docs/
-│   ├── reading_guide.md  整体阅读入口
-│   ├── implementation/  引擎与做市实现说明
-│   └── reports/         按阶段和数据日期保存实验报告
-└── workspace/    本地 data、results 与 build
-```
+## 深入阅读
 
-运行产物按以下结构保存，全部由 Git 忽略。
-
-```text
-workspace/results/
-├── synthetic/                  合成行情验证
-│   └── replay.json
-├── m0/BTCUSDT_2025-02-01/       单日回放结果与日志
-│   ├── benchmark.json
-│   ├── benchmark.stdout.log
-│   ├── benchmark.time.log
-│   └── conversion.log
-├── m1/BTCUSDT_2025-02-01/       做市实验、配置、汇总与日志
-│   ├── configs/
-│   ├── analysis.json
-│   ├── experiments.log
-│   └── A_width20/ …
-└── archive/                    已归档的实验附件
-```
-
-M0 性能测试及日志保存命令见 [单日性能报告](docs/reports/m0_2025-02-01/report.md#复现命令)。
-
-从 `src/apps/baseline_mm.cpp` 阅读策略入口，随后查看 `src/mm/market_maker.cpp` 的报价与库存控制，以及 `src/mm/trade_recorder.cpp` 的账本和收益计算。
-
-## 实验参数
-
-回放和做市配置使用平铺 YAML 标量，研究配置另有日期和周期列表，相对路径以项目根目录解析。NPZ 保留全量深度，观察器按配置提取前 5 或 10 档。
-
-M1 默认每单 0.001 BTC、最大净仓位 0.01 BTC，Maker/Taker 费率为 2/5 bps，请求/响应延迟为 1 ms/0.5 ms。费率与延迟采用机制实验假设。交易 PnL 覆盖交易现金流、尾仓盯市和手续费，资金费率、保证金与强平留待后续阶段。
-
-## 文档
-
-- [项目阅读指南](docs/reading_guide.md)
-- [Polars 研究包与独立版本数据](docs/implementation/research_package.md)
-- [30 天快照接入与迁移结果](docs/reports/polars_30d_2026-07/report.md)
-- [研究数据的组织、下载、处理与详细概况](docs/implementation/data_requirements.md)
-- [服务器推荐配置与费用估算](docs/implementation/server_recommendation.md)
-- [GPU、策略组合与 Parquet 存储选择](docs/implementation/gpu_and_parquet.md)
-- [M0 引擎接口与回放流程](docs/implementation/engine_notes.md)
-- [M0 单日性能结果](docs/reports/m0_2025-02-01/report.md)
-- [M1 委托状态、库存与账本](docs/implementation/m1_notes.md)
-- [M1 报价宽度、库存上限与更新频率实验](docs/reports/m1_2025-02-01/report.md)
-- [历史合约规则获取状态](docs/reports/m0_2025-02-01/report.md#未取得的合约元数据)
-
-## 夜间批量研究
-
-常驻任务、内存上限、失败隔离及GPU模型队列见[夜间研究指南](docs/implementation/overnight_research.md)。
+[引擎与双时间戳](docs/implementation/engine_notes.md) · [委托、库存与账本](docs/implementation/m1_notes.md) · [夜间资源控制](docs/implementation/overnight_research.md) · [M0整日性能](docs/reports/m0_2025-02-01/report.md) · [仓库敏感信息约定](SECURITY.md)

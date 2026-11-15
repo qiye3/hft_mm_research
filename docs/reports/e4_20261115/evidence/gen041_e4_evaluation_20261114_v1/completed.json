@@ -1,0 +1,46 @@
+{
+  "status": "success",
+  "split": "val_dev",
+  "horizon_s": 1800,
+  "probability": "recovered_from_calibrated_edge_and_frozen_train_payoffs",
+  "sample_mask": "shared_price_quality_and_label_end_inside_split_no_feature_deletion",
+  "label": "positive_bid_ask_return_after_5bps_each_side_before_funding",
+  "paired_week_bootstrap": [
+    {
+      "group": "e4",
+      "side": -1,
+      "metric": "logloss",
+      "weeks": 8,
+      "delta": -0.00021369661274004437,
+      "lower_95": -0.0009998544597552381,
+      "upper_95": 0.0006443720287492311
+    },
+    {
+      "group": "e4",
+      "side": -1,
+      "metric": "brier",
+      "weeks": 8,
+      "delta": -0.00017100755406278243,
+      "lower_95": -0.0005511255033174349,
+      "upper_95": 0.00021741669829904
+    },
+    {
+      "group": "e4",
+      "side": 1,
+      "metric": "logloss",
+      "weeks": 8,
+      "delta": 0.0005376423846302041,
+      "lower_95": -3.848194338221583e-05,
+      "upper_95": 0.001058363891201726
+    },
+    {
+      "group": "e4",
+      "side": 1,
+      "metric": "brier",
+      "weeks": 8,
+      "delta": 0.0001656496635115925,
+      "lower_95": -6.826759402717524e-05,
+      "upper_95": 0.0003900259602606003
+    }
+  ]
+}

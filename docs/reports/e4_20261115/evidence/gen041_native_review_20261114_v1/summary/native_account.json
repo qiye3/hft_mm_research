@@ -1,0 +1,25 @@
+{
+  "capital_usdt": 10000.0,
+  "target_annualized_return": 0.3,
+  "max_gross_leverage": 1.0,
+  "maker_notional_usdt": 372217.7629,
+  "taker_notional_usdt": 0.0,
+  "results": [
+    {
+      "split": "val_select",
+      "net_pnl_usdt": 291.0372750838487,
+      "max_drawdown_usdt": 242.34108249999917,
+      "ending_equity_usdt": 10291.037275083849,
+      "excluding_best_day_usdt": 167.5530450838487,
+      "round_trips": 26,
+      "duration_days": 53,
+      "capital_usdt": 10000.0,
+      "annualized_return": 0.21843843140432817,
+      "max_drawdown_fraction": 0.023922355244304083,
+      "peak_gross_leverage": 0.8802015014440832,
+      "excluding_best_week_usdt": 74.9702980247639,
+      "passes_annual_exposure_gate": false
+    }
+  ],
+  "monthly_concentration": "reported_separately_not_implied_by_annual_gate"
+}

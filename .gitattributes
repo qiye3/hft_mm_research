@@ -1,0 +1,3 @@
+docs/** linguist-documentation
+docs/reports/**/*.html linguist-generated=true
+uv.lock linguist-generated=true

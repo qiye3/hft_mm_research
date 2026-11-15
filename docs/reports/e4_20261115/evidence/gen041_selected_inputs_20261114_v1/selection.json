@@ -1,0 +1,20 @@
+{
+  "selected": [
+    "cross_trade_book_sign_agree_mean_1800s",
+    "cross_trade_book_sign_agree_mean_900s",
+    "book_depth_notional_p10_900s",
+    "book_depth_notional_p10_1800s",
+    "trade_small_qtyimb_1800s",
+    "trade_aggr_qtyimb_1800s",
+    "trade_aggr_qtyimb_900s",
+    "trade_small_qtyimb_900s",
+    "book_bid_depth_down_share_diff_60s_3600s",
+    "book_net_depth_direction_signed_ratio_diff_60s_1800s",
+    "book_ask_depth_down_share_diff_60s_3600s",
+    "book_ask_depth_down_share_900s"
+  ],
+  "fit_last_row": 26263495,
+  "label_end_before_row": 26265300,
+  "target": "positive_long_1800s_bid_ask_return_after_fees",
+  "status": "selected"
+}

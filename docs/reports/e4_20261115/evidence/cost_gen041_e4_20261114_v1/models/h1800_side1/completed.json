@@ -1,0 +1,15 @@
+{
+  "status": "success",
+  "horizon_s": 1800,
+  "side": 1,
+  "seed": 17,
+  "max_depth": 4,
+  "min_child_weight": 50.0,
+  "fit_lookback_days": null,
+  "fit_rows": 3734431,
+  "calibration_slope": 1.4957050236626381,
+  "calibration_intercept": 0.31189062342897933,
+  "train_win_mean_bps": 22.245361614376964,
+  "train_loss_mean_bps": -25.262307947367294,
+  "train_positive_share": 0.31936485103085316
+}
