@@ -130,6 +130,100 @@ Gen041的36列候选因子
 
 三类量失衡与两类盘口变化之间保留了多种关系。成交—盘口方向一致性强调两种压力是否同向；名义深度P10强调过去一段时间的较弱流动性；小单和总成交失衡描述不同成交群体的方向；深度下降和短长背离描述盘口状态的近期变化。经济含义需结合非线性树和其他输入阅读，负相关列仍可进入模型。
 
+### 3.6 全部192列输入及384通道的实际排列
+
+E4的输入由6列基础Features、35族各4列历史因子、16列现货变量、18列慢价格状态和12列Gen041组成。原146列来自已冻结的旧研究矩阵，历史因子按家族均匀抽取4列，使用`np.linspace(0, 家族列数−1, 4, dtype=int)`选位置。该步骤不读取开发或复核期IC。E4保留这一清单及次序。
+
+原146列保留3、5、10、20、50、100秒等旧窗口，准确窗口以列名为准。当前生产配置中的10/60/180/600秒四档属于后续版本。历史缓存的解释和重建应使用冻结清单。
+
+| 通道索引，零起始 | 输入内容 | 数量 |
+| --- | --- | ---: |
+| 0—145 / 146—291 | 原146列数值 / 对应缺失标记 | 146+146 |
+| 292—307 / 308—323 | 现货数值 / 对应缺失标记 | 16+16 |
+| 324—341 / 342—359 | 慢状态数值 / 对应缺失标记 | 18+18 |
+| 360—371 / 372—383 | Gen041精选数值 / 对应缺失标记 | 12+12 |
+
+每个缺失标记取0或1。各块先放数值再放本块缺失标记，三份缓存矩阵按`models/intraday.py::input_parts()`拼接。完整逐列索引、计算模块和表达式依赖见[192列输入清单](evidence/input_columns.csv)。下表补齐原180列的计算说明。
+
+#### 六列基础Features
+
+- `imbalance_1`、`imbalance_5`、`imbalance_10`分别使用前1、5、10档两侧BTC挂单量，计算`(买侧量−卖侧量)/(买侧量+卖侧量)`。
+- `trade_imbalance_100ms`、`trade_imbalance_1s`分别使用过去100ms、1s主动买卖BTC成交量，计算`(主动买量−主动卖量)/(主动买量+主动卖量)`。已知零成交记0，未知位置保留为空。
+- `return_1s_bps`是`(Mid_t/Mid_t−1s−1)×10000`，采用普通收益。代码按100ms网格回看10个位置并核对精确时间差，端点缺失则为空。
+
+#### 35族历史因子，共140列
+
+每行列出E4确实读取的4列。外层窗口按完整100ms位置计算，整秒输出，通常要求80%有效。内层年龄、历史基准和完整秒聚合按各家族实现计算，公式可从对应模块及清单中的表达式依赖定位。
+
+| 家族 | 计算内容 | 冻结的4列 |
+| --- | --- | --- |
+| [Gen001](../../../research/mm_research/factors/gen001.py) | 盘口与成交压力的滚动均值 | `book_obi_l1_mean_3s`<br>`book_obi_l5_mean_100s`<br>`trade_aggr_imb_100ms_mean_100s`<br>`cross_trade_book_gap_mean_100s` |
+| [Gen002](../../../research/mm_research/factors/gen002.py) | 短窗口均值减长窗口均值 | `book_obi_l1_mean_diff_3s_10s`<br>`book_obi_l5_mean_diff_20s_100s`<br>`trade_aggr_imb_100ms_mean_diff_20s_100s`<br>`cross_trade_book_gap_mean_diff_20s_100s` |
+| [Gen003](../../../research/mm_research/factors/gen003.py) | 近端深度占比、数量加权档位距离及双侧差 | `book_bid_share_l1_l10_mean_5s`<br>`book_bid_weighted_dist_l10_mean_50s`<br>`book_ask_weighted_dist_l10_mean_50s`<br>`book_dist_asym_l10_mean_50s` |
+| [Gen004](../../../research/mm_research/factors/gen004.py) | 成交笔数、数量和金额的滚动和 | `trade_count_100ms_sum_5s`<br>`trade_sell_qty_100ms_sum_50s`<br>`trade_buy_notional_100ms_sum_50s`<br>`trade_total_notional_100ms_sum_50s` |
+| [Gen005](../../../research/mm_research/factors/gen005.py) | 收益、正收益、正收益平方及方向切换计数 | `px_ret_100ms_sum_5s`<br>`px_pos_ret_100ms_sum_50s`<br>`px_pos_sq_ret_100ms_sum_50s`<br>`px_turn_flag_100ms_sum_50s` |
+| [Gen006](../../../research/mm_research/factors/gen006.py) | 相邻100ms排行深度变化的滚动和 | `book_bid_depth_l1_delta_100ms_sum_5s`<br>`book_net_depth_l1_delta_100ms_sum_50s`<br>`book_net_depth_l5_delta_100ms_sum_50s`<br>`book_net_depth_l10_delta_100ms_sum_50s` |
+| [Gen008](../../../research/mm_research/factors/gen008.py) | 成交压力与同桶收益的同向、反向和吸收关系 | `impact_trade_qty_aligned_100ms_mean_5s`<br>`impact_trade_qty_absorb_100ms_mean_50s`<br>`impact_trade_imb_aligned_100ms_mean_50s`<br>`impact_trade_imb_opposed_100ms_mean_50s` |
+| [Gen009](../../../research/mm_research/factors/gen009.py) | 成交失衡、成交加速度与盘口OBI之差 | `cross_trade_aggr_imb_100ms_book_obi_l1_gap_mean_5s`<br>`cross_trade_aggr_imb_100ms_book_obi_l5_gap_mean_50s`<br>`cross_trade_aggr_imb_accel_100ms_book_obi_l1_gap_mean_50s`<br>`cross_trade_aggr_imb_accel_100ms_book_obi_l10_gap_mean_50s` |
+| [Gen010](../../../research/mm_research/factors/gen010.py) | 按fit数量阈值划分的小中大单数量和失衡 | `trade_small_buy_qty_100ms_mean_5s`<br>`trade_small_imb_100ms_mean_50s`<br>`trade_mid_imb_100ms_mean_50s`<br>`trade_large_imb_100ms_mean_50s` |
+| [Gen011](../../../research/mm_research/factors/gen011.py) | 价差水平、扩大、收缩和翻转 | `spread_level_ticks_mean_5s`<br>`spread_wide_2_flag_mean_100s`<br>`spread_contract_ticks_100ms_mean_100s`<br>`spread_flip_flag_100ms_mean_100s` |
+| [Gen012](../../../research/mm_research/factors/gen012.py) | 前十档内5千、2.5万、10万USDT理论执行成本 | `book_exec_buy_cost_5k_mean_5s`<br>`book_exec_gap_cost_5k_mean_100s`<br>`book_exec_gap_cost_25k_mean_100s`<br>`book_exec_gap_cost_100k_mean_100s` |
+| [Gen013](../../../research/mm_research/factors/gen013.py) | 成交活跃、密集、笔数跳变和活跃转静默 | `trade_active_flag_100ms_mean_5s`<br>`trade_dense_flag_100ms_mean_100s`<br>`trade_count_jump_up_100ms_mean_100s`<br>`trade_active_to_idle_flag_100ms_mean_100s` |
+| [Gen014](../../../research/mm_research/factors/gen014.py) | 报价、挂单数量和成交状态持续年龄，单位秒 | `book_bid_px_age_sec_100ms_mean_5s`<br>`book_mid_px_age_sec_100ms_mean_100s`<br>`book_ask_q1_age_sec_100ms_mean_100s`<br>`trade_sell_age_sec_100ms_mean_100s` |
+| [Gen015](../../../research/mm_research/factors/gen015.py) | 买卖报价上涨、变价及双侧协同 | `quote_bid_up_ticks_100ms_mean_5s`<br>`quote_ask_up_ticks_100ms_mean_100s`<br>`quote_ask_delta_ticks_100ms_mean_100s`<br>`quote_bid_ask_comove_100ms_mean_100s` |
+| [Gen016](../../../research/mm_research/factors/gen016.py) | 成交VWAP相对桶末Mid、上桶Mid及买卖VWAP差 | `trade_buy_vwap_mid_dev_bps_100ms_mean_5s`<br>`trade_all_vwap_mid_dev_bps_100ms_mean_100s`<br>`trade_buy_sell_vwap_gap_bps_100ms_mean_100s`<br>`trade_all_vwap_prev_mid_dev_bps_100ms_mean_100s` |
+| [Gen017](../../../research/mm_research/factors/gen017.py) | 成交量相对一、五、十档挂单深度 | `trade_buy_flow_rel_depth_l1_100ms_mean_5s`<br>`trade_net_flow_rel_depth_l1_100ms_mean_100s`<br>`trade_net_flow_rel_depth_l5_100ms_mean_100s`<br>`trade_net_flow_rel_depth_l10_100ms_mean_100s` |
+| [Gen018](../../../research/mm_research/factors/gen018.py) | 历史滞后压力与100ms收益的Pearson相关，lag单位为100ms桶 | `lead_trade_aggr_imb_100ms_ret_lag1_corr_ret_5s`<br>`lead_trade_aggr_imb_100ms_ret_lag10_corr_ret_100s`<br>`lead_trade_aggr_imb_1s_ret_lag10_corr_ret_100s`<br>`lead_trade_net_flow_rel_depth_l5_100ms_ret_lag10_corr_ret_100s` |
+| [Gen019](../../../research/mm_research/factors/gen019.py) | 绝对压力超过0.6的极端状态及退出计数 | `book_obi_l1_extreme_state_thr06_sum_5s`<br>`book_obi_l1_extreme_exit_thr06_sum_100s`<br>`book_obi_l5_extreme_exit_thr06_sum_100s`<br>`trade_aggr_imb_1s_extreme_exit_thr06_sum_100s` |
+| [Gen020](../../../research/mm_research/factors/gen020.py) | 同UTC半小时时段过去20个完整日参考的均值比和Q90异常 | `utcslot_spread_level_ticks_ratio_20d_mean_5s`<br>`utcslot_spread_level_ticks_q90flag_20d_mean_100s`<br>`utcslot_trade_count_100ms_q90flag_20d_mean_100s`<br>`utcslot_book_depth_total_l10_q90flag_20d_mean_100s` |
+| [Gen021](../../../research/mm_research/factors/gen021.py) | 成交方向连续长度、切换及相邻非零同向 | `trade_dir_buy_run_100ms_mean_5s`<br>`trade_dir_signed_run_100ms_mean_100s`<br>`trade_dir_switch_flag_100ms_mean_100s`<br>`trade_dir_same_nonzero_100ms_mean_100s` |
+| [Gen022](../../../research/mm_research/factors/gen022.py) | 最大挂单占比与相邻价格空洞 | `book_bid_max_share_l10_mean_5s`<br>`book_bid_max_gap_ticks_l10_mean_100s`<br>`book_ask_max_gap_ticks_l10_mean_100s`<br>`book_bid_ask_max_gap_ticks_gap_l10_mean_100s` |
+| [Gen023](../../../research/mm_research/factors/gen023.py) | 100ms桶内成交规模中位数和集中度HHI | `trade_size_buy_median_qty_100ms_mean_5s`<br>`trade_size_buy_hhi_100ms_mean_100s`<br>`trade_size_sell_hhi_100ms_mean_100s`<br>`trade_size_all_hhi_100ms_mean_100s` |
+| [Gen024](../../../research/mm_research/factors/gen024.py) | 两侧深度绝对变化及毛变动减净变动 | `book_depth_bid_abs_l1_100ms_mean_5s`<br>`book_depth_gross_minus_net_l1_100ms_mean_100s`<br>`book_depth_gross_minus_net_l5_100ms_mean_100s`<br>`book_depth_gross_minus_net_l10_100ms_mean_100s` |
+| [Gen025](../../../research/mm_research/factors/gen025.py) | 价差和深度冲击、恢复年龄 | `liq_shock_spread_active_100ms_mean_5s`<br>`liq_shock_spread_age_sec_100ms_mean_100s`<br>`liq_shock_bid_depth_age_sec_100ms_mean_100s`<br>`liq_shock_ask_depth_age_sec_100ms_mean_100s` |
+| [Gen026](../../../research/mm_research/factors/gen026.py) | 收益强度与价差、2.5万USDT执行成本的交互 | `cross_vol_abs_x_spread_100ms_mean_5s`<br>`cross_vol_abs_x_exec_100ms_mean_100s`<br>`cross_vol_down_x_exec_100ms_mean_100s`<br>`cross_vol_square_x_exec_100ms_mean_100s` |
+| [Gen027](../../../research/mm_research/factors/gen027.py) | 过去1秒VWAP锚点偏离及价格位于锚点上方的标志 | `trade_buy_vwap1s_mid_gap_bps_mean_5s`<br>`trade_buy_vwap1s_above_flag_mean_100s`<br>`trade_sell_vwap1s_above_flag_mean_100s`<br>`trade_all_vwap1s_above_flag_mean_100s` |
+| [Gen028](../../../research/mm_research/factors/gen028.py) | 相对过去5秒价格区间的突破及2秒确认后的失败突破 | `px_range_up_flag_100ms_mean_5s`<br>`px_range_up_down_flag_gap_100ms_mean_100s`<br>`px_range_up_down_dist_ticks_gap_100ms_mean_100s`<br>`px_range_up_down_fail_flag_gap_100ms_mean_100s` |
+| [Gen029](../../../research/mm_research/factors/gen029.py) | 最近1秒与过去5秒状态的均值、方差和CUSUM变化 | `regime_spread_mean_shift_1s5s_mean_5s`<br>`regime_spread_cusum_shift_1s5s_mean_100s`<br>`regime_activity_cusum_shift_1s5s_mean_100s`<br>`regime_depth_cusum_shift_1s5s_mean_100s` |
+| [Gen031](../../../research/mm_research/factors/gen031.py) | 三种盘口隐含中心相对Mid的Tick偏离 | `book_micro_l1_crossqty_delta_ticks_100ms_mean_5s`<br>`book_micro_l1_touchsign_delta_ticks_100ms_mean_100s`<br>`book_micro_l5_touchsign_delta_ticks_100ms_mean_100s`<br>`book_micro_l10_touchsign_delta_ticks_100ms_mean_100s` |
+| [Gen032](../../../research/mm_research/factors/gen032.py) | 报价方向连续性和有向变价频率 | `px_mid_transition_cont_100ms_mean_5s`<br>`px_mid_transition_signed_100ms_mean_100s`<br>`px_bid_transition_signed_100ms_mean_100s`<br>`px_ask_transition_signed_100ms_mean_100s` |
+| [Gen033](../../../research/mm_research/factors/gen033.py) | 滞后收益乘积及反向抵消幅度 | `noise_mid_ret_lag1_prod_100ms_mean_5s`<br>`noise_mid_reversal_overlap_100ms_mean_100s`<br>`noise_bid_reversal_overlap_100ms_mean_100s`<br>`noise_ask_reversal_overlap_100ms_mean_100s` |
+| [Gen034](../../../research/mm_research/factors/gen034.py) | 离散状态熵及lag2互信息 | `info_mid_move_sign_100ms_entropy_5s`<br>`info_mid_move_sign_100ms_mi_lag2_100s`<br>`info_trade_aggr_sign_100ms_mi_lag2_100s`<br>`info_book_obi_l5_sign_100ms_mi_lag2_100s` |
+| [Gen035](../../../research/mm_research/factors/gen035.py) | 一至二、三至五、六至十档数量除以价差Tick的边际密度和双侧不对称 | `book_bid_marginal_density_l1_2_mean_5s`<br>`book_marginal_density_asym_l1_2_mean_100s`<br>`book_marginal_density_asym_l3_5_mean_100s`<br>`book_marginal_density_asym_l6_10_mean_100s` |
+| [Gen036](../../../research/mm_research/factors/gen036.py) | 历史上桶压力对当前100ms收益的OLS斜率及正负斜率差 | `book_obi_l5_lag_beta_5s`<br>`book_obi_l5_lag_asym_beta_100s`<br>`trade_aggr_imb_100ms_lag_asym_beta_100s`<br>`trade_aggr_imb_1s_lag_asym_beta_100s` |
+| [Gen037](../../../research/mm_research/factors/gen037.py) | 完整1秒内十个100ms桶的早晚活跃差、HHI，再按秒滚动 | `intrasec_count_late_early_1s_sec_mean_5s`<br>`intrasec_count_hhi_1s_sec_mean_100s`<br>`intrasec_qty_hhi_1s_sec_mean_100s`<br>`intrasec_absret_hhi_1s_sec_mean_100s` |
+
+#### 现货16列
+
+来源为Binance官方`spot/monthly/klines/BTCUSDT/1s/BTCUSDT-1s-YYYY-MM.zip`。每个10/60/180/600秒窗口依次生成以下4列，共16列。
+
+| 列名前缀 | 计算 |
+| --- | --- |
+| `spot_imbalance` | `(2Σ主动买BTC量−Σ总BTC量)/Σ总BTC量`，零总量为空 |
+| `spot_return` | `ln(现货收盘价_t/现货收盘价_t−窗口)×10000` |
+| `spot_close_perp_mid_gap` | `mean_窗口(ln(现货收盘价/永续Mid)×10000)` |
+| `spot_perp_return_gap` | 现货窗口对数收益bps减永续窗口对数收益bps |
+
+滚动统计至少要求`int(窗口秒数×0.8)`个有效位置。秒线结束后增加20ms可见延迟，再向上取整到决策秒，读取代码将开盘时间加2秒作为可见整秒。永续Mid使用决策前一秒状态。月块携带前1202条历史。E4读取现货分组的16列。
+
+#### 慢价格状态18列
+
+窗口依次为60/300/900/1800/3600/14400秒，每窗口按收益、波动、价格z-score排列。令`p=ln(决策前一秒Mid)`、`r=p.diff()`。
+
+| 列名前缀 | 计算 |
+| --- | --- |
+| `return` | `(p_t−p_t−窗口)×10000` |
+| `volatility` | `rolling_std_窗口(r)×10000`，即1秒收益标准差 |
+| `price_zscore` | `(p_t−rolling_mean_窗口(p))/rolling_std_窗口(p)` |
+
+滚动至少要求`int(窗口秒数×0.8)`个有效位置，标准差使用Polars默认`ddof=1`，零价格标准差时z-score为空。最长历史为14400秒。这些字段由`models/intraday.py::prepare_intraday()`直接读取既有市场矩阵计算。
+
+#### 时间与预处理
+
+旧146列按决策前一完整秒对齐，午夜携带上一秒。现货按上述已结束秒线的可见时刻对齐，慢状态先将永续Mid后移一秒再计算，Gen041读取`values[rows−1]`。100ms上游仅接纳`交易所时间+20ms ≤ 网格时刻`的记录，特征计算延迟另记1ms。
+
+各缓存仅用fit行拟定均值和标准差。非有限输入用fit均值填补，随后标准化并裁剪到`[-20,20]`，再追加Float32缺失标记。归一化标准差使用NumPy的`ddof=0`，小于`1e−8`时设1。新增12列从E3复制对应数值、缺失通道和预处理参数。缺失样本保留在共同的合法行集中。
+
 ## 四、标签、模型训练与概率转交易价值
 
 ### 4.1 1800秒费用后标签的精确公式

@@ -918,6 +918,15 @@
       "body": "README、E4报告、实现说明和实验文档已简化重复与防御性表述。README及E4报告补充hftbacktest-cpp作者、原始HftBacktest来源、固定提交及MIT许可证链接。",
       "created_at": "2026-11-15T12:00:00Z",
       "updated_at": "2026-11-15T12:00:00Z"
+    },
+    {
+      "id": "codex-e4-complete-inputs-20261115",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "已解决",
+      "body": "E4报告补齐全部192列数值输入及192个缺失通道。明确原6列Features、35族140列旧因子、16列现货、18列慢状态和12列Gen041，新增逐列CSV及384通道索引。AGENTS精简为长期约定，实验历史查报告索引。",
+      "created_at": "2026-11-15T20:00:00Z",
+      "updated_at": "2026-11-15T20:00:00Z"
     }
   ]
 }
