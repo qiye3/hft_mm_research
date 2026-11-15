@@ -49,7 +49,7 @@ native_position - sum(unconfirmed_or_active_sell_leaves) >= -max_position
 
 固定依赖仍是 `e0d2f7887c68755b220d9e69425d61d27e5b6432`，第三方源码没有修改。
 
-上游 `include/hbt/backtest/local.hpp::Local::process_recv_order` 会先依据 `status == Filled/PartiallyFilled` 调用 `state_.apply_fill`，之后才检查 `req == Rejected`。`exchange.hpp::ack_cancel` 在订单已经成交时，可能把撤单请求中的旧 Partial/Filled 状态、旧 exec_qty 原样带回，并设置 `req=Rejected`。这不是一笔新的成交，却可能重复计账。
+上游 `include/hbt/backtest/local.hpp::Local::process_recv_order` 会先依据 `status == Filled/PartiallyFilled` 调用 `state_.apply_fill`，之后才检查 `req == Rejected`。`exchange.hpp::ack_cancel` 在订单已经成交时，可能把撤单请求中的旧 Partial/Filled 状态、旧 exec_qty 原样带回，并设置 `req=Rejected`。如果再次记账，会重复计算同一笔成交。
 
 已通过两类合成用例确认：
 
@@ -71,9 +71,9 @@ account_equity = initial_capital + net_pnl
 inventory_value = position * local_mid
 ```
 
-`balance` 是框架累计买卖交易现金流，不是 Binance 保证金余额。费用为逐笔成交名义金额乘 Maker/Taker 费率，负费率表示返佣。单位为 BTC 和 USDT，线性合约乘数为 1。C++ 在每批同时间戳原生回报后对账；即使两笔相反成交在一个决策周期内抵消，也会分别导出，不从净库存差推断成交。
+`balance`记录框架累计买卖现金流。费用为逐笔成交名义金额乘 Maker/Taker 费率，负费率表示返佣。单位为 BTC 和 USDT，线性合约乘数为 1。C++ 在每批同时间戳原生回报后对账；即使两笔相反成交在一个决策周期内抵消，也会分别导出，不从净库存差推断成交。
 
-- `orders.csv`：submit、cancel_request、每条原始 response，包括订单 ID、方向、报价、原始数量、剩余数量、状态、请求状态、执行价格/数量及双时间戳。请求记录的 exch_timestamp 为当时已知原订单时间，不是尚未发生的交易所确认时间。
+- `orders.csv`：submit、cancel_request、每条原始 response，包括订单 ID、方向、报价、原始数量、剩余数量、状态、请求状态、执行价格/数量及双时间戳。请求记录中的exch_timestamp沿用当时已知的原订单时间，确认时间在交易所回报后记录。
 - `fills.csv`：每次真实成交的数量、费用、成交后账本库存、现金流、平均成本、已实现收益和净 PnL。
 - `equity.csv`：每个决策点及每次成交的本地 Mid、库存市值、费用、PnL、权益和运行回撤。成交点的 reserved_buy/sell 留空，避免把同批回报结束后的原生订单状态错配到中间成交；决策点记录真实原生剩余数量。
 - `summary.json`：聚合指标、参数、回放事件数和对账状态。

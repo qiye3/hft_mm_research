@@ -22,13 +22,13 @@
 | 盘口只读访问 | 同上：`best_bid/best_ask/best_bid_qty/best_ask_qty/bid_depth_map/ask_depth_map` | `MarketObserver` 提取排序后的前 5/10 档，不建立第二套订单簿 |
 | 延迟与订单总线 | `include/hbt/models/latency.hpp`、`include/hbt/backtest/order_bus.hpp`：`ConstantLatency`、`make_order_buses` | 保留原生订单请求/响应延迟；M0 无订单，不影响行情回放 |
 
-Local Processor 表示策略当时能看到的本地状态；Exchange Processor 表示交易所已经发生的真实状态。`exch_ts` 是撮合相关事件的交易所时间，`local_ts` 是采集端收到消息的时间。行情延迟为 `local_ts - exch_ts`。两侧分别按自己的时间戳处理，不能把本地已知状态提前暴露给策略。
+Local Processor 表示策略当时能看到的本地状态；Exchange Processor 表示交易所已经发生的真实状态。`exch_ts` 是撮合相关事件的交易所时间，`local_ts` 是采集端收到消息的时间。行情延迟为 `local_ts - exch_ts`。两侧分别按自己的时间戳处理，策略在本地收到消息后才能使用更新。
 
-当两个时钟的事件顺序不一致时，不能仅按某一个时间戳排序并同时标记两侧。转换器分别排序交易所路由与本地路由后，按各自调度时间归并，生成 EXCH-only / LOCAL-only 记录。这会增加标准化行数，但每个源事件在每侧只处理一次。首日和重连快照前加入两侧清空事件，防止已失效的旧价位残留。
+转换器分别按交易所时间和本地时间排序，再按各自调度时间归并，生成 EXCH-only / LOCAL-only 记录。这会增加标准化行数，但每个源事件在每侧只处理一次。首日和重连快照前加入两侧清空事件，防止已失效的旧价位残留。
 
 ## 观察器适配边界
 
-`Local` 是 final，`Backtest` 不提供逐事件 callback，`wait_next_feed` 会处理同一时间戳的一组事件。因此，不能将调用次数当作事件数量。本项目 `src/mm/replay.cpp` 的 `ObservedLocal` 实现原生 `LocalProcessor` 接口，只将所有调用转发给实际 `Local`，在其 `process` 返回后通知 `MarketObserver`。`CountedExchange` 同样转发给实际 Exchange，仅增加计数及时间顺序检查。
+`Local` 是 final，`Backtest` 不提供逐事件 callback，`wait_next_feed` 会处理同一时间戳的一组事件。因此，一次调用可能处理多个事件。本项目 `src/mm/replay.cpp` 的 `ObservedLocal` 实现原生 `LocalProcessor` 接口，只将所有调用转发给实际 `Local`，在其 `process` 返回后通知 `MarketObserver`。`CountedExchange` 同样转发给实际 Exchange，仅增加计数及时间顺序检查。
 
 事件计数与 BBO 价差统计逐事件进行。完整前 N 档按 `snapshot_interval_ns` 采样，结束时额外采集最终盘口。默认 100 ms，设为 0 可逐事件提取。采样是读取频率，不影响输入数据和引擎盘口完整性。Top-N 使用原始 map 的只读视图及 `partial_sort_copy`，与上游 snapshot 一样过滤越过当前 BBO 的旧价位。
 
@@ -36,7 +36,7 @@ Local Processor 表示策略当时能看到的本地状态；Exchange Processor 
 
 整体回放计时包围 `Backtest::close()`，包含首次加载、NPZ 解压、后续分片 IO、双侧处理、调度、观察器。报告同时给出单侧逻辑事件吞吐与双侧处理器 dispatch 吞吐。逻辑事件包括快照价位、深度增量、成交和转换器新增的清空事件。
 
-`local_step_latency` 的抽样范围仅为一次 `Local::process + observer`，不包含 Exchange、调度器和 IO，也不是策略延迟；M0 没有策略。p50/p95/p99 按实际样本 nearest-rank 计算，不从整批耗时除以事件数伪造分位数。Peak RSS 使用 `getrusage(RUSAGE_SELF)`，macOS 的单位为字节，Linux 为 KiB 并换算成字节；记录独立基准进程截至回放完成及最终盘口采集的内存高水位。
+`local_step_latency` 测量一次 `Local::process + observer`。Exchange、调度器和 IO 耗时另计；M0阶段尚无策略计算。p50/p95/p99按测得样本的nearest-rank计算。Peak RSS 使用 `getrusage(RUSAGE_SELF)`，macOS 的单位为字节，Linux 为 KiB 并换算成字节；记录独立基准进程截至回放完成及最终盘口采集的内存高水位。
 
 ## M0 验收
 

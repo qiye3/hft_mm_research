@@ -27,7 +27,7 @@ E4在原180列输入上增加12列训练期筛选的长周期微观结构因子�
 
 ![E4 开发与冻结历史复核日末权益](docs/reports/e4_20261115/equity.png)
 
-费用包括实际模拟Maker/Taker成交手续费及资金费。年化按完整53日折算，无成交日纳入分母。复核年化未达到预设30%门槛，收益主要集中在6月。该区间曾由其他实验查看，作为冻结历史复核报告。Python生成冻结预测，C++逐事件执行订单与风控。[完整结果及来源](docs/reports/e4_20261115/report.md)
+收益已扣除模拟成交手续费，并计入资金费。年化按完整53日折算，无成交日纳入分母。复核年化未达到预设30%门槛，收益主要集中在6月。复核区间曾用于其他实验，参数在本次复核前固定。Python生成冻结预测，C++逐事件执行订单与风控。[完整结果及来源](docs/reports/e4_20261115/report.md)
 
 ## 研究链路
 
@@ -46,6 +46,12 @@ E4在原180列输入上增加12列训练期筛选的长周期微观结构因子�
 - **因子与目标** — Polars负责探索性构造，按真实秒数滚动、跨午夜延续。每个Feature/Factor一份全日期Parquet，Targets独立版本管理。
 - **模型与评价** — 线性基线、树、MLP与序列模型按实验组比较。特征选择和预处理使用训练期，开发选参后冻结历史复核。
 - **策略与执行** — 固定报价、预测驱动入场、库存限制、风险退出和Maker优先执行。原生引擎管理排队、延迟、在途请求和部分成交，独立账本核对权益。
+
+## 第三方回放引擎
+
+本项目集成 shenron0101 维护的 **hftbacktest-cpp v0.1.0**，这是 nkaz001 及其贡献者开发的 **HftBacktest** 的独立 C++20 移植。依赖通过 Git Submodule 固定到 `e0d2f7887c68755b220d9e69425d61d27e5b6432`。引擎负责订单簿、事件调度、延迟、队列、成交模拟和订单状态。[C++项目](https://github.com/shenron0101/hftbacktest-cpp) · [原始HftBacktest](https://github.com/nkaz001/hftbacktest)
+
+本仓库实现数据处理、特征与因子研究、模型训练、策略决策、风险退出和独立账本。第三方目录保留原版MIT许可证、版权声明及项目来源说明。[LICENSE](https://github.com/shenron0101/hftbacktest-cpp/blob/e0d2f7887c68755b220d9e69425d61d27e5b6432/LICENSE) · [NOTICE](https://github.com/shenron0101/hftbacktest-cpp/blob/e0d2f7887c68755b220d9e69425d61d27e5b6432/NOTICE) · [CITATION.cff](https://github.com/shenron0101/hftbacktest-cpp/blob/e0d2f7887c68755b220d9e69425d61d27e5b6432/CITATION.cff)
 
 ## Quickstart
 
@@ -78,7 +84,7 @@ ctest --test-dir workspace/build/release --output-on-failure
 
 ### 运行研究数据生产
 
-准备好配置明确声明的原始行情后，在项目根执行。
+按配置准备好原始行情后，在项目根目录执行。
 
 ```sh
 python scripts/build_standard_data.py config/data/standardize_30d.yaml

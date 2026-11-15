@@ -17,4 +17,4 @@
 - [E4完整过程、公式、参数与账本结果](reports/e4_20261115/report.md)
 - [按研究阶段整理的实验目录](reports/README.md)
 
-`design/`保存设计与批注，`implementation/`保存当前实现说明，`reports/`保留带日期的实验结果，`discussion/`保留早期讨论上下文。各实验以自己的配置、日期和费用口径阅读。
+`design/`保存设计与批注，`implementation/`保存当前实现说明，`reports/`保留带日期的实验结果，`discussion/`保留早期讨论上下文。各报告列出对应的配置、日期和费用设置。

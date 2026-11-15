@@ -14,9 +14,9 @@
 | Maker成交金额 | 394792.3703 USDT |
 | Taker成交金额 | 0 USDT |
 
-三月部分区间净收益91.1545、四月227.1747、五月部分区间92.4818 USDT。三段均为正，四月贡献约55%；这不是三个完整月份的稳定性验证。4月27—28日亏损71.0588 USDT保留。
+三月部分区间净收益91.1545、四月227.1747、五月部分区间92.4818 USDT。三个区间收益均为正，四月贡献约55%；三月和五月仅覆盖部分日期。4月27—28日亏损71.0588 USDT保留。
 
-开发年化和敞口门槛通过。结果来源：workspace/results/gen041_native_risk_20261114_v1/summary/native_account.json、blocks.csv、monthly.csv。扩大仓位已在原生事件路径完成，不能将此开发结果替代历史复核。
+开发年化和敞口门槛通过。结果来源：workspace/results/gen041_native_risk_20261114_v1/summary/native_account.json、blocks.csv、monthly.csv。扩大仓位后的开发回放已完成，历史复核结果见下文。
 
 ## 历史复核冻结规则与最终结果
 
