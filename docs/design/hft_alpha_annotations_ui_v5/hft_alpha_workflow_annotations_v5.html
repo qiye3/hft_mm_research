@@ -607,7 +607,7 @@
       "target": "node:a4",
       "author": "Codex",
       "status": "已解决",
-      "body": "当前服务器切换为research-server，SSH入口research.example.com:22，实例用户research-user。已实测自动挂载原JuiceFS共享盘，容量1TiB、已用约718GiB，原项目、数据与结果目录可直接访问。资源为10vCPU、60GiB内存、RTX3090 24GiB；.venv和.venv-models均可用，CUDA可用。已恢复看板服务并读取1236个完成评测因子。本机SSH、Cursor、钥匙串、监控浮窗及看板连接脚本同步新实例。",
+      "body": "当前服务器切换为qiye-rtx3090-10vcpu，SSH入口ssh.zw1.paratera.com:2222，实例用户root@ackcs-00gji3q5。已实测自动挂载原JuiceFS共享盘，容量1TiB、已用约718GiB，原项目、数据与结果目录可直接访问。资源为10vCPU、60GiB内存、RTX3090 24GiB；.venv和.venv-models均可用，CUDA可用。已恢复看板服务并读取1236个完成评测因子。本机SSH、Cursor、钥匙串、监控浮窗及看板连接脚本同步新实例。",
       "created_at": "2026-11-09T01:48:51.379487+00:00",
       "updated_at": "2026-11-09T03:12:48.961131+00:00"
     },
@@ -616,7 +616,7 @@
       "target": "node:a4",
       "author": "Codex",
       "status": "备注",
-      "body": "2026-11-09已执行P0、A2、C和25日B1。冻结模型IC复算0.271446；七列共同样本中OBI残差方差保留54.94%，旧0%结论未复现。相同百万训练秒的C树模型验证R²为0.064887；B1增加七项100ms路径后ΔR²为0.008277，9个验证日均改善。B0真实L2前五分钟与Features的43列Tick/Lot对账一致。E2当前仅有2026-10-21一个完整事件日，X缺少登记的同步现货数据。结果文档位于/path/to/Desktop/docs/Projects/HFT_MM/Results/research_20261109，复现代码和指标归档于workspace/results/information_validation。",
+      "body": "2026-11-09已执行P0、A2、C和25日B1。冻结模型IC复算0.271446；七列共同样本中OBI残差方差保留54.94%，旧0%结论未复现。相同百万训练秒的C树模型验证R²为0.064887；B1增加七项100ms路径后ΔR²为0.008277，9个验证日均改善。B0真实L2前五分钟与Features的43列Tick/Lot对账一致。E2当前仅有2026-10-21一个完整事件日，X缺少登记的同步现货数据。结果文档位于/Users/qiye/Desktop/docs/Projects/HFT_MM/Results/research_20261109，复现代码和指标归档于workspace/results/information_validation。",
       "created_at": "2026-11-09T06:20:54.816206+00:00",
       "updated_at": "2026-11-09T06:20:54.816206+00:00"
     },
@@ -742,7 +742,7 @@
       "target": "node:core",
       "author": "Codex",
       "status": "备注",
-      "body": "\n\n35组1206因子已全部生成。全量评估中，Gen003在发布统计时碰到任务内存硬上限，Gen005和Gen008的极端收益列在前100条全空、后续出现浮点值时触发Polars类型推断错误。原始因子文件完整保留，失败评估已重新排队。\n\n本次修改如下。\n\n- `evaluation/report.py`明确极端收益三列为Float64，分组表合并后连续化并释放小表对象，完成一个因子后释放对应状态。\n- `evaluation/metrics.py`将2000次日级Bootstrap按100次分块，随机数序列和区间结果与原整块计算逐值一致。\n- `config/evaluation/multiwindow_20261110.yaml`将每批36列改成12列。已核对1206列全部保持每个公式的四档窗口或三个短长配对在同批，共同样本定义不变。\n- 全部日级统计算完后、发布前，保存原子检查点到该组输出的 `.pending/批次首因子/state.pkl`。发布失败后直接恢复统计，避免重复回放和重复计算。完整发布后清理检查点。\n- 部分窗口已完成时，仍读取其有效掩码参与同公式共同样本，防止恢复后的比较行集变化。\n- `tests/test_evaluation_recovery.py`覆盖空值前缀、Bootstrap结果一致、发布中断恢复及部分窗口缓存下的共同样本。\n\n其余运行中的独立任务继续，最终验收依赖已恢复。上述修改不改变因子公式、标签和IC定义。\n\n\n尝试上调运行中旧36列批次的硬限制被容器拒绝。已将恢复及后续任务改为12列，保留现有运行任务，失败项按新设置重跑。\n\n新任务进一步区分两类资源阈值，`allocation_limit_gib: 24`控制数据段虚拟分配余量，`memory_limit_gib: 12`继续监控实际匿名内存。`overnight.py`已支持两个独立参数，未配置分配余量的任务继续使用原阈值。实际子进程继承值已验证。此设置只应用到新启动任务。\n\n评估和最终验收的完整批次声明现保存在 `config/research/multiwindow_queue/`，主配置直接读取，原结果目录内的临时批次YAML已移除。运行主队列即可复现完整生产、评估与验收。\n\n## 后台托管与自动同步\n\n本轮已交给服务器 `scripts/run_research_background.py`，关闭对话或断开SSH后继续执行。该入口接管当前队列，监督进程异常退出时最多恢复3次。每个评估任务失败后最多重试2次，间隔60秒，复用已完成因子和发布检查点。耗尽重试预算的任务保留真实失败记录，其他任务继续，依赖项按状态处理。\n\n`overnight.py`每分钟生成可读进度 `workspace/results/factor_windows_20261110_v1/queue/progress.md`，后台驱动状态位于同目录 `background.json`，后台日志为 `background.log`。全部评估成功后自动执行验收和研究汇总。\n\n本地 `scripts/watch_and_sync_research.py`每5分钟检查终态。电脑在线时，完成后自动取回轻量汇总到项目 `workspace/results/factor_windows_20261110_v1/summary/`，并写入本目录 `07_四档因子与多周期评估结果_20261110.md`。若后台以失败状态结束，则同步诊断和失败清单。本地同步等待上限24小时，日志位于项目 `workspace/results/factor_windows_20261110_v1/result_sync.log`。计算在服务器执行。\n\n查看服务器进度可执行下列命令。\n\n```bash\nssh research-server 'cat /root/shared-nvme/hft_mm_research/workspace/results/factor_windows_20261110_v1/queue/progress.md'\n```\n\n本次托管修改包括 `research/mm_research/overnight.py` 的有限重试及进度报告，新增 `scripts/run_research_background.py`、`scripts/watch_and_sync_research.py`，更新四档队列重试配置，并新增 `tests/test_research_background.py`。启动时的配置状态同步问题已纠正，已重新连接确认后台主进程、监督进程和8组计算任务持续运行。\n\n\n本地旧同步进程已退出，服务器计算未受影响。现改由macOS launchctl管理一次性同步任务 com.qiye.hft.factor-windows-20261110-sync，已确认新进程启动并成功读取服务器运行状态。watch_and_sync_research.py自行记录PID，日志时间包含时区，失败报告使用正常换行。完成后同步轻量报告；本机需保持开机联网。",
+      "body": "\n\n35组1206因子已全部生成。全量评估中，Gen003在发布统计时碰到任务内存硬上限，Gen005和Gen008的极端收益列在前100条全空、后续出现浮点值时触发Polars类型推断错误。原始因子文件完整保留，失败评估已重新排队。\n\n本次修改如下。\n\n- `evaluation/report.py`明确极端收益三列为Float64，分组表合并后连续化并释放小表对象，完成一个因子后释放对应状态。\n- `evaluation/metrics.py`将2000次日级Bootstrap按100次分块，随机数序列和区间结果与原整块计算逐值一致。\n- `config/evaluation/multiwindow_20261110.yaml`将每批36列改成12列。已核对1206列全部保持每个公式的四档窗口或三个短长配对在同批，共同样本定义不变。\n- 全部日级统计算完后、发布前，保存原子检查点到该组输出的 `.pending/批次首因子/state.pkl`。发布失败后直接恢复统计，避免重复回放和重复计算。完整发布后清理检查点。\n- 部分窗口已完成时，仍读取其有效掩码参与同公式共同样本，防止恢复后的比较行集变化。\n- `tests/test_evaluation_recovery.py`覆盖空值前缀、Bootstrap结果一致、发布中断恢复及部分窗口缓存下的共同样本。\n\n其余运行中的独立任务继续，最终验收依赖已恢复。上述修改不改变因子公式、标签和IC定义。\n\n\n尝试上调运行中旧36列批次的硬限制被容器拒绝。已将恢复及后续任务改为12列，保留现有运行任务，失败项按新设置重跑。\n\n新任务进一步区分两类资源阈值，`allocation_limit_gib: 24`控制数据段虚拟分配余量，`memory_limit_gib: 12`继续监控实际匿名内存。`overnight.py`已支持两个独立参数，未配置分配余量的任务继续使用原阈值。实际子进程继承值已验证。此设置只应用到新启动任务。\n\n评估和最终验收的完整批次声明现保存在 `config/research/multiwindow_queue/`，主配置直接读取，原结果目录内的临时批次YAML已移除。运行主队列即可复现完整生产、评估与验收。\n\n## 后台托管与自动同步\n\n本轮已交给服务器 `scripts/run_research_background.py`，关闭对话或断开SSH后继续执行。该入口接管当前队列，监督进程异常退出时最多恢复3次。每个评估任务失败后最多重试2次，间隔60秒，复用已完成因子和发布检查点。耗尽重试预算的任务保留真实失败记录，其他任务继续，依赖项按状态处理。\n\n`overnight.py`每分钟生成可读进度 `workspace/results/factor_windows_20261110_v1/queue/progress.md`，后台驱动状态位于同目录 `background.json`，后台日志为 `background.log`。全部评估成功后自动执行验收和研究汇总。\n\n本地 `scripts/watch_and_sync_research.py`每5分钟检查终态。电脑在线时，完成后自动取回轻量汇总到项目 `workspace/results/factor_windows_20261110_v1/summary/`，并写入本目录 `07_四档因子与多周期评估结果_20261110.md`。若后台以失败状态结束，则同步诊断和失败清单。本地同步等待上限24小时，日志位于项目 `workspace/results/factor_windows_20261110_v1/result_sync.log`。计算在服务器执行。\n\n查看服务器进度可执行下列命令。\n\n```bash\nssh qiye-rtx3090-10vcpu 'cat /root/shared-nvme/hft_mm_research/workspace/results/factor_windows_20261110_v1/queue/progress.md'\n```\n\n本次托管修改包括 `research/mm_research/overnight.py` 的有限重试及进度报告，新增 `scripts/run_research_background.py`、`scripts/watch_and_sync_research.py`，更新四档队列重试配置，并新增 `tests/test_research_background.py`。启动时的配置状态同步问题已纠正，已重新连接确认后台主进程、监督进程和8组计算任务持续运行。\n\n\n本地旧同步进程已退出，服务器计算未受影响。现改由macOS launchctl管理一次性同步任务 com.qiye.hft.factor-windows-20261110-sync，已确认新进程启动并成功读取服务器运行状态。watch_and_sync_research.py自行记录PID，日志时间包含时区，失败报告使用正常换行。完成后同步轻量报告；本机需保持开机联网。",
       "created_at": "2026-11-10T12:35:07.453630+00:00",
       "updated_at": "2026-11-11T00:22:48.466095+00:00"
     },
@@ -769,7 +769,7 @@
       "target": "node:core",
       "author": "Codex",
       "status": "已解决",
-      "body": "全部已做实验已归档到/path/to/Desktop/docs/Projects/HFT_MM/Results/实验总档案_20261111。00为总索引，01—07覆盖数据回放、因子、信息增量、全部模型、多期限曲线、策略及实际配置，08解释明细。32张CSV含1236旧因子、1206四档因子、290条历史模型登记、64条后续模型记录、18个信号折、828策略日例实际执行配置及36固定订单日例。保留历史失败、预算截止、已查看Test与新旧口径差异，早期已清理中间文件按原报告归档。",
+      "body": "全部已做实验已归档到/Users/qiye/Desktop/docs/Projects/HFT_MM/Results/实验总档案_20261111。00为总索引，01—07覆盖数据回放、因子、信息增量、全部模型、多期限曲线、策略及实际配置，08解释明细。32张CSV含1236旧因子、1206四档因子、290条历史模型登记、64条后续模型记录、18个信号折、828策略日例实际执行配置及36固定订单日例。保留历史失败、预算截止、已查看Test与新旧口径差异，早期已清理中间文件按原报告归档。",
       "created_at": "2026-11-11T08:24:16.479162+00:00",
       "updated_at": "2026-11-11T08:24:16.479162+00:00"
     },
@@ -988,6 +988,24 @@
       "body": "E4报告补齐全部192列数值输入及192个缺失通道。明确原6列Features、35族140列旧因子、16列现货、18列慢状态和12列Gen041，新增逐列CSV及384通道索引。AGENTS精简为长期约定，实验历史查报告索引。",
       "created_at": "2026-11-15T20:00:00Z",
       "updated_at": "2026-11-15T20:00:00Z"
+    },
+    {
+      "id": "codex-project-storage-20261119",
+      "target": "node:source",
+      "author": "Codex",
+      "status": "备注",
+      "body": "研究当前暂停。网盘archive_20261115已完成205个分包及源码、清单、回执与恢复说明归档，分包合计约199.2 GiB。保留代码、模型、实验成果、标准行情、Features和Labels，未上传全部Factors。\n\n新共享存储为50 GiB，已用48.261 GiB、剩余1.739 GiB。常驻531天100ms Features（458,784,000行）、模型与预处理、冻结索引、报告、主要交易权益账本及Factorboard元数据。部署使用f4c8023源码快照，未恢复.git历史。旧1TB云资源尚未代为删除。恢复全量Factors、行情或训练缓存需另备空间。",
+      "created_at": "2026-11-19T12:00:00Z",
+      "updated_at": "2026-11-19T12:00:00Z"
+    },
+    {
+      "id": "codex-e4-current-20261119",
+      "target": "node:core",
+      "author": "Codex",
+      "status": "备注",
+      "body": "E4完整输入为192列数值+192列缺失标记，共384通道：6基础Features、35族140历史因子、现货16、慢状态18、Gen041精选12。原146列按冻结清单保留历史窗口。C++波动止损与移动止盈已实现；开发净410.8111 USDT，冻结历史复核净291.0373 USDT。完整过程见docs/reports/e4_20261115/report.md，逐列清单见evidence/input_columns.csv。",
+      "created_at": "2026-11-19T12:00:00Z",
+      "updated_at": "2026-11-19T12:00:00Z"
     }
   ]
 }
@@ -1003,7 +1021,7 @@ const nodes=[
     "sub": "官方普通成交 / 两类盘口快照 / 20ms可见延迟",
     "inp": "官方成交ZIP + 网盘25档或Hugging Face 20档快照",
     "out": "standard/server_market_v1/{snapshots,trades}/日期.parquet",
-    "summary": "Data按UTC日期发布标准盘口和成交。531天正式研究数据覆盖2025-05-09至2026-10-21，快照研究与逐事件回放分别准备输入。",
+    "summary": "Data按UTC日期发布标准盘口和成交，覆盖2025-05-09至2026-10-21共531天。标准行情已网盘归档，新50 GiB共享存储常驻100ms Features、模型与主要实验结果；完整行情和Factors使用前需恢复。",
     "details": {
       "输入": [
         "BTCUSDT永续普通成交使用Binance官方日档，已核验镜像可用于下载。",
@@ -1300,12 +1318,12 @@ const nodes=[
     "id": "a5",
     "lane": "research",
     "num": "A5",
-    "name": "多期限模型与180秒GPU基线",
+    "name": "多期限模型与E4费用分类",
     "status": "已有 · 分版本研究",
     "sub": "线性 / LightGBM / MLP / GRU / TCN",
     "inp": "冻结输入 + 训练/早停/验证分区",
     "out": "权重、逐行预测与多周期指标",
-    "summary": "已完成1s统一模型对照，并实现E0—E4多期限研究。当前180秒GPU实验使用昨日冻结146列旧窗口输入，作为新四档因子的旧输入基线。",
+    "summary": "已完成1s统一模型与多期限对照。最终E4费用分类模型使用192列数值和192列缺失标记，预测1800秒费用后获利；完整输入及冻结顺序见E4报告。研究当前暂停。",
     "details": {
       "输入": [
         "1s统一对照使用comparison.yaml；当前多期限与180秒实验分别有独立配置和输出。",
@@ -1325,7 +1343,7 @@ const nodes=[
       ],
       "注意": [
         "1s统一对照的完整输入LightGBM历史测试IC为0.25029；此数值属于1s旧分期。",
-        "当前GPU批次尚未接入新四档1206因子，新因子增量需要独立对照。"
+        "历史180秒GPU基线使用冻结146列旧输入。后续E4保留原146列，加入现货16、慢状态18、Gen041精选12，共192列数值；各实验的窗口和分区分别保存。"
       ],
       "扩展": [
         "新窗口、旧窗口与组合输入按相同180秒目标比较，保留非重叠采样和种子差异。"
@@ -2785,84 +2803,84 @@ const targetManifest=[
   {
     "target": "node:a5",
     "kind": "node",
-    "label": "多期限模型与180秒GPU基线"
+    "label": "多期限模型与E4费用分类"
   },
   {
     "target": "section:a5:输入",
     "kind": "section",
-    "label": "多期限模型与180秒GPU基线 / 输入"
+    "label": "多期限模型与E4费用分类 / 输入"
   },
   {
     "target": "note:a5:输入:0",
     "kind": "note",
-    "label": "多期限模型与180秒GPU基线 / 输入 / 第1条",
+    "label": "多期限模型与E4费用分类 / 输入 / 第1条",
     "text": "1s统一对照使用comparison.yaml；当前多期限与180秒实验分别有独立配置和输出。"
   },
   {
     "target": "section:a5:处理",
     "kind": "section",
-    "label": "多期限模型与180秒GPU基线 / 处理"
+    "label": "多期限模型与E4费用分类 / 处理"
   },
   {
     "target": "note:a5:处理:0",
     "kind": "note",
-    "label": "多期限模型与180秒GPU基线 / 处理 / 第1条",
+    "label": "多期限模型与E4费用分类 / 处理 / 第1条",
     "text": "选列、标准化和填补参数仅使用训练数据；对照固定训练行与评价时间戳。"
   },
   {
     "target": "note:a5:处理:1",
     "kind": "note",
-    "label": "多期限模型与180秒GPU基线 / 处理 / 第2条",
+    "label": "多期限模型与E4费用分类 / 处理 / 第2条",
     "text": "180秒批次按固定5秒位置抽样，训练末尾14天作内部早停并隔离300秒，两段Validation用于外部比较。"
   },
   {
     "target": "note:a5:处理:2",
     "kind": "note",
-    "label": "多期限模型与180秒GPU基线 / 处理 / 第3条",
+    "label": "多期限模型与E4费用分类 / 处理 / 第3条",
     "text": "按模型和种子独立训练，分块预测；GPU与CPU任务受队列并发及内存限制。"
   },
   {
     "target": "section:a5:输出",
     "kind": "section",
-    "label": "多期限模型与180秒GPU基线 / 输出"
+    "label": "多期限模型与E4费用分类 / 输出"
   },
   {
     "target": "note:a5:输出:0",
     "kind": "note",
-    "label": "多期限模型与180秒GPU基线 / 输出 / 第1条",
+    "label": "多期限模型与E4费用分类 / 输出 / 第1条",
     "text": "workspace/results/models/comparison_2026-11-09_v2/保存25模型统一对照。"
   },
   {
     "target": "section:a5:验收",
     "kind": "section",
-    "label": "多期限模型与180秒GPU基线 / 验收"
+    "label": "多期限模型与E4费用分类 / 验收"
   },
   {
     "target": "note:a5:验收:0",
     "kind": "note",
-    "label": "多期限模型与180秒GPU基线 / 验收 / 第1条",
+    "label": "多期限模型与E4费用分类 / 验收 / 第1条",
     "text": "相同输入和样本比较误差与日级IC；冻结后评价历史Test，记录实际训练预算。"
   },
   {
     "target": "section:a5:注意",
     "kind": "section",
-    "label": "多期限模型与180秒GPU基线 / 注意"
+    "label": "多期限模型与E4费用分类 / 注意"
   },
   {
     "target": "note:a5:注意:0",
     "kind": "note",
-    "label": "多期限模型与180秒GPU基线 / 注意 / 第1条",
+    "label": "多期限模型与E4费用分类 / 注意 / 第1条",
     "text": "1s统一对照的完整输入LightGBM历史测试IC为0.25029；此数值属于1s旧分期。"
   },
   {
     "target": "section:a5:扩展",
     "kind": "section",
-    "label": "多期限模型与180秒GPU基线 / 扩展"
+    "label": "多期限模型与E4费用分类 / 扩展"
   },
   {
     "target": "note:a5:扩展:0",
     "kind": "note",
-    "label": "多期限模型与180秒GPU基线 / 扩展 / 第1条",
+    "label": "多期限模型与E4费用分类 / 扩展 / 第1条",
     "text": "新窗口、旧窗口与组合输入按相同180秒目标比较，保留非重叠采样和种子差异。"
   },
   {
@@ -3553,7 +3571,7 @@ const targetManifest=[
   {
     "target": "note:a5:输出:1",
     "kind": "note",
-    "label": "多期限模型与180秒GPU基线 / 输出 / 第2条",
+    "label": "多期限模型与E4费用分类 / 输出 / 第2条",
     "text": "multihorizon_20261109_v1/e1/保存多期限模型；target180_gpu_20261110_v1与sequence180_gpu_20261110_v1保存专用GPU实验。"
   },
   {
@@ -4372,14 +4390,14 @@ const targetManifest=[
   {
     "target": "note:a5:输入:1",
     "kind": "note",
-    "label": "多期限模型与180秒GPU基线 / 输入 / 第2条",
+    "label": "多期限模型与E4费用分类 / 输入 / 第2条",
     "text": "180秒序列模型仅按拟合前缀选48列，读取120秒历史，附加缺失通道。"
   },
   {
     "target": "note:a5:注意:1",
     "kind": "note",
-    "label": "多期限模型与180秒GPU基线 / 注意 / 第2条",
-    "text": "当前GPU批次尚未接入新四档1206因子，新因子增量需要独立对照。"
+    "label": "多期限模型与E4费用分类 / 注意 / 第2条",
+    "text": "历史180秒GPU基线使用冻结146列旧输入。后续E4保留原146列，加入现货16、慢状态18、Gen041精选12，共192列数值；各实验的窗口和分区分别保存。"
   },
   {
     "target": "note:a6:处理:2",

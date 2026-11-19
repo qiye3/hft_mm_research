@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "about": "2026-11-14当前架构及历史批注定位，包含事件压缩加速、Maker规模开发结果与E4冻结历史复核最终结果；本轮研究已暂停。",
+  "about": "2026-11-19当前架构与历史批注：E4全部192列/384通道、原生风险退出、网盘归档与50 GiB部署。研究暂停。",
   "targets": [
     {
       "target": "file:src/apps/replay_probe.cpp",
@@ -758,84 +758,84 @@
     {
       "target": "node:a5",
       "kind": "node",
-      "label": "多期限模型与180秒GPU基线"
+      "label": "多期限模型与E4费用分类"
     },
     {
       "target": "section:a5:输入",
       "kind": "section",
-      "label": "多期限模型与180秒GPU基线 / 输入"
+      "label": "多期限模型与E4费用分类 / 输入"
     },
     {
       "target": "note:a5:输入:0",
       "kind": "note",
-      "label": "多期限模型与180秒GPU基线 / 输入 / 第1条",
+      "label": "多期限模型与E4费用分类 / 输入 / 第1条",
       "text": "1s统一对照使用comparison.yaml；当前多期限与180秒实验分别有独立配置和输出。"
     },
     {
       "target": "section:a5:处理",
       "kind": "section",
-      "label": "多期限模型与180秒GPU基线 / 处理"
+      "label": "多期限模型与E4费用分类 / 处理"
     },
     {
       "target": "note:a5:处理:0",
       "kind": "note",
-      "label": "多期限模型与180秒GPU基线 / 处理 / 第1条",
+      "label": "多期限模型与E4费用分类 / 处理 / 第1条",
       "text": "选列、标准化和填补参数仅使用训练数据；对照固定训练行与评价时间戳。"
     },
     {
       "target": "note:a5:处理:1",
       "kind": "note",
-      "label": "多期限模型与180秒GPU基线 / 处理 / 第2条",
+      "label": "多期限模型与E4费用分类 / 处理 / 第2条",
       "text": "180秒批次按固定5秒位置抽样，训练末尾14天作内部早停并隔离300秒，两段Validation用于外部比较。"
     },
     {
       "target": "note:a5:处理:2",
       "kind": "note",
-      "label": "多期限模型与180秒GPU基线 / 处理 / 第3条",
+      "label": "多期限模型与E4费用分类 / 处理 / 第3条",
       "text": "按模型和种子独立训练，分块预测；GPU与CPU任务受队列并发及内存限制。"
     },
     {
       "target": "section:a5:输出",
       "kind": "section",
-      "label": "多期限模型与180秒GPU基线 / 输出"
+      "label": "多期限模型与E4费用分类 / 输出"
     },
     {
       "target": "note:a5:输出:0",
       "kind": "note",
-      "label": "多期限模型与180秒GPU基线 / 输出 / 第1条",
+      "label": "多期限模型与E4费用分类 / 输出 / 第1条",
       "text": "workspace/results/models/comparison_2026-11-09_v2/保存25模型统一对照。"
     },
     {
       "target": "section:a5:验收",
       "kind": "section",
-      "label": "多期限模型与180秒GPU基线 / 验收"
+      "label": "多期限模型与E4费用分类 / 验收"
     },
     {
       "target": "note:a5:验收:0",
       "kind": "note",
-      "label": "多期限模型与180秒GPU基线 / 验收 / 第1条",
+      "label": "多期限模型与E4费用分类 / 验收 / 第1条",
       "text": "相同输入和样本比较误差与日级IC；冻结后评价历史Test，记录实际训练预算。"
     },
     {
       "target": "section:a5:注意",
       "kind": "section",
-      "label": "多期限模型与180秒GPU基线 / 注意"
+      "label": "多期限模型与E4费用分类 / 注意"
     },
     {
       "target": "note:a5:注意:0",
       "kind": "note",
-      "label": "多期限模型与180秒GPU基线 / 注意 / 第1条",
+      "label": "多期限模型与E4费用分类 / 注意 / 第1条",
       "text": "1s统一对照的完整输入LightGBM历史测试IC为0.25029；此数值属于1s旧分期。"
     },
     {
       "target": "section:a5:扩展",
       "kind": "section",
-      "label": "多期限模型与180秒GPU基线 / 扩展"
+      "label": "多期限模型与E4费用分类 / 扩展"
     },
     {
       "target": "note:a5:扩展:0",
       "kind": "note",
-      "label": "多期限模型与180秒GPU基线 / 扩展 / 第1条",
+      "label": "多期限模型与E4费用分类 / 扩展 / 第1条",
       "text": "新窗口、旧窗口与组合输入按相同180秒目标比较，保留非重叠采样和种子差异。"
     },
     {
@@ -1526,7 +1526,7 @@
     {
       "target": "note:a5:输出:1",
       "kind": "note",
-      "label": "多期限模型与180秒GPU基线 / 输出 / 第2条",
+      "label": "多期限模型与E4费用分类 / 输出 / 第2条",
       "text": "multihorizon_20261109_v1/e1/保存多期限模型；target180_gpu_20261110_v1与sequence180_gpu_20261110_v1保存专用GPU实验。"
     },
     {
@@ -2345,14 +2345,14 @@
     {
       "target": "note:a5:输入:1",
       "kind": "note",
-      "label": "多期限模型与180秒GPU基线 / 输入 / 第2条",
+      "label": "多期限模型与E4费用分类 / 输入 / 第2条",
       "text": "180秒序列模型仅按拟合前缀选48列，读取120秒历史，附加缺失通道。"
     },
     {
       "target": "note:a5:注意:1",
       "kind": "note",
-      "label": "多期限模型与180秒GPU基线 / 注意 / 第2条",
-      "text": "当前GPU批次尚未接入新四档1206因子，新因子增量需要独立对照。"
+      "label": "多期限模型与E4费用分类 / 注意 / 第2条",
+      "text": "历史180秒GPU基线使用冻结146列旧输入。后续E4保留原146列，加入现货16、慢状态18、Gen041精选12，共192列数值；各实验的窗口和分区分别保存。"
     },
     {
       "target": "note:a6:处理:2",
